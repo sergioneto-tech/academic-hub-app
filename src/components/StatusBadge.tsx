@@ -1,29 +1,32 @@
-import { Badge } from "@/components/ui/badge";
+import React from "react";
 import { cn } from "@/lib/utils";
 
-export type StatusTone = "success" | "warning" | "danger" | "neutral";
+type Status = "pendente" | "em_andamento" | "concluida" | "atrasada";
 
-/**
- * Badge de estado (sem amarelos/amber hardcoded).
- * Exporta:
- *  - named:  StatusBadge  (para `import { StatusBadge } ...`)
- *  - default: StatusBadge (para `import StatusBadge ...`)
- */
-export function StatusBadge({ label, tone = "neutral" }: { label: string; tone?: StatusTone }) {
-  const cls =
-    tone === "success"
-      ? "bg-emerald-500/10 text-emerald-700 border-emerald-200"
-      : tone === "warning"
-      ? "bg-sky-500/10 text-sky-700 border-sky-200"
-      : tone === "danger"
-      ? "bg-rose-500/10 text-rose-700 border-rose-200"
-      : "bg-muted text-muted-foreground border-border";
+const STYLES: Record<Status, string> = {
+  pendente: "bg-slate-100 text-slate-700 border border-slate-200",
+  em_andamento: "bg-blue-100 text-blue-800 border border-blue-200",
+  concluida: "bg-emerald-100 text-emerald-800 border border-emerald-200",
+  atrasada: "bg-rose-100 text-rose-800 border border-rose-200",
+};
 
+const LABELS: Record<Status, string> = {
+  pendente: "Pendente",
+  em_andamento: "Em andamento",
+  concluida: "Concluída",
+  atrasada: "Atrasada",
+};
+
+export default function StatusBadge({ status, className }: { status: Status; className?: string }) {
   return (
-    <Badge variant="outline" className={cn("rounded-full border px-2 py-0.5 text-xs font-medium", cls)}>
-      {label}
-    </Badge>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        STYLES[status],
+        className
+      )}
+    >
+      {LABELS[status]}
+    </span>
   );
 }
-
-export default StatusBadge;

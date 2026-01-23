@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { AppState, AssessmentType } from "./types";
-import { loadState, saveState } from "./storage";
+import type { AppState, AssessmentType } from "@/lib/types";
+import { loadState, saveState } from "@/lib/storage";
+import { clamp } from "@/lib/utils";
 
 type Store = {
   state: AppState;
+
   setDegreeName: (name: string) => void;
 
   setAssessmentGrade: (assessmentId: string, grade: number | null) => void;
+  setAssessmentMaxPoints: (assessmentId: string, maxPoints: number) => void;
   setAssessmentDate: (assessmentId: string, fields: { startDate?: string; endDate?: string; date?: string }) => void;
 
   ensureAssessment: (courseId: string, type: AssessmentType, name: string) => string;
@@ -16,10 +19,20 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 
+function uuid(): string {
+  return Math.random().toString(16).slice(2) + Date.now().toString(16);
+}
+
+function defaultMaxPoints(type: AssessmentType) {
+  if (type === "exam") return 12;
+  if (type === "resit") return 20;
+  return 4;
+}
+
 export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => loadState());
 
-  const api = useMemo<Store>(() => {
+  const api: Store = useMemo(() => {
     const commit = (next: AppState) => {
       setState(next);
       saveState(next);
@@ -29,20 +42,41 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       state,
 
       setDegreeName(name) {
-        const next = { ...state, degree: state.degree ? { ...state.degree, name } : { id: "deg1", name } };
+        const next: AppState = {
+          ...state,
+          degree: state.degree ? { ...state.degree, name } : { id: uuid(), name },
+        };
         commit(next);
       },
 
       setAssessmentGrade(assessmentId, grade) {
-        const next = {
+        const next: AppState = {
           ...state,
-          assessments: state.assessments.map(a => (a.id === assessmentId ? { ...a, grade } : a)),
+          assessments: state.assessments.map(a => {
+            if (a.id !== assessmentId) return a;
+            const max = Number(a.maxPoints) || 0;
+            const v = grade === null ? null : clamp(grade, 0, max);
+            return { ...a, grade: v };
+          }),
+        };
+        commit(next);
+      },
+
+      setAssessmentMaxPoints(assessmentId, maxPoints) {
+        const mp = Math.max(0, Number(maxPoints) || 0);
+        const next: AppState = {
+          ...state,
+          assessments: state.assessments.map(a => {
+            if (a.id !== assessmentId) return a;
+            const g = a.grade === null ? null : clamp(a.grade, 0, mp);
+            return { ...a, maxPoints: mp, grade: g };
+          }),
         };
         commit(next);
       },
 
       setAssessmentDate(assessmentId, fields) {
-        const next = {
+        const next: AppState = {
           ...state,
           assessments: state.assessments.map(a => (a.id === assessmentId ? { ...a, ...fields } : a)),
         };
@@ -50,15 +84,22 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       ensureAssessment(courseId, type, name) {
-        const existing = state.assessments.find(a => a.courseId === courseId && a.type === type);
+        const existing = state.assessments.find(a => a.courseId === courseId && a.type === type && a.name === name);
         if (existing) return existing.id;
 
-        const id = crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
-        const next = {
+        const id = uuid();
+        const next: AppState = {
           ...state,
           assessments: [
             ...state.assessments,
-            { id, courseId, type, name, grade: null, maxGrade: type === "exame" ? 16 : type === "recurso" ? 20 : 2 },
+            {
+              id,
+              courseId,
+              type,
+              name,
+              maxPoints: defaultMaxPoints(type),
+              grade: null,
+            },
           ],
         };
         commit(next);
@@ -66,13 +107,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       markCourseCompleted(courseId) {
-        const next = {
+        const now = new Date().toISOString();
+        const next: AppState = {
           ...state,
-          courses: state.courses.map(c =>
-            c.id === courseId
-              ? { ...c, isCompleted: true, isActive: false, completedAt: new Date().toISOString() }
-              : c
-          ),
+          courses: state.courses.map(c => (c.id === courseId ? { ...c, isCompleted: true, isActive: false, completedAt: now } : c)),
         };
         commit(next);
       },

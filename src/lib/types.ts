@@ -16,7 +16,7 @@ export type Course = {
   completedAt?: string; // ISO
 };
 
-export type AssessmentType = "efolio" | "exame" | "recurso";
+export type AssessmentType = "efolio" | "exam" | "resit";
 
 export type Assessment = {
   id: UUID;
@@ -24,15 +24,16 @@ export type Assessment = {
   type: AssessmentType;
   name: string;
 
-  // e-fólio
-  startDate?: string; // YYYY-MM-DD
-  endDate?: string;   // YYYY-MM-DD
+  // Pontuação máxima deste item (editável)
+  maxPoints: number;
 
-  // exame/recurso
-  date?: string;      // YYYY-MM-DD
+  // Nota obtida neste item (pode ter decimais)
+  grade: number | null;
 
-  grade?: number | null;
-  maxGrade?: number;  // default 2 p/ e-fólio, 16 p/ exame (ajusta na UI)
+  // Datas
+  startDate?: string; // e-fólio
+  endDate?: string;   // e-fólio
+  date?: string;      // exame / recurso
 };
 
 export type Rules = {

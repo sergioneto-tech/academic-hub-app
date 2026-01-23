@@ -17,7 +17,6 @@ export default function App() {
         <Route path="/calendario" element={<CalendarPage />} />
         <Route path="/historico" element={<HistoryPage />} />
 
-        {/* nunca ficar branco por rota inválida */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

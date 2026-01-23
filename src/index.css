@@ -75,3 +75,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 
+  KILL SWITCH: se algum ficheiro tiver classes hardcoded como border-yellow-*/border-amber-*
+  (muito comum em templates), isto neutraliza para o tema.
+*/
+[class*="border-yellow"], [class*="border-amber"] {
+  border-color: rgb(var(--border)) !important;
+}
+[class*="ring-yellow"], [class*="ring-amber"] {
+  --tw-ring-color: rgb(var(--ring)) !important;
+}
+[class*="outline-yellow"], [class*="outline-amber"] {
+  outline-color: rgb(var(--ring)) !important;
+}

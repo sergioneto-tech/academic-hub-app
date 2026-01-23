@@ -3,14 +3,11 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
-import { AppStoreProvider } from "./lib/AppStore";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <AppStoreProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </AppStoreProvider>
+    <HashRouter>
+      <App />
+    </HashRouter>
   </React.StrictMode>
 );

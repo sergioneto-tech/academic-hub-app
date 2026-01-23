@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
-import { courseStatusLabel, totalEFolios } from "@/lib/calc";
+import { courseStatusLabel, totalEFolios } from "@/lib/calculations";
 import { Badge } from "@/components/ui/badge";
 
 export default function CoursesPage() {

@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
-import { finalGrade, globalStats } from "@/lib/calc";
+import { finalGrade, globalStats } from "@/lib/calculations";
 
 export default function HistoryPage() {
   const { state } = useAppStore();

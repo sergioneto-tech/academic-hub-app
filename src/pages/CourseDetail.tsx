@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft } from "lucide-react";
 import { useAppStore } from "@/lib/AppStore";
-import { courseStatusLabel, finalGrade, getAssessments, getRules, needsResit, totalEFolios } from "@/lib/calc";
+import { courseStatusLabel, finalGrade, getAssessments, getRules, needsResit, totalEFolios } from "@/lib/calculations";
 
 export default function CourseDetail() {
   const nav = useNavigate();

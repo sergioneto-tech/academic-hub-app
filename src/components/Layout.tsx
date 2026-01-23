@@ -1,42 +1,71 @@
-import { ReactNode } from "react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
-import { GraduationCap, Menu } from "lucide-react";
+import { Outlet } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
+import { Home, BookOpen, Calendar, History } from "lucide-react";
 
-interface LayoutProps {
-  children: ReactNode;
-  title?: string;
+function NavItem({ to, icon: Icon, label }: { to: string; icon: any; label: string }) {
+  return (
+    <NavLink
+      to={to}
+      end={to === "/"}
+      className={({ isActive }) =>
+        `flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition ${
+          isActive ? "bg-muted font-medium" : "hover:bg-muted/60"
+        }`
+      }
+    >
+      <Icon className="h-4 w-4" />
+      <span>{label}</span>
+    </NavLink>
+  );
 }
 
-export function Layout({ children, title }: LayoutProps) {
+export default function Layout() {
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="sticky top-0 z-40 h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-full items-center gap-4 px-4 md:px-6">
-              <SidebarTrigger className="md:hidden">
-                <Menu className="h-5 w-5" />
-              </SidebarTrigger>
-              <div className="flex items-center gap-3 md:hidden">
-                <GraduationCap className="h-6 w-6 text-primary" />
-                <span className="font-semibold">UAb</span>
-              </div>
-              {title && (
-                <h1 className="hidden md:block text-xl font-semibold text-foreground">
-                  {title}
-                </h1>
-              )}
-            </div>
-          </header>
-          <main className="flex-1 overflow-auto">
-            <div className="container max-w-6xl py-6 px-4 md:px-6 animate-fade-in">
-              {children}
-            </div>
-          </main>
+    <div className="min-h-screen bg-background">
+      {/* topbar */}
+      <div className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <Link to="/" className="flex items-center gap-2 font-semibold">
+            <Home className="h-4 w-4" />
+            <span>Dashboard</span>
+          </Link>
+
+          {/* navegação desktop */}
+          <div className="hidden items-center gap-2 md:flex">
+            <NavItem to="/" icon={Home} label="Início" />
+            <NavItem to="/cadeiras" icon={BookOpen} label="Cadeiras" />
+            <NavItem to="/calendario" icon={Calendar} label="Calendário" />
+            <NavItem to="/historico" icon={History} label="Histórico" />
+          </div>
         </div>
       </div>
-    </SidebarProvider>
+
+      {/* content */}
+      <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:pb-6">
+        <Outlet />
+      </main>
+
+      {/* bottom nav mobile */}
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-background md:hidden">
+        <div className="mx-auto grid max-w-6xl grid-cols-4 px-2 py-2">
+          <NavLink to="/" end className="flex flex-col items-center gap-1 rounded-md py-2 text-xs">
+            <Home className="h-4 w-4" />
+            Início
+          </NavLink>
+          <NavLink to="/cadeiras" className="flex flex-col items-center gap-1 rounded-md py-2 text-xs">
+            <BookOpen className="h-4 w-4" />
+            Cadeiras
+          </NavLink>
+          <NavLink to="/calendario" className="flex flex-col items-center gap-1 rounded-md py-2 text-xs">
+            <Calendar className="h-4 w-4" />
+            Calendário
+          </NavLink>
+          <NavLink to="/historico" className="flex flex-col items-center gap-1 rounded-md py-2 text-xs">
+            <History className="h-4 w-4" />
+            Histórico
+          </NavLink>
+        </div>
+      </div>
+    </div>
   );
 }

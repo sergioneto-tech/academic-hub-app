@@ -1,178 +1,320 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+
 import { useAppStore } from "@/lib/AppStore";
-import { courseStatusLabel, finalGrade, getAssessments, getRules, needsResit, totalEFolios } from "@/lib/calculations";
+import { courseStatusLabel, exam as getExam, finalGradeRaw, finalGradeRounded, getAssessments, getRules, needsResit, resit as getResit, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
+import { formatPtNumber, parsePtNumber } from "@/lib/utils";
 
-export default function CourseDetail() {
-  const nav = useNavigate();
-  const { id } = useParams();
-  const { state, setAssessmentGrade, setAssessmentDate, ensureAssessment, markCourseCompleted } = useAppStore();
+function DateField({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
+  return (
+    <div className="grid gap-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input type="date" value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
 
-  const course = state.courses.find(c => c.id === id);
-  const rules = course ? getRules(state, course.id) : null;
+function PtNumberInput({
+  label,
+  value,
+  placeholder,
+  onCommit,
+}: {
+  label: string;
+  value: number | null;
+  placeholder?: string;
+  onCommit: (v: number | null) => void;
+}) {
+  const [txt, setTxt] = useState<string>("");
 
-  const efolios = useMemo(() => (course ? getAssessments(state, course.id, "efolio") : []), [state, course]);
-  const exame = useMemo(() => (course ? getAssessments(state, course.id, "exame")[0] : undefined), [state, course]);
-  const showResit = course ? needsResit(state, course.id) : false;
-
-  const recursoId = useMemo(() => {
-    if (!course || !showResit) return null;
-    return ensureAssessment(course.id, "recurso", "Recurso");
-  }, [course, showResit, ensureAssessment]);
-
-  if (!course || !rules) {
-    return <div className="text-sm text-muted-foreground">Cadeira não encontrada.</div>;
-  }
-
-  const efTotal = totalEFolios(state, course.id);
-  const fin = finalGrade(state, course.id);
-  const st = courseStatusLabel(state, course.id);
-
-  const canComplete = st.label === "Aprovado" && !course.isCompleted;
+  useEffect(() => {
+    setTxt(value === null ? "" : formatPtNumber(value));
+  }, [value]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" onClick={() => nav(-1)} className="gap-2">
-          <ArrowLeft className="h-4 w-4" /> Voltar
-        </Button>
+    <div className="grid gap-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        inputMode="decimal"
+        placeholder={placeholder}
+        value={txt}
+        onChange={(e) => setTxt(e.target.value)}
+        onBlur={() => onCommit(parsePtNumber(txt))}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+      />
+    </div>
+  );
+}
 
-        <Badge variant={st.variant === "success" ? "default" : st.variant === "warning" ? "secondary" : "destructive"}>
-          {st.label}
-        </Badge>
+export default function CourseDetail() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { state, ensureAssessment, setAssessmentDate, setAssessmentGrade, setAssessmentMaxPoints, markCourseCompleted } = useAppStore();
+
+  const course = useMemo(() => state.courses.find((c) => c.id === id), [state.courses, id]);
+  const rules = useMemo(() => (id ? getRules(state, id) : null), [state, id]);
+
+  // garantir itens padrão (para não ficar vazio)
+  useEffect(() => {
+    if (!id) return;
+    ensureAssessment(id, "efolio", "e-fólio A");
+    ensureAssessment(id, "efolio", "e-fólio B");
+    ensureAssessment(id, "exam", "p-fólio");
+    ensureAssessment(id, "resit", "recurso");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const efolios = useMemo(() => (id ? getAssessments(state, id, "efolio") : []), [state, id]);
+  const exam = useMemo(() => (id ? getExam(state, id) : null), [state, id]);
+  const resit = useMemo(() => (id ? getResit(state, id) : null), [state, id]);
+
+  const efTotal = useMemo(() => (id ? totalEFolios(state, id) : 0), [state, id]);
+  const efMax = useMemo(() => (id ? totalEFoliosMax(state, id) : 0), [state, id]);
+
+  const finRaw = useMemo(() => (id ? finalGradeRaw(state, id) : null), [state, id]);
+  const finRounded = useMemo(() => (id ? finalGradeRounded(state, id) : null), [state, id]);
+
+  const status = useMemo(() => (id ? courseStatusLabel(state, id) : { label: "—", badge: "neutral" as const }), [state, id]);
+  const showResit = useMemo(() => (id ? needsResit(state, id) : false), [state, id]);
+
+  if (!course || !id || !rules) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-muted-foreground">Cadeira não encontrada.</p>
+        <Button className="mt-4" onClick={() => navigate("/cadeiras")}>Voltar</Button>
+      </div>
+    );
+  }
+
+  const badgeClass =
+    status.badge === "success"
+      ? "bg-emerald-100 text-emerald-900 border-emerald-200"
+      : status.badge === "warning"
+      ? "bg-amber-100 text-amber-900 border-amber-200"
+      : status.badge === "danger"
+      ? "bg-rose-100 text-rose-900 border-rose-200"
+      : "bg-slate-100 text-slate-900 border-slate-200";
+
+  return (
+    <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-6">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Button variant="ghost" className="-ml-2 mb-2" onClick={() => navigate(-1)}>
+            ← Voltar
+          </Button>
+          <h1 className="text-xl md:text-2xl font-semibold leading-tight">
+            {course.code} — {course.name}
+          </h1>
+        </div>
+        <div className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${badgeClass}`}>
+          {status.label}
+        </div>
       </div>
 
-      <Card>
+      <div className="grid gap-3 md:grid-cols-3">
+        <Card className="bg-white/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">E‑fólios</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <div className="text-2xl font-semibold">
+              {formatPtNumber(efTotal)} <span className="text-sm text-muted-foreground">/ {formatPtNumber(efMax)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Mínimo para exame: {formatPtNumber(rules.minAptoExame)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Exame</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <div className="text-2xl font-semibold">
+              {formatPtNumber(exam?.grade ?? null) || "—"}{" "}
+              <span className="text-sm text-muted-foreground">/ {formatPtNumber(exam?.maxPoints ?? 12)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Mínimo no exame: {formatPtNumber(rules.minExame)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Nota final</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <div className="text-2xl font-semibold">
+              {finRounded === null ? "—" : String(finRounded)}{" "}
+              <span className="text-sm text-muted-foreground">/ 20</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cálculo: {finRaw === null ? "—" : `${formatPtNumber(finRaw)} → arredonda para ${finRounded}`}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="bg-white/70 backdrop-blur">
         <CardHeader>
-          <CardTitle className="text-2xl">{course.name}</CardTitle>
-          <div className="text-sm text-muted-foreground">
-            {course.code} • {course.year}º ano • {course.semester}º semestre
-          </div>
-        </CardHeader>
-
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border p-4 text-center">
-            <div className="text-sm text-muted-foreground">Total e-fólios</div>
-            <div className="text-3xl font-semibold">{efTotal.toFixed(1)}</div>
-            <div className="text-xs text-muted-foreground">Mínimo: {rules.minAptoExame}</div>
-          </div>
-
-          <div className="rounded-lg border p-4 text-center">
-            <div className="text-sm text-muted-foreground">Nota Exame</div>
-            <div className="text-3xl font-semibold">{typeof exame?.grade === "number" ? exame.grade : "—"}</div>
-            <div className="text-xs text-muted-foreground">Mínimo: {rules.minExame}</div>
-          </div>
-
-          <div className="rounded-lg border bg-muted/40 p-4 text-center">
-            <div className="text-sm text-muted-foreground">Nota Final</div>
-            <div className="text-3xl font-semibold">{fin ?? "—"}</div>
-            <div className="text-xs text-muted-foreground">Aprovação: ≥10</div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>e-Fólios</CardTitle>
+          <CardTitle>E‑fólios</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {efolios.map(a => (
-            <div key={a.id} className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <div className="font-medium">{a.name}</div>
-                <div className="text-sm text-muted-foreground">
-                  {a.endDate ? `Até ${new Date(a.endDate).toLocaleDateString("pt-PT")}` : "Sem data"}
+          {efolios.map((a) => (
+            <div key={a.id} className="rounded-lg border p-3 md:p-4 space-y-3">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <div className="font-medium">{a.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {a.endDate ? `Até ${a.endDate}` : "Defina as datas para lembretes/planeamento."}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 md:flex md:gap-3 md:items-end">
+                  <PtNumberInput
+                    label="Valor (pts)"
+                    value={a.maxPoints}
+                    placeholder="4"
+                    onCommit={(v) => {
+                      if (v === null) return;
+                      setAssessmentMaxPoints(a.id, v);
+                    }}
+                  />
+                  <PtNumberInput
+                    label="Nota"
+                    value={a.grade}
+                    placeholder="0,00"
+                    onCommit={(v) => setAssessmentGrade(a.id, v)}
+                  />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  className="w-24 text-right"
-                  inputMode="decimal"
-                  value={typeof a.grade === "number" ? String(a.grade).replace(".", ",") : ""}
-                  placeholder="—"
-                  onChange={(e) => {
-                    const v = e.target.value.replace(",", ".");
-                    const n = v.trim() === "" ? null : Number(v);
-                    if (n === null || Number.isFinite(n)) setAssessmentGrade(a.id, n);
-                  }}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DateField
+                  label="Início"
+                  value={a.startDate}
+                  onChange={(v) => setAssessmentDate(a.id, { startDate: v })}
                 />
-                <div className="text-sm text-muted-foreground">/ {a.maxGrade ?? 2}</div>
+                <DateField
+                  label="Fim"
+                  value={a.endDate}
+                  onChange={(v) => setAssessmentDate(a.id, { endDate: v })}
+                />
               </div>
             </div>
           ))}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white/70 backdrop-blur">
         <CardHeader>
-          <CardTitle>p-Fólio (Exame)</CardTitle>
+          <CardTitle>p‑Fólio (Exame)</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {!exame ? (
-            <div className="text-sm text-muted-foreground">Sem exame configurado.</div>
+        <CardContent className="space-y-4">
+          {!exam ? (
+            <p className="text-sm text-muted-foreground">A criar exame…</p>
           ) : (
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <div className="font-medium">{exame.name}</div>
-                <div className="text-sm text-muted-foreground">
-                  {exame.date ? new Date(exame.date).toLocaleDateString("pt-PT") : "Sem data"}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Input
-                  className="w-24 text-right"
-                  inputMode="decimal"
-                  value={typeof exame.grade === "number" ? String(exame.grade).replace(".", ",") : ""}
-                  placeholder="—"
-                  onChange={(e) => {
-                    const v = e.target.value.replace(",", ".");
-                    const n = v.trim() === "" ? null : Number(v);
-                    if (n === null || Number.isFinite(n)) setAssessmentGrade(exame.id, n);
-                  }}
-                />
-                <div className="text-sm text-muted-foreground">/ {exame.maxGrade ?? 16}</div>
-              </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <DateField
+                label="Data do exame"
+                value={exam.date}
+                onChange={(v) => setAssessmentDate(exam.id, { date: v })}
+              />
+
+              <PtNumberInput
+                label="Valor total (pts)"
+                value={exam.maxPoints}
+                placeholder="12"
+                onCommit={(v) => {
+                  if (v === null) return;
+                  setAssessmentMaxPoints(exam.id, v);
+                }}
+              />
+
+              <PtNumberInput
+                label="Nota obtida"
+                value={exam.grade}
+                placeholder="0,00"
+                onCommit={(v) => setAssessmentGrade(exam.id, v)}
+              />
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* RECURSO: só aparece quando necessário */}
-      {showResit && recursoId && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recurso</CardTitle>
-            <div className="text-sm text-muted-foreground">
-              Disponível porque não tem aptidão para exame ou não atingiu a nota mínima no exame.
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-lg border p-4">
-              <div>
-                <div className="font-medium">Data do recurso</div>
-                <div className="text-sm text-muted-foreground">Defina a data para lembretes/planeamento.</div>
-              </div>
-              <Input
-                type="date"
-                className="w-full md:w-52"
-                value={state.assessments.find(a => a.id === recursoId)?.date ?? ""}
-                onChange={(e) => setAssessmentDate(recursoId, { date: e.target.value })}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <Card className="bg-white/70 backdrop-blur">
+        <CardHeader>
+          <CardTitle>Recurso</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Disponível porque não tem aptidão para exame ou não atingiu a nota mínima no exame.
+          </p>
 
-      <div className="flex items-center justify-end">
-        <Button disabled={!canComplete} onClick={() => markCourseCompleted(course.id)}>
-          Marcar como concluída
-        </Button>
-      </div>
+          {!resit ? (
+            <p className="text-sm text-muted-foreground">A criar recurso…</p>
+          ) : (
+            <>
+              <div className="grid gap-3 md:grid-cols-3">
+                <DateField
+                  label="Data do recurso"
+                  value={resit.date}
+                  onChange={(v) => setAssessmentDate(resit.id, { date: v })}
+                />
+
+                <PtNumberInput
+                  label="Valor total (pts)"
+                  value={resit.maxPoints}
+                  placeholder="20"
+                  onCommit={(v) => {
+                    if (v === null) return;
+                    setAssessmentMaxPoints(resit.id, v);
+                  }}
+                />
+
+                <PtNumberInput
+                  label="Nota obtida"
+                  value={resit.grade}
+                  placeholder="0,00"
+                  onCommit={(v) => setAssessmentGrade(resit.id, v)}
+                />
+              </div>
+
+              {!showResit && (
+                <div className="rounded-md border bg-slate-50 p-3 text-sm text-slate-700">
+                  Neste momento, o recurso não é necessário. Podes deixar estes campos vazios.
+                </div>
+              )}
+            </>
+          )}
+
+          <Separator />
+
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+            <div className="text-xs text-muted-foreground">
+              Dica: podes marcar a cadeira como concluída quando estiveres satisfeito com a nota final.
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => markCourseCompleted(course.id)}
+            >
+              Marcar como concluída
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

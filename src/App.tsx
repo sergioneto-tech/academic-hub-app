@@ -9,7 +9,7 @@ import CourseDetail from "./pages/CourseDetail";
 export default function App() {
   return (
     <Routes>
-      <Route element={<AppLayout />}>
+      <Route element={<Layout />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/cadeiras" element={<CoursesPage />} />
         <Route path="/cadeiras/:id" element={<CourseDetail />} />

@@ -1,39 +1,113 @@
-import { Outlet, NavLink } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-function linkClass({ isActive }: { isActive: boolean }) {
-  return [
-    "rounded-md px-3 py-2 text-sm transition",
-    isActive ? "bg-muted font-medium" : "hover:bg-muted/60",
-  ].join(" ");
-}
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
+const NAV = [
+  { to: "/", label: "Dashboard" },
+  { to: "/cadeiras", label: "Cadeiras" },
+  { to: "/calendario", label: "Calendário" },
+  { to: "/historico", label: "Histórico" },
+  { to: "/definicoes", label: "Definições" },
+];
 
 export default function Layout() {
-  return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="font-semibold">Academic Hub</div>
+  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installed, setInstalled] = useState(false);
 
-          <nav className="flex items-center gap-2">
-            <NavLink to="/" end className={linkClass}>
-              Dashboard
-            </NavLink>
-            <NavLink to="/cadeiras" className={linkClass}>
-              Cadeiras
-            </NavLink>
-            <NavLink to="/calendario" className={linkClass}>
-              Calendário
-            </NavLink>
-            <NavLink to="/historico" className={linkClass}>
-              Histórico
-            </NavLink>
-          </nav>
+  useEffect(() => {
+    const onBip = (e: Event) => {
+      e.preventDefault();
+      setDeferred(e as BeforeInstallPromptEvent);
+    };
+
+    const onInstalled = () => {
+      setInstalled(true);
+      setDeferred(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", onBip);
+    window.addEventListener("appinstalled", onInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBip);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+
+  async function handleInstall() {
+    if (!deferred) return;
+    await deferred.prompt();
+    try {
+      await deferred.userChoice;
+    } finally {
+      setDeferred(null);
+    }
+  }
+
+  return (
+    <div className="min-h-dvh bg-gradient-to-b from-slate-50 via-slate-50 to-white">
+      <header className="sticky top-0 z-40 border-b bg-white/70 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold tracking-tight">Academic Hub</div>
+            <div className="text-xs text-muted-foreground">Planeamento e notas (UAb)</div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!installed && deferred && (
+              <Button size="sm" onClick={handleInstall}>
+                Instalar
+              </Button>
+            )}
+            <nav className="hidden md:flex items-center gap-1">
+              {NAV.map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  className={({ isActive }) =>
+                    cn(
+                      "rounded-md px-3 py-2 text-sm",
+                      isActive ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                    )
+                  }
+                >
+                  {n.label}
+                </NavLink>
+              ))}
+            </nav>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl p-4">
+      <main className="mx-auto max-w-6xl px-4 pb-24 md:pb-10 pt-4">
         <Outlet />
       </main>
+
+      {/* Bottom nav para telemóvel (vertical) */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-white/80 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-2 py-2 grid grid-cols-5 gap-1">
+          {NAV.map((n) => (
+            <NavLink
+              key={n.to}
+              to={n.to}
+              className={({ isActive }) =>
+                cn(
+                  "rounded-md px-2 py-2 text-[11px] text-center leading-tight",
+                  isActive ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                )
+              }
+            >
+              {n.label}
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }

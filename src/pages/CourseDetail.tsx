@@ -1,213 +1,178 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { Layout } from "@/components/Layout";
-import { StatusBadge } from "@/components/StatusBadge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAppState } from "@/hooks/useAppState";
-import { getCourseStatus, totalEFolios, calculateNotaFinal } from "@/lib/calculations";
-import { ArrowLeft, BookOpen, FileText, GraduationCap, CheckCircle } from "lucide-react";
-import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
+import { ArrowLeft } from "lucide-react";
+import { useAppStore } from "@/lib/AppStore";
+import { courseStatusLabel, finalGrade, getAssessments, getRules, needsResit, totalEFolios } from "@/lib/calc";
 
 export default function CourseDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { state, updateAssessment, markCourseComplete } = useAppState();
+  const nav = useNavigate();
+  const { id } = useParams();
+  const { state, setAssessmentGrade, setAssessmentDate, ensureAssessment, markCourseCompleted } = useAppStore();
 
-  const course = state.activeCourses.find((c) => c.id === id);
-  const assessments = state.assessments.filter((a) => a.courseId === id);
-  const rules = state.rules.find((r) => r.courseId === id) || {
-    courseId: id!,
-    minAptoExame: 3.5,
-    minExame: 5.5,
-    formulaFinal: "somaSimples" as const,
-  };
+  const course = state.courses.find(c => c.id === id);
+  const rules = course ? getRules(state, course.id) : null;
 
-  if (!course) {
-    return (
-      <Layout title="Cadeira não encontrada">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">Esta cadeira não foi encontrada.</p>
-          <Button asChild variant="outline">
-            <Link to="/cadeiras">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar às Cadeiras
-            </Link>
-          </Button>
-        </div>
-      </Layout>
-    );
+  const efolios = useMemo(() => (course ? getAssessments(state, course.id, "efolio") : []), [state, course]);
+  const exame = useMemo(() => (course ? getAssessments(state, course.id, "exame")[0] : undefined), [state, course]);
+  const showResit = course ? needsResit(state, course.id) : false;
+
+  const recursoId = useMemo(() => {
+    if (!course || !showResit) return null;
+    return ensureAssessment(course.id, "recurso", "Recurso");
+  }, [course, showResit, ensureAssessment]);
+
+  if (!course || !rules) {
+    return <div className="text-sm text-muted-foreground">Cadeira não encontrada.</div>;
   }
 
-  const status = getCourseStatus(assessments, rules, course.concluida);
-  const totalEF = totalEFolios(assessments);
-  const notaFinal = calculateNotaFinal(assessments, rules);
-  const efolios = assessments.filter((a) => a.tipo === "efolio");
-  const exame = assessments.find((a) => a.tipo === "exame");
+  const efTotal = totalEFolios(state, course.id);
+  const fin = finalGrade(state, course.id);
+  const st = courseStatusLabel(state, course.id);
 
-  const handleNotaChange = (assessmentId: string, value: string) => {
-    const nota = parseFloat(value);
-    if (value === "" || value === undefined) {
-      updateAssessment(assessmentId, { nota: undefined });
-    } else if (!isNaN(nota) && nota >= 0 && nota <= 20) {
-      updateAssessment(assessmentId, { nota });
-    }
-  };
-
-  const handleMarkComplete = () => {
-    if (notaFinal !== undefined) {
-      markCourseComplete(course.id, notaFinal);
-      toast({
-        title: "Cadeira concluída",
-        description: `${course.nome} foi movida para o histórico.`,
-      });
-      navigate("/historico");
-    }
-  };
+  const canComplete = st.label === "Aprovado" && !course.isCompleted;
 
   return (
-    <Layout title={course.nome}>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <Button variant="ghost" asChild className="-ml-2">
-            <Link to="/cadeiras">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Voltar
-            </Link>
-          </Button>
-          <StatusBadge status={status} className="self-start sm:self-auto" />
-        </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={() => nav(-1)} className="gap-2">
+          <ArrowLeft className="h-4 w-4" /> Voltar
+        </Button>
 
-        {/* Course Info */}
+        <Badge variant={st.variant === "success" ? "default" : st.variant === "warning" ? "secondary" : "destructive"}>
+          {st.label}
+        </Badge>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">{course.name}</CardTitle>
+          <div className="text-sm text-muted-foreground">
+            {course.code} • {course.year}º ano • {course.semester}º semestre
+          </div>
+        </CardHeader>
+
+        <CardContent className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-lg border p-4 text-center">
+            <div className="text-sm text-muted-foreground">Total e-fólios</div>
+            <div className="text-3xl font-semibold">{efTotal.toFixed(1)}</div>
+            <div className="text-xs text-muted-foreground">Mínimo: {rules.minAptoExame}</div>
+          </div>
+
+          <div className="rounded-lg border p-4 text-center">
+            <div className="text-sm text-muted-foreground">Nota Exame</div>
+            <div className="text-3xl font-semibold">{typeof exame?.grade === "number" ? exame.grade : "—"}</div>
+            <div className="text-xs text-muted-foreground">Mínimo: {rules.minExame}</div>
+          </div>
+
+          <div className="rounded-lg border bg-muted/40 p-4 text-center">
+            <div className="text-sm text-muted-foreground">Nota Final</div>
+            <div className="text-3xl font-semibold">{fin ?? "—"}</div>
+            <div className="text-xs text-muted-foreground">Aprovação: ≥10</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>e-Fólios</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {efolios.map(a => (
+            <div key={a.id} className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <div className="font-medium">{a.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {a.endDate ? `Até ${new Date(a.endDate).toLocaleDateString("pt-PT")}` : "Sem data"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  className="w-24 text-right"
+                  inputMode="decimal"
+                  value={typeof a.grade === "number" ? String(a.grade).replace(".", ",") : ""}
+                  placeholder="—"
+                  onChange={(e) => {
+                    const v = e.target.value.replace(",", ".");
+                    const n = v.trim() === "" ? null : Number(v);
+                    if (n === null || Number.isFinite(n)) setAssessmentGrade(a.id, n);
+                  }}
+                />
+                <div className="text-sm text-muted-foreground">/ {a.maxGrade ?? 2}</div>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>p-Fólio (Exame)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!exame ? (
+            <div className="text-sm text-muted-foreground">Sem exame configurado.</div>
+          ) : (
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <div className="font-medium">{exame.name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {exame.date ? new Date(exame.date).toLocaleDateString("pt-PT") : "Sem data"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  className="w-24 text-right"
+                  inputMode="decimal"
+                  value={typeof exame.grade === "number" ? String(exame.grade).replace(".", ",") : ""}
+                  placeholder="—"
+                  onChange={(e) => {
+                    const v = e.target.value.replace(",", ".");
+                    const n = v.trim() === "" ? null : Number(v);
+                    if (n === null || Number.isFinite(n)) setAssessmentGrade(exame.id, n);
+                  }}
+                />
+                <div className="text-sm text-muted-foreground">/ {exame.maxGrade ?? 16}</div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* RECURSO: só aparece quando necessário */}
+      {showResit && recursoId && (
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <BookOpen className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <CardTitle>{course.nome}</CardTitle>
-                <CardDescription>
-                  {course.codigo} • {course.ano}º ano • {course.semestre}º semestre
-                </CardDescription>
-              </div>
+            <CardTitle>Recurso</CardTitle>
+            <div className="text-sm text-muted-foreground">
+              Disponível porque não tem aptidão para exame ou não atingiu a nota mínima no exame.
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-lg bg-muted/50 p-4 text-center">
-                <p className="text-sm text-muted-foreground">Total e-fólios</p>
-                <p className="text-2xl font-bold text-primary">{totalEF.toFixed(1)}</p>
-                <p className="text-xs text-muted-foreground">Mínimo: {rules.minAptoExame}</p>
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-lg border p-4">
+              <div>
+                <div className="font-medium">Data do recurso</div>
+                <div className="text-sm text-muted-foreground">Defina a data para lembretes/planeamento.</div>
               </div>
-              <div className="rounded-lg bg-muted/50 p-4 text-center">
-                <p className="text-sm text-muted-foreground">Nota Exame</p>
-                <p className="text-2xl font-bold">{exame?.nota?.toFixed(1) ?? "—"}</p>
-                <p className="text-xs text-muted-foreground">Mínimo: {rules.minExame}</p>
-              </div>
-              <div className="rounded-lg bg-primary/10 p-4 text-center">
-                <p className="text-sm text-muted-foreground">Nota Final</p>
-                <p className="text-2xl font-bold text-primary">{notaFinal ?? "—"}</p>
-                <p className="text-xs text-muted-foreground">Aprovação: ≥10</p>
-              </div>
+              <Input
+                type="date"
+                className="w-full md:w-52"
+                value={state.assessments.find(a => a.id === recursoId)?.date ?? ""}
+                onChange={(e) => setAssessmentDate(recursoId, { date: e.target.value })}
+              />
             </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* e-Fólios */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <FileText className="h-5 w-5 text-primary" />
-              e-Fólios
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {efolios.map((efolio) => (
-              <div 
-                key={efolio.id} 
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border"
-              >
-                <div>
-                  <p className="font-medium">{efolio.nome}</p>
-                  {efolio.dataFim && (
-                    <p className="text-sm text-muted-foreground">
-                      Até {new Date(efolio.dataFim).toLocaleDateString("pt-PT")}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={`nota-${efolio.id}`} className="sr-only">Nota</Label>
-                  <Input
-                    id={`nota-${efolio.id}`}
-                    type="number"
-                    min="0"
-                    max={efolio.maxNota}
-                    step="0.1"
-                    value={efolio.nota ?? ""}
-                    onChange={(e) => handleNotaChange(efolio.id, e.target.value)}
-                    className="w-24 text-center"
-                    placeholder="—"
-                  />
-                  <span className="text-sm text-muted-foreground">/ {efolio.maxNota}</span>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Exame */}
-        {exame && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <GraduationCap className="h-5 w-5 text-primary" />
-                p-Fólio (Exame)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg border">
-                <div>
-                  <p className="font-medium">{exame.nome}</p>
-                  {exame.dataExame && (
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(exame.dataExame).toLocaleDateString("pt-PT")}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <Label htmlFor={`nota-${exame.id}`} className="sr-only">Nota</Label>
-                  <Input
-                    id={`nota-${exame.id}`}
-                    type="number"
-                    min="0"
-                    max={exame.maxNota}
-                    step="0.1"
-                    value={exame.nota ?? ""}
-                    onChange={(e) => handleNotaChange(exame.id, e.target.value)}
-                    className="w-24 text-center"
-                    placeholder="—"
-                  />
-                  <span className="text-sm text-muted-foreground">/ {exame.maxNota}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Actions */}
-        {notaFinal !== undefined && notaFinal >= 10 && !course.concluida && (
-          <div className="flex justify-end">
-            <Button onClick={handleMarkComplete} size="lg">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Marcar como Concluída
-            </Button>
-          </div>
-        )}
+      <div className="flex items-center justify-end">
+        <Button disabled={!canComplete} onClick={() => markCourseCompleted(course.id)}>
+          Marcar como concluída
+        </Button>
       </div>
-    </Layout>
+    </div>
   );
 }

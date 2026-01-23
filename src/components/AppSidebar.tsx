@@ -1,12 +1,11 @@
-import { 
-  BookOpen, 
-  Calendar, 
-  GraduationCap, 
-  History, 
-  Settings, 
+import {
+  BookOpen,
+  Calendar,
+  GraduationCap,
+  History,
   LayoutDashboard,
   ChevronLeft,
-  ChevronRight 
+  ChevronRight,
 } from "lucide-react";
 import { NavLink as RouterNavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -25,11 +24,10 @@ import {
 import { Button } from "@/components/ui/button";
 
 const menuItems = [
-  { title: "Setup", url: "/setup", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Cadeiras", url: "/cadeiras", icon: BookOpen },
   { title: "Calendário", url: "/calendario", icon: Calendar },
   { title: "Histórico", url: "/historico", icon: History },
-  { title: "Definições", url: "/definicoes", icon: Settings },
 ];
 
 export function AppSidebar() {

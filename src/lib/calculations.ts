@@ -130,3 +130,8 @@ export function globalStats(state: AppState) {
     eventsCount,
   };
 }
+
+// Compat: código antigo importava `finalGrade`
+export function finalGrade(state: AppState, courseId: string): number | null {
+  return finalGradeRounded(state, courseId);
+}

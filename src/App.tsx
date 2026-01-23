@@ -16,7 +16,6 @@ export default function App() {
         <Route path="/cadeiras/:id" element={<CourseDetail />} />
         <Route path="/calendario" element={<CalendarPage />} />
         <Route path="/historico" element={<HistoryPage />} />
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

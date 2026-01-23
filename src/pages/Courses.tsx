@@ -1,61 +1,47 @@
-import { Layout } from "@/components/Layout";
-import { CourseCard } from "@/components/CourseCard";
-import { useAppState } from "@/hooks/useAppState";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { BookOpen, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppStore } from "@/lib/AppStore";
+import { courseStatusLabel, totalEFolios } from "@/lib/calc";
+import { Badge } from "@/components/ui/badge";
 
-export default function Courses() {
-  const { state } = useAppState();
-  
-  const activeCourses = state.activeCourses.filter((c) => c.ativa && !c.concluida);
-
-  const getAssessments = (courseId: string) =>
-    state.assessments.filter((a) => a.courseId === courseId);
-
-  const getRules = (courseId: string) =>
-    state.rules.find((r) => r.courseId === courseId) || {
-      courseId,
-      minAptoExame: 3.5,
-      minExame: 5.5,
-      formulaFinal: "somaSimples" as const,
-    };
+export default function CoursesPage() {
+  const { state } = useAppStore();
+  const courses = state.courses.filter(c => c.isActive && !c.isCompleted);
 
   return (
-    <Layout title="Cadeiras Ativas">
-      <div className="space-y-6">
-        {activeCourses.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                <BookOpen className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Sem cadeiras ativas</h3>
-              <p className="text-muted-foreground mb-4 max-w-sm">
-                Adicione cadeiras no Setup para começar a gerir as suas avaliações.
-              </p>
-              <Button asChild>
-                <Link to="/setup">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar Cadeiras
+    <div className="space-y-6">
+      <div className="text-2xl font-semibold">Cadeiras</div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Ativas</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {courses.length === 0 ? (
+            <div className="text-sm text-muted-foreground">Sem cadeiras ativas.</div>
+          ) : (
+            courses.map(c => {
+              const st = courseStatusLabel(state, c.id);
+              const ef = totalEFolios(state, c.id);
+              return (
+                <Link key={c.id} to={`/cadeiras/${c.id}`} className="block rounded-lg border p-4 hover:bg-muted/40">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold">{c.name}</div>
+                      <div className="text-sm text-muted-foreground">{c.code} • e-fólios: {ef.toFixed(1)} / 4</div>
+                    </div>
+                    <Badge
+                      variant={st.variant === "success" ? "default" : st.variant === "warning" ? "secondary" : "destructive"}
+                    >
+                      {st.label}
+                    </Badge>
+                  </div>
                 </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {activeCourses.map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                assessments={getAssessments(course.id)}
-                rules={getRules(course.id)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </Layout>
+              );
+            })
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

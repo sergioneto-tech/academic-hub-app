@@ -8,9 +8,9 @@ import { AppStoreProvider } from "./lib/AppStore";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AppStoreProvider>
-      <BrowserRouter>
+      <HashRouter>
         <App />
-      </BrowserRouter>
+      </HashRouter>
     </AppStoreProvider>
   </React.StrictMode>
 );

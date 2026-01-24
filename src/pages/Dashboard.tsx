@@ -17,7 +17,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Hero / cabeçalho */}
-      <div className="rounded-2xl overflow-hidden border bg-gradient-to-r from-sky-600 to-cyan-500 text-white">
+      <div className="rounded-2xl overflow-hidden border gradient-primary text-white shadow-lg">
         <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Painel do utilizador</h1>

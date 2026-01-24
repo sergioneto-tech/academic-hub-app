@@ -97,13 +97,13 @@ export default function CourseDetail() {
   }
 
   const badgeClass =
-    status.badge === "success"
-      ? "bg-emerald-100 text-emerald-900 border-emerald-200"
-      : status.badge === "warning"
-      ? "bg-amber-100 text-amber-900 border-amber-200"
-      : status.badge === "danger"
-      ? "bg-rose-100 text-rose-900 border-rose-200"
-      : "bg-slate-100 text-slate-900 border-slate-200";
+  status.badge === "success"
+    ? "bg-emerald-100 text-emerald-900 border-emerald-200"
+    : status.badge === "warning"
+    ? "bg-sky-100 text-sky-900 border-sky-200"
+    : status.badge === "danger"
+    ? "bg-rose-100 text-rose-900 border-rose-200"
+    : "bg-slate-100 text-slate-900 border-slate-200";
 
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-6">

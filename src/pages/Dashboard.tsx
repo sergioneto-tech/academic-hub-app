@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/StatusBadge";
+import StatusBadge from "@/components/StatusBadge";
 import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, exam, globalStats, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { formatPtNumber } from "@/lib/utils";
@@ -16,57 +16,62 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Hero */}
-      <div className="rounded-2xl bg-gradient-to-r from-sky-600 via-cyan-600 to-teal-500 p-5 md:p-6 text-white shadow-sm">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      {/* Hero / cabeçalho */}
+      <div className="rounded-2xl overflow-hidden border bg-gradient-to-r from-sky-600 to-cyan-500 text-white">
+        <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-semibold leading-tight">
-              Painel do utilizador
-            </h1>
+            <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Painel do utilizador</h1>
             <p className="text-sm text-white/80">
-              {state.degree?.name ? state.degree.name : "Defina o curso (grau) em Definições."}
+              Visão geral rápida das cadeiras, e‑fólios e datas importantes.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button
-              asChild
-              variant="outline"
-              className="border-white/30 bg-white/10 text-white hover:bg-white/15 hover:text-white"
-            >
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button asChild variant="secondary" className="w-full sm:w-auto">
               <Link to="/cadeiras">Gerir cadeiras</Link>
             </Button>
-          </div>
-        </div>
-
-        <div className="mt-5 grid gap-3 grid-cols-2 md:grid-cols-4">
-          <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-            <div className="text-xs text-white/80">Ativas</div>
-            <div className="text-2xl font-semibold">{stats.active}</div>
-          </div>
-          <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-            <div className="text-xs text-white/80">Concluídas</div>
-            <div className="text-2xl font-semibold">{stats.completed}</div>
-          </div>
-          <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-            <div className="text-xs text-white/80">Média</div>
-            <div className="text-2xl font-semibold">{stats.completed ? stats.avg : "—"}</div>
-          </div>
-          <div className="rounded-xl border border-white/20 bg-white/10 p-3">
-            <div className="text-xs text-white/80">Eventos</div>
-            <div className="text-2xl font-semibold">{stats.eventsCount}</div>
+            <Button asChild variant="outline" className="w-full sm:w-auto bg-white/10 text-white border-white/30 hover:bg-white/20">
+              <Link to="/calendario">Ver calendário</Link>
+            </Button>
           </div>
         </div>
       </div>
 
-      <section className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-base md:text-lg font-semibold">Cadeiras ativas</h2>
-            <p className="text-sm text-muted-foreground">
-              Mostradas diretamente (mobile friendly) — sem “campo/visor” extra.
-            </p>
-          </div>
+      {/* KPIs */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-white/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Ativas</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">{stats.active}</CardContent>
+        </Card>
+
+        <Card className="bg-white/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Concluídas</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">{stats.completed}</CardContent>
+        </Card>
+
+        <Card className="bg-white/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Média (concluídas)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">{stats.completed ? stats.avg : "—"}</CardContent>
+        </Card>
+
+        <Card className="bg-white/70 backdrop-blur">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Eventos (datas)</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">{stats.eventsCount}</CardContent>
+        </Card>
+      </div>
+
+      {/* Cadeiras ativas (sem "campo" extra — já aparecem aqui) */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">Cadeiras ativas</h2>
           <Button variant="ghost" asChild>
             <Link to="/cadeiras">Ver todas →</Link>
           </Button>
@@ -74,12 +79,12 @@ export default function Dashboard() {
 
         {activeCourses.length === 0 ? (
           <Card className="bg-white/70 backdrop-blur">
-            <CardContent className="p-4 text-sm text-muted-foreground">
+            <CardContent className="py-6 text-sm text-muted-foreground">
               Nenhuma cadeira ativa. Vai a “Cadeiras” e ativa as que estás a frequentar.
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {activeCourses.map((c) => {
               const st = courseStatusLabel(state, c.id);
               const ef = totalEFolios(state, c.id);
@@ -87,44 +92,29 @@ export default function Dashboard() {
               const ex = exam(state, c.id);
 
               return (
-                <Card
+                <Link
                   key={c.id}
-                  className="bg-white/70 backdrop-blur hover:shadow-sm transition-shadow"
+                  to={`/cadeiras/${c.id}`}
+                  className="block rounded-xl border bg-white/70 backdrop-blur p-4 hover:bg-white/90"
                 >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <CardTitle className="text-sm font-semibold truncate">
-                          {c.code}
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground truncate">{c.name}</p>
-                      </div>
-                      <div className="shrink-0">
-                        <StatusBadge label={st.label} tone={st.badge} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold leading-tight truncate">{c.code} — {c.name}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        E‑fólios: {formatPtNumber(ef)} / {formatPtNumber(efMax)}
+                        {ex?.date ? ` • Exame: ${ex.date}` : ""}
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="text-xs text-muted-foreground">
-                      E-fólios: <span className="text-foreground font-medium">{formatPtNumber(ef)}</span> / {formatPtNumber(efMax)}
-                      {ex?.date ? (
-                        <>
-                          <span className="mx-2">•</span>
-                          Exame: <span className="text-foreground font-medium">{ex.date}</span>
-                        </>
-                      ) : null}
+                    <div className="shrink-0">
+                      <StatusBadge label={st.label} tone={st.badge} />
                     </div>
-
-                    <Button asChild size="sm" className="w-full">
-                      <Link to={`/cadeiras/${c.id}`}>Abrir</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                </Link>
               );
             })}
           </div>
         )}
-      </section>
+      </div>
     </div>
   );
 }

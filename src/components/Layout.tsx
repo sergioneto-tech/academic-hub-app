@@ -16,7 +16,7 @@ const NAV = [
   { to: "/definicoes", label: "Definições" },
 ];
 
-export function Layout() {
+export default function Layout() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
 
@@ -72,10 +72,8 @@ export function Layout() {
                   to={n.to}
                   className={({ isActive }) =>
                     cn(
-                      "rounded-md px-3 py-2 text-sm transition-colors",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      "rounded-md px-3 py-2 text-sm",
+                      isActive ? "bg-sky-100 text-sky-950" : "text-slate-600 hover:bg-sky-50 hover:text-slate-900"
                     )
                   }
                 >
@@ -91,7 +89,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* Bottom nav para telemóvel */}
+      {/* Bottom nav para telemóvel (vertical) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-6xl px-2 py-2 grid grid-cols-5 gap-1">
           {NAV.map((n) => (
@@ -100,10 +98,8 @@ export function Layout() {
               to={n.to}
               className={({ isActive }) =>
                 cn(
-                  "rounded-md px-2 py-2 text-[11px] text-center leading-tight transition-colors",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  "rounded-md px-2 py-2 text-[10px] text-center leading-tight truncate",
+                  isActive ? "bg-sky-100 text-sky-950" : "text-slate-600 hover:bg-sky-50 hover:text-slate-900"
                 )
               }
             >
@@ -115,5 +111,3 @@ export function Layout() {
     </div>
   );
 }
-
-export default Layout;

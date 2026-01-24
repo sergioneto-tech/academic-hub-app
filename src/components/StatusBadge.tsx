@@ -13,8 +13,17 @@ import { cn } from "@/lib/utils";
 export type LegacyStatus = "pendente" | "em_andamento" | "concluida" | "atrasada";
 export type BadgeTone = "success" | "warning" | "danger" | "neutral";
 
-type LegacyProps = { status: LegacyStatus; className?: string };
-type NewProps = { label: string; tone: BadgeTone; className?: string };
+type LegacyProps = {
+  status: LegacyStatus;
+  className?: string;
+};
+
+type NewProps = {
+  label: string;
+  tone: BadgeTone;
+  className?: string;
+};
+
 type Props = LegacyProps | NewProps;
 
 const LEGACY_MAP: Record<LegacyStatus, { label: string; tone: BadgeTone }> = {
@@ -35,8 +44,7 @@ const TONE_STYLES: Record<BadgeTone, string> = {
 export function StatusBadge(props: Props) {
   const className = props.className;
 
-  const normalized =
-    "status" in props ? LEGACY_MAP[props.status] : { label: props.label, tone: props.tone };
+  const normalized = "status" in props ? LEGACY_MAP[props.status] : { label: props.label, tone: props.tone };
 
   return (
     <span

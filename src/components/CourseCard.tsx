@@ -1,20 +1,19 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Course, Assessment, Rules, CourseStatus } from "@/types";
-import { getCourseStatus, totalEFolios, calculateNotaFinal } from "@/lib/calculations";
+import { Course, Assessment, Rules, AppState } from "@/types";
+import { getCourseStatus, totalEFolios, finalGradeRounded } from "@/lib/calculations";
 import { ChevronRight, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface CourseCardProps {
   course: Course;
-  assessments: Assessment[];
-  rules: Rules;
+  state: AppState;
 }
 
-export function CourseCard({ course, assessments, rules }: CourseCardProps) {
-  const status = getCourseStatus(assessments, rules, course.concluida);
-  const totalEF = totalEFolios(assessments);
-  const notaFinal = calculateNotaFinal(assessments, rules);
+export function CourseCard({ course, state }: CourseCardProps) {
+  const status = getCourseStatus(state, course.id);
+  const totalEF = totalEFolios(state, course.id);
+  const notaFinal = finalGradeRounded(state, course.id);
   
   return (
     <Link to={`/cadeiras/${course.id}`}>
@@ -27,10 +26,10 @@ export function CourseCard({ course, assessments, rules }: CourseCardProps) {
               </div>
               <div className="min-w-0">
                 <h3 className="font-semibold text-foreground truncate">
-                  {course.nome}
+                  {course.name}
                 </h3>
                 <p className="text-sm text-muted-foreground">
-                  {course.codigo} • {course.ano}º ano • {course.semestre}º sem
+                  {course.code} • {course.year}º ano • {course.semester}º sem
                 </p>
               </div>
             </div>
@@ -39,13 +38,13 @@ export function CourseCard({ course, assessments, rules }: CourseCardProps) {
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-4">
-            <StatusBadge status={status} />
+            <StatusBadge status={status.badge} />
             <div className="flex items-center gap-4 text-sm">
               <div className="text-right">
                 <p className="text-muted-foreground">e-fólios</p>
                 <p className="font-medium">{totalEF.toFixed(1)} / 4</p>
               </div>
-              {notaFinal !== undefined && (
+              {notaFinal !== null && (
                 <div className="text-right">
                   <p className="text-muted-foreground">Final</p>
                   <p className="font-semibold text-primary">{notaFinal}</p>

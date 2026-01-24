@@ -3,7 +3,6 @@ import type { AppState, Assessment, Course, Degree, Rules } from "./types";
 const KEY = "academic_hub_state_v2";
 
 function uuid(): string {
-  // simples e suficiente aqui
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
@@ -27,27 +26,27 @@ function migrate(state: any): AppState {
   // garantir campos mínimos
   base.courses = base.courses.map((c: any): Course => ({
     id: String(c.id ?? uuid()),
-    code: String(c.code ?? ""),
-    name: String(c.name ?? ""),
-    year: Number(c.year ?? 1),
-    semester: Number(c.semester ?? 1),
-    isActive: Boolean(c.isActive ?? false),
-    isCompleted: Boolean(c.isCompleted ?? false),
+    code: String(c.code ?? c.codigo ?? ""),
+    name: String(c.name ?? c.nome ?? ""),
+    year: Number(c.year ?? c.ano ?? 1),
+    semester: Number(c.semester ?? c.semestre ?? 1),
+    isActive: Boolean(c.isActive ?? c.ativa ?? false),
+    isCompleted: Boolean(c.isCompleted ?? c.concluida ?? false),
     completedAt: c.completedAt ? String(c.completedAt) : undefined,
   }));
 
   base.assessments = base.assessments.map((a: any): Assessment => ({
     id: String(a.id ?? uuid()),
     courseId: String(a.courseId ?? ""),
-    type: (a.type === "efolio" || a.type === "exam" || a.type === "resit") ? a.type : "efolio",
-    name: String(a.name ?? ""),
-    maxPoints: Number(a.maxPoints ?? (
+    type: (a.type === "efolio" || a.type === "exam" || a.type === "resit") ? a.type : (a.tipo === "exame" ? "exam" : a.tipo === "recurso" ? "resit" : "efolio"),
+    name: String(a.name ?? a.nome ?? ""),
+    maxPoints: Number(a.maxPoints ?? a.maxNota ?? (
       a.type === "exam" ? 12 : a.type === "resit" ? 20 : 4
     )),
     grade: typeof a.grade === "number" ? a.grade : (a.grade === null ? null : null),
     startDate: a.startDate ? String(a.startDate) : undefined,
-    endDate: a.endDate ? String(a.endDate) : undefined,
-    date: a.date ? String(a.date) : undefined,
+    endDate: a.endDate ?? a.dataFim ? String(a.endDate ?? a.dataFim) : undefined,
+    date: a.date ?? a.dataExame ? String(a.date ?? a.dataExame) : undefined,
   }));
 
   base.rules = base.rules.map((r: any): Rules => ({
@@ -58,7 +57,7 @@ function migrate(state: any): AppState {
 
   // grau
   if (base.degree) {
-    base.degree = { id: String(base.degree.id ?? uuid()), name: String((base.degree as any).name ?? "") } as Degree;
+    base.degree = { id: String(base.degree.id ?? uuid()), name: String((base.degree as any).name ?? (base.degree as any).nome ?? "") } as Degree;
   }
 
   return base;
@@ -81,3 +80,27 @@ export function saveState(state: AppState) {
     // ignore
   }
 }
+
+// Storage API object for compatibility
+export const storage = {
+  get: loadState,
+  set: saveState,
+  getDegrees: (): Degree[] => [
+    { id: "lic-info", name: "Licenciatura em Informática" },
+    { id: "lic-gestao", name: "Licenciatura em Gestão" },
+    { id: "lic-psicologia", name: "Licenciatura em Psicologia" },
+    { id: "lic-educacao", name: "Licenciatura em Educação" },
+  ],
+  export: (): string => JSON.stringify(loadState(), null, 2),
+  import: (json: string): boolean => {
+    try {
+      const data = JSON.parse(json);
+      const migrated = migrate(data);
+      saveState(migrated);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  reset: () => saveState(defaultState()),
+};

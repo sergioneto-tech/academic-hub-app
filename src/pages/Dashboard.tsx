@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import StatusBadge from "@/components/StatusBadge";
 import { useAppStore } from "@/lib/AppStore";
+import DegreeSetupDialog from "@/components/DegreeSetupDialog";
 import { courseStatusLabel, exam, globalStats, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { formatPtNumber } from "@/lib/utils";
 
@@ -15,7 +16,9 @@ export default function Dashboard() {
     .sort((a, b) => a.code.localeCompare(b.code, "pt-PT"));
 
   return (
-    <div className="space-y-6">
+    <>
+      <DegreeSetupDialog open={state.degree === null} />
+      <div className="space-y-6">
       {/* Hero / cabeçalho */}
       <div className="rounded-2xl overflow-hidden border gradient-primary text-white shadow-lg">
         <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
@@ -116,5 +119,6 @@ export default function Dashboard() {
         )}
       </div>
     </div>
+    </>
   );
 }

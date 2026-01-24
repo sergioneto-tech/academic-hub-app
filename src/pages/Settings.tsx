@@ -6,13 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useAppState } from "@/hooks/useAppState";
+import { useAppStore } from "@/lib/AppStore";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Download, Upload, RotateCcw, Plus, Pencil, Trash2, BookOpen } from "lucide-react";
 import { Course } from "@/types";
 
 export default function Settings() {
-  const { state, exportData, importData, resetData, addCatalogCourse, updateCatalogCourse, removeCatalogCourse } = useAppState();
+  const { state, exportData, importData, resetData, addCatalogCourse, updateCatalogCourse, removeCatalogCourse, setCourseActive } = useAppStore();
   const [importText, setImportText] = useState("");
   const [showImport, setShowImport] = useState(false);
   const [showAddCourse, setShowAddCourse] = useState(false);
@@ -103,7 +104,8 @@ export default function Settings() {
 
   const handleUpdateCourse = () => {
     if (!editingCourse) return;
-    updateCatalogCourse(editingCourse.id, editingCourse);
+    const { id, ...rest } = editingCourse;
+    updateCatalogCourse(id, rest);
     setEditingCourse(null);
     toast({
       title: "Cadeira atualizada",
@@ -302,6 +304,14 @@ export default function Settings() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 text-sm mr-2">
+                  <Checkbox
+                    checked={!!course.isActive}
+                    disabled={course.isCompleted}
+                    onCheckedChange={(v) => setCourseActive(course.id, Boolean(v))}
+                  />
+                  Em curso
+                </label>
                 <Dialog
                   open={editingCourse?.id === course.id}
                   onOpenChange={(open) =>

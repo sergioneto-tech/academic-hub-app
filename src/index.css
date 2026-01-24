@@ -19,8 +19,8 @@
     --popover: 255 255 255;
     --popover-foreground: 15 23 42;
 
-    /* Azul (blue-600) */
-    --primary: 37 99 235;
+    /* Azul/Ciano (sky-600) */
+    --primary: 2 132 199;
     --primary-foreground: 255 255 255;
 
     --secondary: 241 245 249;         /* slate-100 */
@@ -29,7 +29,7 @@
     --muted: 241 245 249;
     --muted-foreground: 100 116 139;  /* slate-500 */
 
-    --accent: 219 234 254;            /* blue-100 */
+    --accent: 186 230 253;            /* sky-200 */
     --accent-foreground: 15 23 42;
 
     --destructive: 244 63 94;         /* rose-500 */
@@ -37,7 +37,7 @@
 
     --border: 226 232 240;            /* slate-200 */
     --input: 226 232 240;
-    --ring: 37 99 235;                /* match primary */
+    --ring: 2 132 199;                /* match primary */
 
     --radius: 0.9rem;
   }
@@ -52,7 +52,7 @@
     --popover: 15 23 42;
     --popover-foreground: 226 232 240;
 
-    --primary: 59 130 246;            /* blue-500 */
+    --primary: 14 165 233;            /* sky-500 */
     --primary-foreground: 2 6 23;
 
     --secondary: 30 41 59;            /* slate-800 */
@@ -69,7 +69,7 @@
 
     --border: 51 65 85;               /* slate-700 */
     --input: 51 65 85;
-    --ring: 59 130 246;               /* blue-500 */
+    --ring: 14 165 233;               /* sky-500 */
   }
 
   * {

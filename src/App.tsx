@@ -6,6 +6,7 @@ import CalendarPage from "./pages/Calendar";
 import HistoryPage from "./pages/History";
 import CoursesPage from "./pages/Courses";
 import CourseDetail from "./pages/CourseDetail";
+import SettingsPage from "./pages/Settings";
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/cadeiras/:id" element={<CourseDetail />} />
         <Route path="/calendario" element={<CalendarPage />} />
         <Route path="/historico" element={<HistoryPage />} />
+        <Route path="/definicoes" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

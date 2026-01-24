@@ -4,6 +4,7 @@ import { HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 import { AppStoreProvider } from "./lib/AppStore";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -13,10 +14,12 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <HashRouter>
-      <AppStoreProvider>
-        <App />
-      </AppStoreProvider>
-    </HashRouter>
+    <ErrorBoundary>
+      <HashRouter>
+        <AppStoreProvider>
+          <App />
+        </AppStoreProvider>
+      </HashRouter>
+    </ErrorBoundary>
   </React.StrictMode>
 );

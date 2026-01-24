@@ -16,7 +16,7 @@ export default function CalendarPage() {
       if (a.startDate) events.push({ when: a.startDate, title: `${a.name} - Início`, subtitle: courseLine, tag: "Início" });
       if (a.endDate) events.push({ when: a.endDate, title: `${a.name} - Fim`, subtitle: courseLine, tag: "Entrega" });
     } else {
-      if (a.date) events.push({ when: a.date, title: a.type === "exame" ? `${a.name} (Exame)` : "Recurso", subtitle: courseLine, tag: a.type === "exame" ? "Exame" : "Recurso" });
+      if (a.date) events.push({ when: a.date, title: a.type === "exam" ? `${a.name} (Exame)` : "Recurso", subtitle: courseLine, tag: a.type === "exam" ? "Exame" : "Recurso" });
     }
   }
 

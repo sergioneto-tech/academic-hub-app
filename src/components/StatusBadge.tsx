@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * suportamos ambas.
  */
 
-export type LegacyStatus = "pendente" | "em_andamento" | "concluida" | "atrasada";
+export type LegacyStatus = "pendente" | "em_andamento" | "concluida" | "atrasada" | "success" | "warning" | "danger" | "neutral";
 export type BadgeTone = "success" | "warning" | "danger" | "neutral";
 
 type LegacyProps = {
@@ -31,6 +31,10 @@ const LEGACY_MAP: Record<LegacyStatus, { label: string; tone: BadgeTone }> = {
   em_andamento: { label: "Em andamento", tone: "warning" },
   concluida: { label: "Concluída", tone: "success" },
   atrasada: { label: "Atrasada", tone: "danger" },
+  success: { label: "Aprovado", tone: "success" },
+  warning: { label: "Apto", tone: "warning" },
+  danger: { label: "Não Apto", tone: "danger" },
+  neutral: { label: "—", tone: "neutral" },
 };
 
 // Nota: evitamos `amber` para não puxar o UI para tons amarelos.

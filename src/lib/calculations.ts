@@ -81,7 +81,9 @@ export function needsResit(state: AppState, courseId: string): boolean {
   return ex < rules.minExame;
 }
 
-export function courseStatusLabel(state: AppState, courseId: string): { label: string; badge: "success" | "warning" | "danger" | "neutral" } {
+export type CourseStatus = "success" | "warning" | "danger" | "neutral";
+
+export function getCourseStatus(state: AppState, courseId: string): { label: string; badge: CourseStatus } {
   const course = state.courses.find(c => c.id === courseId);
   if (!course) return { label: "—", badge: "neutral" };
 
@@ -98,6 +100,15 @@ export function courseStatusLabel(state: AppState, courseId: string): { label: s
   const fin = finalGradeRounded(state, courseId);
   if (fin !== null && fin >= 10) return { label: "Aprovado", badge: "success" };
   return { label: "Recurso", badge: "danger" };
+}
+
+export function courseStatusLabel(state: AppState, courseId: string): { label: string; badge: CourseStatus } {
+  return getCourseStatus(state, courseId);
+}
+
+export function calculateMedia(notas: number[]): number {
+  if (notas.length === 0) return 0;
+  return notas.reduce((a, b) => a + b, 0) / notas.length;
 }
 
 export function globalStats(state: AppState) {

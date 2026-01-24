@@ -15,24 +15,23 @@ export function useAppState() {
 
   const addActiveCourse = useCallback((course: Course) => {
     setState((prev) => {
-      if (prev.activeCourses.find((c) => c.id === course.id)) {
+      if (prev.courses.find((c) => c.id === course.id)) {
         return prev;
       }
-      const newCourse = { ...course, ativa: true, concluida: false };
+      const newCourse = { ...course, isActive: true, isCompleted: false };
       const defaultRule: Rules = {
         courseId: course.id,
         minAptoExame: 3.5,
         minExame: 5.5,
-        formulaFinal: "somaSimples",
       };
       const defaultAssessments: Assessment[] = [
-        { id: `${course.id}-ef-a`, courseId: course.id, tipo: "efolio", nome: "e-fólio A", maxNota: 2 },
-        { id: `${course.id}-ef-b`, courseId: course.id, tipo: "efolio", nome: "e-fólio B", maxNota: 2 },
-        { id: `${course.id}-pf`, courseId: course.id, tipo: "exame", nome: "p-fólio", maxNota: 16 },
+        { id: `${course.id}-ef-a`, courseId: course.id, type: "efolio", name: "e-fólio A", maxPoints: 2, grade: null },
+        { id: `${course.id}-ef-b`, courseId: course.id, type: "efolio", name: "e-fólio B", maxPoints: 2, grade: null },
+        { id: `${course.id}-pf`, courseId: course.id, type: "exam", name: "p-fólio", maxPoints: 16, grade: null },
       ];
       return {
         ...prev,
-        activeCourses: [...prev.activeCourses, newCourse],
+        courses: [...prev.courses, newCourse],
         rules: [...prev.rules, defaultRule],
         assessments: [...prev.assessments, ...defaultAssessments],
       };
@@ -42,7 +41,7 @@ export function useAppState() {
   const removeActiveCourse = useCallback((courseId: string) => {
     setState((prev) => ({
       ...prev,
-      activeCourses: prev.activeCourses.filter((c) => c.id !== courseId),
+      courses: prev.courses.filter((c) => c.id !== courseId),
       assessments: prev.assessments.filter((a) => a.courseId !== courseId),
       rules: prev.rules.filter((r) => r.courseId !== courseId),
     }));
@@ -60,29 +59,29 @@ export function useAppState() {
   const markCourseComplete = useCallback((courseId: string, notaFinal: number) => {
     setState((prev) => ({
       ...prev,
-      activeCourses: prev.activeCourses.map((c) =>
-        c.id === courseId ? { ...c, concluida: true, ativa: false, notaFinal } : c
+      courses: prev.courses.map((c) =>
+        c.id === courseId ? { ...c, isCompleted: true, isActive: false } : c
       ),
     }));
   }, []);
 
-  const addCatalogCourse = useCallback((course: Omit<Course, "id" | "ativa" | "concluida">) => {
+  const addCatalogCourse = useCallback((course: Omit<Course, "id" | "isActive" | "isCompleted">) => {
     const newCourse: Course = {
       ...course,
       id: Date.now().toString(),
-      ativa: false,
-      concluida: false,
+      isActive: false,
+      isCompleted: false,
     };
     setState((prev) => ({
       ...prev,
-      catalog: [...prev.catalog, newCourse],
+      courses: [...prev.courses, newCourse],
     }));
   }, []);
 
   const updateCatalogCourse = useCallback((courseId: string, updates: Partial<Course>) => {
     setState((prev) => ({
       ...prev,
-      catalog: prev.catalog.map((c) =>
+      courses: prev.courses.map((c) =>
         c.id === courseId ? { ...c, ...updates } : c
       ),
     }));
@@ -91,7 +90,7 @@ export function useAppState() {
   const removeCatalogCourse = useCallback((courseId: string) => {
     setState((prev) => ({
       ...prev,
-      catalog: prev.catalog.filter((c) => c.id !== courseId),
+      courses: prev.courses.filter((c) => c.id !== courseId),
     }));
   }, []);
 

@@ -1,397 +1,250 @@
-import { useState, useRef } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo, useRef, useState } from "react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useAppState } from "@/hooks/useAppState";
-import { toast } from "@/hooks/use-toast";
-import { Download, Upload, RotateCcw, Plus, Pencil, Trash2, BookOpen } from "lucide-react";
-import { Course } from "@/types";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default function Settings() {
-  const { state, exportData, importData, resetData, addCatalogCourse, updateCatalogCourse, removeCatalogCourse } = useAppState();
-  const [importText, setImportText] = useState("");
-  const [showImport, setShowImport] = useState(false);
-  const [showAddCourse, setShowAddCourse] = useState(false);
-  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+import { useAppStore } from "@/lib/AppStore";
+import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree } from "@/lib/uabPlan";
 
-  const [newCourse, setNewCourse] = useState({
-    code: "",
-    name: "",
-    year: 1,
-    semester: 1,
-  });
+function downloadText(filename: string, text: string) {
+  const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
 
-  const handleExport = () => {
-    const data = exportData();
-    const blob = new Blob([data], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `gestor-academico-uab-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({
-      title: "Dados exportados",
-      description: "O ficheiro JSON foi descarregado.",
+export default function SettingsPage() {
+  const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, resetData } = useAppStore();
+
+  const currentDegreeId = state.degree?.id ?? "";
+  const [selectedDegreeId, setSelectedDegreeId] = useState<string>(currentDegreeId || DEGREE_OPTIONS[0]?.id || "lei");
+
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const sortedCourses = useMemo(() => {
+    return [...state.courses].sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      if (a.semester !== b.semester) return a.semester - b.semester;
+      return (a.code || "").localeCompare(b.code || "", "pt-PT");
     });
+  }, [state.courses]);
+
+  const selectedOpt = useMemo(() => getDegreeOptionById(selectedDegreeId) ?? DEGREE_OPTIONS[0], [selectedDegreeId]);
+
+  const applyDegree = () => {
+    if (!selectedOpt) return;
+    setDegree({ id: selectedOpt.id, name: selectedOpt.name });
   };
 
-  const handleImport = () => {
+  const importPlan = () => {
+    if (!state.degree) return;
+    const seeds = getPlanCoursesForDegree(state.degree);
+    mergePlanCourses(seeds);
+  };
+
+  const onExport = () => {
+    const json = exportData();
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    downloadText(`academic-hub-backup-${stamp}.json`, json);
+  };
+
+  const onImportClick = () => fileRef.current?.click();
+
+  const onImportFile = async (file: File) => {
+    setImportError(null);
     try {
-      const success = importData(importText);
-      if (success) {
-        toast({
-          title: "Dados importados",
-          description: "Os dados foram carregados com sucesso.",
-        });
-        setImportText("");
-        setShowImport(false);
-      } else {
-        throw new Error("Invalid format");
-      }
+      const text = await file.text();
+      const res = importData(text);
+      if (!res.ok) setImportError(res.error);
     } catch {
-      toast({
-        title: "Erro na importação",
-        description: "O formato do ficheiro é inválido.",
-        variant: "destructive",
-      });
+      setImportError("Não foi possível ler o ficheiro.");
     }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setImportText(event.target?.result as string);
-        setShowImport(true);
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  const handleReset = () => {
-    resetData();
-    toast({
-      title: "Dados resetados",
-      description: "Todos os dados foram repostos ao estado inicial.",
-    });
-  };
-
-  const handleAddCourse = () => {
-    if (!newCourse.code || !newCourse.name) {
-      toast({
-        title: "Campos obrigatórios",
-        description: "Preencha o código e nome da cadeira.",
-        variant: "destructive",
-      });
-      return;
-    }
-    addCatalogCourse(newCourse);
-    setNewCourse({ code: "", name: "", year: 1, semester: 1 });
-    setShowAddCourse(false);
-    toast({
-      title: "Cadeira adicionada",
-      description: `${newCourse.name} foi adicionada ao catálogo.`,
-    });
-  };
-
-  const handleUpdateCourse = () => {
-    if (!editingCourse) return;
-    updateCatalogCourse(editingCourse.id, editingCourse);
-    setEditingCourse(null);
-    toast({
-      title: "Cadeira atualizada",
-      description: "As alterações foram guardadas.",
-    });
-  };
-
-  const handleDeleteCourse = (course: Course) => {
-    removeCatalogCourse(course.id);
-    toast({
-      title: "Cadeira removida",
-      description: `${course.name} foi removida do catálogo.`,
-    });
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Definições</h1>
-      
-      {/* Export/Import */}
+    <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-6">
+      <div>
+        <h1 className="text-xl md:text-2xl font-semibold">Definições</h1>
+        <p className="text-sm text-muted-foreground">Configura a licenciatura, o catálogo de cadeiras e backups.</p>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Dados</CardTitle>
-          <CardDescription>
-            Exporte ou importe os seus dados para backup ou transferência.
-          </CardDescription>
+          <CardTitle>Licenciatura</CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button onClick={handleExport} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Exportar JSON
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Importar Ficheiro
-          </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="destructive">
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Resetar Dados
+        <CardContent className="space-y-4">
+          <div className="grid gap-2">
+            <Label>Selecionada</Label>
+            <Select value={selectedDegreeId} onValueChange={setSelectedDegreeId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleciona..." />
+              </SelectTrigger>
+              <SelectContent>
+                {DEGREE_OPTIONS.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={applyDegree} variant="default">
+                Guardar
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Resetar todos os dados?</DialogTitle>
-                <DialogDescription>
-                  Esta ação irá apagar todos os seus dados e repor o estado
-                  inicial. Esta ação não pode ser desfeita.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="destructive" onClick={handleReset}>
-                  Confirmar Reset
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              <Button onClick={importPlan} variant="secondary" disabled={!state.degree}>
+                Carregar cadeiras (plano da wiki)
+              </Button>
+            </div>
+
+            {selectedOpt?.sourceUrl ? (
+              <p className="text-xs text-muted-foreground">
+                Fonte do plano:{" "}
+                <a className="underline" href={selectedOpt.sourceUrl} target="_blank" rel="noreferrer">
+                  wiki.dcet.uab.pt
+                </a>
+              </p>
+            ) : null}
+
+            {!state.degree ? (
+              <p className="text-sm text-amber-700">
+                Ainda não escolheste licenciatura — ao entrar na app vai aparecer um ecrã para escolher.
+              </p>
+            ) : null}
+          </div>
         </CardContent>
       </Card>
 
-      {/* Import Dialog */}
-      <Dialog open={showImport} onOpenChange={setShowImport}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Importar Dados</DialogTitle>
-            <DialogDescription>
-              Cole o conteúdo JSON ou verifique os dados do ficheiro.
-            </DialogDescription>
-          </DialogHeader>
-          <Textarea
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-            placeholder="Cole aqui o JSON..."
-            rows={10}
-            className="font-mono text-sm"
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowImport(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleImport}>Importar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Catalog Management */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Catálogo de Cadeiras</CardTitle>
-            <CardDescription>
-              Adicione ou edite cadeiras no catálogo.
-            </CardDescription>
-          </div>
-          <Dialog open={showAddCourse} onOpenChange={setShowAddCourse}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Cadeira
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Adicionar Cadeira</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="code">Código</Label>
-                  <Input
-                    id="code"
-                    value={newCourse.code}
-                    onChange={(e) =>
-                      setNewCourse({ ...newCourse, code: e.target.value })
-                    }
-                    placeholder="21001"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="name">Nome</Label>
-                  <Input
-                    id="name"
-                    value={newCourse.name}
-                    onChange={(e) =>
-                      setNewCourse({ ...newCourse, name: e.target.value })
-                    }
-                    placeholder="Introdução à Programação"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="year">Ano</Label>
-                    <Input
-                      id="year"
-                      type="number"
-                      min="1"
-                      max="5"
-                      value={newCourse.year}
-                      onChange={(e) =>
-                        setNewCourse({
-                          ...newCourse,
-                          year: parseInt(e.target.value) || 1,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="semester">Semestre</Label>
-                    <Input
-                      id="semester"
-                      type="number"
-                      min="1"
-                      max="2"
-                      value={newCourse.semester}
-                      onChange={(e) =>
-                        setNewCourse({
-                          ...newCourse,
-                          semester: parseInt(e.target.value) || 1,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleAddCourse}>Adicionar</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        <CardHeader>
+          <CardTitle>Catálogo de cadeiras</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {state.courses.map((course) => (
-            <div
-              key={course.id}
-              className="flex items-center justify-between p-3 rounded-lg border"
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={() => addCourse({ code: "", name: "Nova cadeira", year: 1, semester: 1 })}
+              variant="secondary"
             >
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                  <BookOpen className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium">{course.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {course.code} • {course.year}º ano • {course.semester}º sem
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Dialog
-                  open={editingCourse?.id === course.id}
-                  onOpenChange={(open) =>
-                    setEditingCourse(open ? course : null)
-                  }
-                >
-                  <DialogTrigger asChild>
-                    <Button size="icon" variant="ghost">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Editar Cadeira</DialogTitle>
-                    </DialogHeader>
-                    {editingCourse && (
-                      <div className="space-y-4">
-                        <div>
-                          <Label>Código</Label>
-                          <Input
-                            value={editingCourse.code}
-                            onChange={(e) =>
-                              setEditingCourse({
-                                ...editingCourse,
-                                code: e.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <Label>Nome</Label>
-                          <Input
-                            value={editingCourse.name}
-                            onChange={(e) =>
-                              setEditingCourse({
-                                ...editingCourse,
-                                name: e.target.value,
-                              })
-                            }
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <Label>Ano</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="5"
-                              value={editingCourse.year}
-                              onChange={(e) =>
-                                setEditingCourse({
-                                  ...editingCourse,
-                                  year: parseInt(e.target.value) || 1,
-                                })
-                              }
-                            />
-                          </div>
-                          <div>
-                            <Label>Semestre</Label>
-                            <Input
-                              type="number"
-                              min="1"
-                              max="2"
-                              value={editingCourse.semester}
-                              onChange={(e) =>
-                                setEditingCourse({
-                                  ...editingCourse,
-                                  semester: parseInt(e.target.value) || 1,
-                                })
-                              }
-                            />
-                          </div>
-                        </div>
+              + Adicionar cadeira
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Dica: usa o botão “Carregar cadeiras” na secção acima para preencher automaticamente.
+            </span>
+          </div>
+
+          <Separator />
+
+          {sortedCourses.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Ainda não há cadeiras no catálogo.</p>
+          ) : (
+            <div className="space-y-3">
+              {sortedCourses.map((c) => (
+                <div key={c.id} className="rounded-lg border bg-white p-3">
+                  <div className="grid gap-3 md:grid-cols-12 md:items-end">
+                    <div className="md:col-span-2">
+                      <Label className="text-xs text-muted-foreground">Código</Label>
+                      <Input value={c.code} onChange={(e) => updateCourse(c.id, { code: e.target.value })} />
+                    </div>
+                    <div className="md:col-span-6">
+                      <Label className="text-xs text-muted-foreground">Nome</Label>
+                      <Input value={c.name} onChange={(e) => updateCourse(c.id, { name: e.target.value })} />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="text-xs text-muted-foreground">Ano</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={c.year}
+                        onChange={(e) => updateCourse(c.id, { year: Number(e.target.value) || 1 })}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="text-xs text-muted-foreground">Semestre</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={2}
+                        value={c.semester}
+                        onChange={(e) => updateCourse(c.id, { semester: Number(e.target.value) || 1 })}
+                      />
+                    </div>
+
+                    <div className="md:col-span-6 flex items-center gap-6 pt-1">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={c.isActive}
+                          onCheckedChange={(v) => updateCourse(c.id, { isActive: v })}
+                          id={`active-${c.id}`}
+                        />
+                        <Label htmlFor={`active-${c.id}`}>Ativa</Label>
                       </div>
-                    )}
-                    <DialogFooter>
-                      <Button onClick={handleUpdateCourse}>Guardar</Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => handleDeleteCourse(course)}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
+
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={c.isCompleted}
+                          onCheckedChange={(v) => updateCourse(c.id, { isCompleted: v, completedAt: v ? new Date().toISOString() : undefined })}
+                          id={`done-${c.id}`}
+                        />
+                        <Label htmlFor={`done-${c.id}`}>Concluída</Label>
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-6 flex justify-end">
+                      <Button variant="destructive" onClick={() => removeCourse(c.id)}>
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Backup e reposição</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={onExport}>Exportar JSON</Button>
+            <Button variant="secondary" onClick={onImportClick}>
+              Importar JSON
+            </Button>
+            <Button variant="destructive" onClick={resetData}>
+              Repor dados
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onImportFile(f);
+                e.currentTarget.value = "";
+              }}
+            />
+          </div>
+
+          {importError ? <p className="text-sm text-rose-700">{importError}</p> : null}
+
+          <p className="text-xs text-muted-foreground">
+            Exporta antes de repor. O JSON guarda a licenciatura, cadeiras e avaliações.
+          </p>
         </CardContent>
       </Card>
     </div>

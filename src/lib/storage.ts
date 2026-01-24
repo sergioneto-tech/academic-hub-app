@@ -63,9 +63,9 @@ function migrate(state: any): AppState {
   return base;
 }
 
-export function loadState(key: string = KEY): AppState {
+export function loadState(): AppState {
   try {
-    const raw = localStorage.getItem(key);
+    const raw = localStorage.getItem(KEY);
     if (!raw) return defaultState();
     return migrate(JSON.parse(raw));
   } catch {
@@ -73,9 +73,9 @@ export function loadState(key: string = KEY): AppState {
   }
 }
 
-export function saveState(state: AppState, key: string = KEY) {
+export function saveState(state: AppState) {
   try {
-    localStorage.setItem(key, JSON.stringify(state));
+    localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
     // ignore
   }
@@ -83,24 +83,24 @@ export function saveState(state: AppState, key: string = KEY) {
 
 // Storage API object for compatibility
 export const storage = {
-  get: (key?: string) => loadState(key),
-  set: (state: AppState, key?: string) => saveState(state, key),
+  get: loadState,
+  set: saveState,
   getDegrees: (): Degree[] => [
     { id: "lic-info", name: "Licenciatura em Informática" },
     { id: "lic-gestao", name: "Licenciatura em Gestão" },
     { id: "lic-psicologia", name: "Licenciatura em Psicologia" },
     { id: "lic-educacao", name: "Licenciatura em Educação" },
   ],
-  export: (key?: string): string => JSON.stringify(loadState(key), null, 2),
-  import: (json: string, key?: string): boolean => {
+  export: (): string => JSON.stringify(loadState(), null, 2),
+  import: (json: string): boolean => {
     try {
       const data = JSON.parse(json);
       const migrated = migrate(data);
-      saveState(migrated, key);
+      saveState(migrated);
       return true;
     } catch {
       return false;
     }
   },
-  reset: (key?: string) => saveState(defaultState(), key),
+  reset: () => saveState(defaultState()),
 };

@@ -7,18 +7,19 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 
 /**
  * IMPORTANTE (Lovable/Preview):
- * - "ecrã branco" muito frequentemente é cache/stale Service Worker.
- * - Para parar o ciclo infinito durante desenvolvimento/preview, removemos qualquer SW existente.
- * - Quando a app estiver estável, podes voltar a registar o SW de forma controlada.
+ * - "ecrã branco" muitas vezes é cache/stale Service Worker.
+ * - Para parar o ciclo durante preview, removemos SW e caches existentes.
  */
 async function disableServiceWorkerAndCaches() {
   if (!("serviceWorker" in navigator)) return;
+
   try {
     const regs = await navigator.serviceWorker.getRegistrations();
     await Promise.all(regs.map((r) => r.unregister()));
   } catch {
     // ignore
   }
+
   try {
     const keys = await caches.keys();
     await Promise.all(keys.map((k) => caches.delete(k)));
@@ -27,7 +28,6 @@ async function disableServiceWorkerAndCaches() {
   }
 }
 
-// Corre sempre no load para eliminar SW/caches antigos que podem estar a servir bundles desatualizados.
 window.addEventListener("load", () => {
   void disableServiceWorkerAndCaches();
 });
@@ -52,40 +52,17 @@ function Boot() {
     const msg = String((err as any)?.message ?? err);
     return (
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
-        <div style={{ width: "100%", maxWidth: 720, fontFamily: "ui-sans-serif, system-ui", lineHeight: 1.4 }}>
+        <div style={{ width: "100%", maxWidth: 720, fontFamily: "ui-sans-serif, system-ui" }}>
           <div style={{ fontSize: 18, fontWeight: 700 }}>Erro ao carregar a aplicação</div>
-          <div style={{ marginTop: 8, opacity: 0.8 }}>
-            Isto costuma ser um import em falta, conflito de ficheiros, ou um erro antes do React montar.
-          </div>
-          <pre
-            style={{
-              marginTop: 12,
-              background: "#f4f4f5",
-              padding: 12,
-              borderRadius: 12,
-              overflow: "auto",
-              fontSize: 12,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-            }}
-          >
+          <pre style={{ marginTop: 12, background: "#f4f4f5", padding: 12, borderRadius: 12 }}>
             {msg}
           </pre>
-          <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: "10px 14px",
-                borderRadius: 10,
-                border: "1px solid #d4d4d8",
-                background: "white",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              Recarregar
-            </button>
-          </div>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ marginTop: 12, padding: "10px 14px", borderRadius: 10, border: "1px solid #d4d4d8" }}
+          >
+            Recarregar
+          </button>
         </div>
       </div>
     );

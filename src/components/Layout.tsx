@@ -51,7 +51,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-sky-50 via-white to-white">
+    <div className="min-h-dvh bg-gradient-to-b from-slate-50 via-white to-white">
       <header className="sticky top-0 z-40 border-b bg-white/70 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -72,8 +72,8 @@ export default function Layout() {
                   to={n.to}
                   className={({ isActive }) =>
                     cn(
-                      "rounded-md px-3 py-2 text-sm",
-                      isActive ? "bg-sky-100 text-sky-950" : "text-slate-600 hover:bg-sky-50 hover:text-slate-900"
+                      "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      isActive ? "bg-primary/10 text-primary" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     )
                   }
                 >
@@ -98,8 +98,8 @@ export default function Layout() {
               to={n.to}
               className={({ isActive }) =>
                 cn(
-                  "rounded-md px-2 py-2 text-[10px] text-center leading-tight truncate",
-                  isActive ? "bg-sky-100 text-sky-950" : "text-slate-600 hover:bg-sky-50 hover:text-slate-900"
+                  "rounded-md px-2 py-2 text-[10px] text-center leading-tight truncate font-medium transition-colors",
+                  isActive ? "bg-primary/10 text-primary" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 )
               }
             >

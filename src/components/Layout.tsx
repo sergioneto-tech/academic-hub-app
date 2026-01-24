@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { DegreeSetupDialog } from "@/components/DegreeSetupDialog";
+import { useAppStore } from "@/lib/AppStore";
+import { getPlanCoursesForDegree } from "@/lib/uabPlan";
 import { NavLink, Outlet } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -17,6 +20,18 @@ const NAV = [
 ];
 
 export default function Layout() {
+  const { state, mergePlanCourses } = useAppStore();
+
+  // Se já há licenciatura escolhida mas ainda não há catálogo, carregar automaticamente.
+  useEffect(() => {
+    if (!state.degree) return;
+    if (state.courses.length > 0) return;
+    const seeds = getPlanCoursesForDegree(state.degree);
+    if (seeds.length === 0) return;
+    mergePlanCourses(seeds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.degree?.id]);
+
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
 
@@ -52,6 +67,8 @@ export default function Layout() {
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-slate-50 via-white to-white">
+      <DegreeSetupDialog />
+
       <header className="sticky top-0 z-40 border-b bg-white/70 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">

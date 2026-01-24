@@ -1,26 +1,31 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-// Compat:
-// - páginas antigas usam `status` (pendente/em_andamento/...)
-// - páginas novas (AppStore) usam `{ label, tone }`
+/**
+ * Este componente existe em duas "gerações" no projeto:
+ * 1) Antigo: <StatusBadge status="pendente|em_andamento|concluida|atrasada" />
+ * 2) Novo:  <StatusBadge label="Aprovado" tone="success|warning|danger|neutral" />
+ *
+ * Para evitar que o build rebente quando há ficheiros a usar uma API e outros a usar outra,
+ * suportamos ambas.
+ */
 
-type LegacyStatus = "pendente" | "em_andamento" | "concluida" | "atrasada";
+export type LegacyStatus = "pendente" | "em_andamento" | "concluida" | "atrasada";
 export type BadgeTone = "success" | "warning" | "danger" | "neutral";
 
-type Props =
-  | { status: LegacyStatus; className?: string }
-  | { label: string; tone: BadgeTone; className?: string };
+type LegacyProps = { status: LegacyStatus; className?: string };
+type NewProps = { label: string; tone: BadgeTone; className?: string };
+type Props = LegacyProps | NewProps;
 
-const LEGACY: Record<LegacyStatus, { label: string; tone: BadgeTone }> = {
+const LEGACY_MAP: Record<LegacyStatus, { label: string; tone: BadgeTone }> = {
   pendente: { label: "Pendente", tone: "neutral" },
   em_andamento: { label: "Em andamento", tone: "warning" },
   concluida: { label: "Concluída", tone: "success" },
   atrasada: { label: "Atrasada", tone: "danger" },
 };
 
-// Nota: evito AMARELO (amber) para não “puxar” o UI para tons amarelos.
-const STYLES: Record<BadgeTone, string> = {
+// Nota: evitamos `amber` para não puxar o UI para tons amarelos.
+const TONE_STYLES: Record<BadgeTone, string> = {
   neutral: "bg-slate-100 text-slate-700 border border-slate-200",
   warning: "bg-sky-100 text-sky-900 border border-sky-200",
   success: "bg-emerald-100 text-emerald-900 border border-emerald-200",
@@ -30,18 +35,18 @@ const STYLES: Record<BadgeTone, string> = {
 export function StatusBadge(props: Props) {
   const className = props.className;
 
-  const { label, tone } =
-    "status" in props ? LEGACY[props.status] : { label: props.label, tone: props.tone };
+  const normalized =
+    "status" in props ? LEGACY_MAP[props.status] : { label: props.label, tone: props.tone };
 
   return (
     <span
       className={cn(
         "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
-        STYLES[tone],
+        TONE_STYLES[normalized.tone],
         className
       )}
     >
-      {label}
+      {normalized.label}
     </span>
   );
 }

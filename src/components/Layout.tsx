@@ -16,7 +16,7 @@ const NAV = [
   { to: "/definicoes", label: "Definições" },
 ];
 
-export default function Layout() {
+export function Layout() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
 
@@ -51,7 +51,7 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-slate-50 via-slate-50 to-white">
+    <div className="min-h-dvh bg-gradient-to-b from-sky-50 via-white to-white">
       <header className="sticky top-0 z-40 border-b bg-white/70 backdrop-blur">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -72,8 +72,10 @@ export default function Layout() {
                   to={n.to}
                   className={({ isActive }) =>
                     cn(
-                      "rounded-md px-3 py-2 text-sm",
-                      isActive ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                      "rounded-md px-3 py-2 text-sm transition-colors",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                     )
                   }
                 >
@@ -89,7 +91,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      {/* Bottom nav para telemóvel (vertical) */}
+      {/* Bottom nav para telemóvel */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t bg-white/80 backdrop-blur">
         <div className="mx-auto max-w-6xl px-2 py-2 grid grid-cols-5 gap-1">
           {NAV.map((n) => (
@@ -98,8 +100,10 @@ export default function Layout() {
               to={n.to}
               className={({ isActive }) =>
                 cn(
-                  "rounded-md px-2 py-2 text-[11px] text-center leading-tight",
-                  isActive ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  "rounded-md px-2 py-2 text-[11px] text-center leading-tight transition-colors",
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )
               }
             >
@@ -111,3 +115,5 @@ export default function Layout() {
     </div>
   );
 }
+
+export default Layout;

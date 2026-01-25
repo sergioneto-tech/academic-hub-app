@@ -1,10 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/AppStore";
+import { buildIcsForActiveCourses, downloadIcs, suggestIcsFilename } from "@/lib/ics";
 
 type EventItem = { when: string; title: string; subtitle: string; tag: string };
 
 export default function CalendarPage() {
   const { state } = useAppStore();
+
+  function handleExportIcs() {
+    const ics = buildIcsForActiveCourses(state);
+    downloadIcs(suggestIcsFilename(), ics);
+  }
 
   const events: EventItem[] = [];
 
@@ -26,7 +33,12 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="text-2xl font-semibold">Calendário</div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="text-2xl font-semibold">Calendário</div>
+        <Button variant="secondary" onClick={handleExportIcs}>
+          Exportar para o telemóvel (.ics)
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>

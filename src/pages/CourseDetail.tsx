@@ -20,6 +20,27 @@ function DateField({ label, value, onChange }: { label: string; value?: string; 
   );
 }
 
+function normalizeDateTimeLocal(value?: string): string {
+  if (!value) return "";
+  // already datetime-local
+  if (value.includes("T")) return value.slice(0, 16);
+  // legacy: only date -> default time
+  return `${value}T09:00`;
+}
+
+function DateTimeField({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
+  return (
+    <div className="grid gap-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Input
+        type="datetime-local"
+        value={normalizeDateTimeLocal(value)}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
+
 function PtNumberInput({
   label,
   value,
@@ -227,8 +248,8 @@ export default function CourseDetail() {
             <p className="text-sm text-muted-foreground">A criar exame…</p>
           ) : (
             <div className="grid gap-3 md:grid-cols-3">
-              <DateField
-                label="Data do exame"
+              <DateTimeField
+                label="Exame (data e hora de início)"
                 value={exam.date}
                 onChange={(v) => setAssessmentDate(exam.id, { date: v })}
               />
@@ -268,8 +289,8 @@ export default function CourseDetail() {
           ) : (
             <>
               <div className="grid gap-3 md:grid-cols-3">
-                <DateField
-                  label="Data do recurso"
+                <DateTimeField
+                  label="Recurso (data e hora de início)"
                   value={resit.date}
                   onChange={(v) => setAssessmentDate(resit.id, { date: v })}
                 />

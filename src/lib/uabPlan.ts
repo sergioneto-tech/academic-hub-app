@@ -17,6 +17,7 @@ export type PlanCourseSeed = {
 };
 
 export const DEGREE_OPTIONS: DegreeOption[] = [
+  // --- Cursos suportados com plano “seed” (auto-carregamento de cadeiras) ---
   {
     id: "lei3",
     name: "Licenciatura em Engenharia Informática (Plano oficial – 3 anos)",
@@ -26,6 +27,65 @@ export const DEGREE_OPTIONS: DegreeOption[] = [
     id: "lei5",
     name: "Licenciatura em Engenharia Informática (Plano alternativo – 5 anos)",
     sourceUrl: "https://wiki.dcet.uab.pt/files/images/c/c0/LEI_Plano_alternativo_5_anos.pdf",
+  },
+
+  // --- Outras licenciaturas (lista do Guia dos Cursos da UAb) ---
+  // Nota: nesta versão, estas opções servem para o utilizador identificar o seu curso,
+  // mas não têm (ainda) plano “seed” embebido para auto-carregamento de cadeiras.
+  {
+    id: "uab-lca",
+    name: "Licenciatura em Ciências do Ambiente",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-ciencias-do-ambiente/",
+  },
+  {
+    id: "uab-lcs",
+    name: "Licenciatura em Ciências Sociais",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-ciencias-sociais/",
+  },
+  {
+    id: "uab-led",
+    name: "Licenciatura em Educação",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-educacao/",
+  },
+  {
+    id: "uab-lee",
+    name: "Licenciatura em Estudos Europeus",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-estudos-europeus/",
+  },
+  {
+    id: "uab-lgvr",
+    name: "Licenciatura em Gestão de Vendas e do Retalho",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-gestao-de-vendas-e-do-retalho/",
+  },
+  {
+    id: "uab-lgest",
+    name: "Licenciatura em Gestão",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-gestao/",
+  },
+  {
+    id: "uab-lhis",
+    name: "Licenciatura em História",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-historia/",
+  },
+  {
+    id: "uab-lhum",
+    name: "Licenciatura em Humanidades",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-humanidades/",
+  },
+  {
+    id: "uab-lla",
+    name: "Licenciatura em Línguas Aplicadas",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-linguas-aplicadas/",
+  },
+  {
+    id: "uab-lmag",
+    name: "Licenciatura em Matemática Aplicada à Gestão",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-matematica-aplicada-a-gestao/",
+  },
+  {
+    id: "uab-lma",
+    name: "Licenciatura em Matemática e Aplicações",
+    sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-matematica-e-aplicacoes/",
   },
 ];
 

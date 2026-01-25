@@ -12,7 +12,9 @@ export function DegreeSetupDialog() {
   const { state, setDegree, mergePlanCourses } = useAppStore();
 
   const [open, setOpen] = useState<boolean>(() => !state.degree);
-  const [selectedId, setSelectedId] = useState<string>(() => state.degree?.id ?? DEGREE_OPTIONS[0]?.id ?? "lei");
+  // Não pré-selecionar automaticamente — obriga o utilizador a escolher.
+  const NONE = "__none__";
+  const [selectedId, setSelectedId] = useState<string>(() => state.degree?.id ?? NONE);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,7 +23,7 @@ export function DegreeSetupDialog() {
     if (state.degree?.id) setSelectedId(state.degree.id);
   }, [state.degree]);
 
-  const selectedOpt = useMemo(() => getDegreeOptionById(selectedId) ?? DEGREE_OPTIONS[0], [selectedId]);
+  const selectedOpt = useMemo(() => getDegreeOptionById(selectedId), [selectedId]);
 
   const onConfirm = async () => {
     if (!selectedOpt) return;
@@ -72,7 +74,13 @@ export function DegreeSetupDialog() {
             <p className="text-xs text-muted-foreground">
               Fonte:{" "}
               <a className="underline" href={selectedOpt.sourceUrl} target="_blank" rel="noreferrer">
-                wiki.dcet.uab.pt
+                {(() => {
+                  try {
+                    return new URL(selectedOpt.sourceUrl).hostname;
+                  } catch {
+                    return selectedOpt.sourceUrl;
+                  }
+                })()}
               </a>
             </p>
           ) : null}

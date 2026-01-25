@@ -30,11 +30,14 @@ export default function SettingsPage() {
   // NOTA UX:
   // Não pré-selecionar uma licenciatura quando ainda não foi guardada.
   // Isto evita confusão do tipo “parece escolhida mas a app diz que não está guardada”.
-  const [selectedDegreeId, setSelectedDegreeId] = useState<string>(currentDegreeId || "");
+  // Usamos um valor “sentinela” (não existente nas opções) para garantir que o Select
+  // mostra o placeholder e não escolhe silenciosamente a 1ª opção.
+  const NONE = "__none__";
+  const [selectedDegreeId, setSelectedDegreeId] = useState<string>(currentDegreeId || NONE);
 
   // Se o state mudar (ex.: import/reset), refletir no Select.
   useEffect(() => {
-    setSelectedDegreeId(currentDegreeId || "");
+    setSelectedDegreeId(currentDegreeId || NONE);
   }, [currentDegreeId]);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -49,6 +52,10 @@ export default function SettingsPage() {
   }, [state.courses]);
 
   const selectedOpt = useMemo(() => getDegreeOptionById(selectedDegreeId), [selectedDegreeId]);
+  const canAutoLoadPlan = useMemo(() => {
+    if (!state.degree) return false;
+    return getPlanCoursesForDegree(state.degree).length > 0;
+  }, [state.degree]);
 
   const applyDegree = () => {
     if (!selectedOpt) return;
@@ -63,7 +70,7 @@ export default function SettingsPage() {
 
   const clearDegree = () => {
     setDegree(null);
-    setSelectedDegreeId("");
+    setSelectedDegreeId(NONE);
   };
 
   const onExport = () => {
@@ -99,7 +106,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid gap-2">
             <Label>Selecionada</Label>
-            <Select value={selectedDegreeId || undefined} onValueChange={setSelectedDegreeId}>
+            <Select value={selectedDegreeId} onValueChange={setSelectedDegreeId}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleciona..." />
               </SelectTrigger>
@@ -116,8 +123,8 @@ export default function SettingsPage() {
               <Button onClick={applyDegree} variant="default" disabled={!selectedOpt}>
                 Guardar
               </Button>
-              <Button onClick={importPlan} variant="secondary" disabled={!state.degree}>
-                Carregar cadeiras (plano da wiki)
+              <Button onClick={importPlan} variant="secondary" disabled={!state.degree || !canAutoLoadPlan}>
+                Carregar cadeiras (plano automático)
               </Button>
               <Button onClick={clearDegree} variant="outline" disabled={!state.degree}>
                 Limpar licenciatura
@@ -126,9 +133,15 @@ export default function SettingsPage() {
 
             {selectedOpt?.sourceUrl ? (
               <p className="text-xs text-muted-foreground">
-                Fonte do plano:{" "}
+                Fonte:{" "}
                 <a className="underline" href={selectedOpt.sourceUrl} target="_blank" rel="noreferrer">
-                  wiki.dcet.uab.pt
+                  {(() => {
+                    try {
+                      return new URL(selectedOpt.sourceUrl).hostname;
+                    } catch {
+                      return selectedOpt.sourceUrl;
+                    }
+                  })()}
                 </a>
               </p>
             ) : null}
@@ -139,10 +152,16 @@ export default function SettingsPage() {
               </p>
             ) : (
               <p className="text-xs text-muted-foreground">
-                A lista mostra apenas licenciaturas com plano embebido nesta versão. Para outros cursos, terás de adicionar
-                cadeiras manualmente ou importar um catálogo via JSON.
+                A lista inclui as licenciaturas do Guia dos Cursos. Apenas algumas têm plano automático embebido nesta versão.
+                Se o teu curso não tiver plano automático, adiciona cadeiras manualmente ou importa um catálogo via JSON.
               </p>
             )}
+
+            {state.degree && !canAutoLoadPlan ? (
+              <p className="text-sm text-amber-700">
+                Esta licenciatura ainda não tem plano automático nesta app — o botão “Carregar cadeiras” fica desativado.
+              </p>
+            ) : null}
           </div>
         </CardContent>
       </Card>

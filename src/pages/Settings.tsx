@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,15 @@ export default function SettingsPage() {
   const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, resetData } = useAppStore();
 
   const currentDegreeId = state.degree?.id ?? "";
-  const [selectedDegreeId, setSelectedDegreeId] = useState<string>(currentDegreeId || DEGREE_OPTIONS[0]?.id || "lei");
+  // NOTA UX:
+  // Não pré-selecionar uma licenciatura quando ainda não foi guardada.
+  // Isto evita confusão do tipo “parece escolhida mas a app diz que não está guardada”.
+  const [selectedDegreeId, setSelectedDegreeId] = useState<string>(currentDegreeId || "");
+
+  // Se o state mudar (ex.: import/reset), refletir no Select.
+  useEffect(() => {
+    setSelectedDegreeId(currentDegreeId || "");
+  }, [currentDegreeId]);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -40,7 +48,7 @@ export default function SettingsPage() {
     });
   }, [state.courses]);
 
-  const selectedOpt = useMemo(() => getDegreeOptionById(selectedDegreeId) ?? DEGREE_OPTIONS[0], [selectedDegreeId]);
+  const selectedOpt = useMemo(() => getDegreeOptionById(selectedDegreeId), [selectedDegreeId]);
 
   const applyDegree = () => {
     if (!selectedOpt) return;
@@ -51,6 +59,11 @@ export default function SettingsPage() {
     if (!state.degree) return;
     const seeds = getPlanCoursesForDegree(state.degree);
     mergePlanCourses(seeds);
+  };
+
+  const clearDegree = () => {
+    setDegree(null);
+    setSelectedDegreeId("");
   };
 
   const onExport = () => {
@@ -86,7 +99,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="grid gap-2">
             <Label>Selecionada</Label>
-            <Select value={selectedDegreeId} onValueChange={setSelectedDegreeId}>
+            <Select value={selectedDegreeId || undefined} onValueChange={setSelectedDegreeId}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleciona..." />
               </SelectTrigger>
@@ -100,11 +113,14 @@ export default function SettingsPage() {
             </Select>
 
             <div className="flex flex-wrap gap-2">
-              <Button onClick={applyDegree} variant="default">
+              <Button onClick={applyDegree} variant="default" disabled={!selectedOpt}>
                 Guardar
               </Button>
               <Button onClick={importPlan} variant="secondary" disabled={!state.degree}>
                 Carregar cadeiras (plano da wiki)
+              </Button>
+              <Button onClick={clearDegree} variant="outline" disabled={!state.degree}>
+                Limpar licenciatura
               </Button>
             </div>
 
@@ -121,7 +137,12 @@ export default function SettingsPage() {
               <p className="text-sm text-amber-700">
                 Ainda não escolheste licenciatura — ao entrar na app vai aparecer um ecrã para escolher.
               </p>
-            ) : null}
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                A lista mostra apenas licenciaturas com plano embebido nesta versão. Para outros cursos, terás de adicionar
+                cadeiras manualmente ou importar um catálogo via JSON.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>

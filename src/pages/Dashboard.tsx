@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Download, RefreshCw } from "lucide-react";
+import { useUpdate } from "@/lib/UpdateProvider";
 import StatusBadge from "@/components/StatusBadge";
 import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, exam, getAssessments, globalStats, resit, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
@@ -26,6 +28,21 @@ function daysLeftFromToday(ymdOrDateTime: string): number | null {
   const target = parseYmd(ymd);
   if (!target) return null;
   const today = startOfDay(new Date());
+
+  const downloadBackup = () => {
+    const json = exportData();
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `academic-hub-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  };
+
   const diff = startOfDay(target).getTime() - today.getTime();
   return Math.round(diff / 86400000);
 }
@@ -44,7 +61,8 @@ function fmtDaysLeft(daysLeft: number): string {
 }
 
 export default function Dashboard() {
-  const { state } = useAppStore();
+  const { state, exportData } = useAppStore();
+  const { updateAvailable, applyUpdate } = useUpdate();
   const stats = globalStats(state);
   const today = startOfDay(new Date());
 
@@ -75,30 +93,54 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPIs */}
+      
+      {updateAvailable && (
+        <Card className="border-warning/40 bg-warning/10">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Atualização disponível</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-muted-foreground">
+              Podes atualizar a aplicação quando quiseres. Os teus dados ficam guardados localmente, mas é boa prática exportar um backup antes.
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="secondary" onClick={downloadBackup}>
+                <Download className="mr-2 h-4 w-4" />
+                Exportar backup
+              </Button>
+              <Button size="sm" onClick={applyUpdate}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Atualizar versão
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+{/* KPIs */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white/70 backdrop-blur">
+        <Card className="bg-card/70 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Ativas</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">{stats.active}</CardContent>
         </Card>
 
-        <Card className="bg-white/70 backdrop-blur">
+        <Card className="bg-card/70 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Concluídas</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">{stats.completed}</CardContent>
         </Card>
 
-        <Card className="bg-white/70 backdrop-blur">
+        <Card className="bg-card/70 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Média (concluídas)</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">{stats.completed ? stats.avg : "—"}</CardContent>
         </Card>
 
-        <Card className="bg-white/70 backdrop-blur">
+        <Card className="bg-card/70 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Eventos (datas)</CardTitle>
           </CardHeader>
@@ -116,7 +158,7 @@ export default function Dashboard() {
         </div>
 
         {activeCourses.length === 0 ? (
-          <Card className="bg-white/70 backdrop-blur">
+          <Card className="bg-card/70 backdrop-blur">
             <CardContent className="py-6 text-sm text-muted-foreground">
               Nenhuma cadeira ativa. Vai a “Cadeiras” e ativa as que estás a frequentar.
             </CardContent>

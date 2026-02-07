@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { DegreeSetupDialog } from "@/components/DegreeSetupDialog";
 import { useAppStore } from "@/lib/AppStore";
 import { getPlanCoursesForDegree } from "@/lib/uabPlan";
 import { NavLink, Outlet } from "react-router-dom";
@@ -15,6 +14,19 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
 };
 
+type ReleaseNotesEntry = {
+  version: string;
+  date?: string;
+  changes: string[];
+};
+
+type ReleaseNotesData = {
+  latest?: string;
+  versions?: ReleaseNotesEntry[];
+};
+
+const LAST_SEEN_VERSION_KEY = "academic_hub_last_seen_version";
+
 const NAV = [
   { to: "/", label: "Dashboard" },
   { to: "/cadeiras", label: "Cadeiras" },
@@ -26,6 +38,79 @@ const NAV = [
 export default function Layout() {
   const { state, mergePlanCourses, exportData } = useAppStore();
   const { updateAvailable, applyUpdate } = useUpdate();
+
+  const [releaseNotes, setReleaseNotes] = useState<ReleaseNotesData | null>(null);
+  const [whatsNew, setWhatsNew] = useState<ReleaseNotesEntry | null>(null);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+
+  const notesUrl = useMemo(() => `${import.meta.env.BASE_URL ?? "./"}release-notes.json`, []);
+
+  // Buscar notas de versão (para mostrar "o que mudou" quando há update, estilo app store).
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(notesUrl, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (!data) return;
+        setReleaseNotes(data as ReleaseNotesData);
+      })
+      .catch(() => {
+        // ignore
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Recarregar quando aparece um update (para garantir notas mais recentes)
+  }, [notesUrl, updateAvailable]);
+
+  // Mostrar "Novidades" quando a versão local mudou (mesmo sem service worker).
+  useEffect(() => {
+    const versions = releaseNotes?.versions ?? [];
+    if (versions.length === 0) return;
+
+    let lastSeen = "";
+    try {
+      lastSeen = localStorage.getItem(LAST_SEEN_VERSION_KEY) ?? "";
+    } catch {
+      // ignore
+    }
+
+    if (lastSeen === APP_VERSION) return;
+
+    const entry = versions.find((v) => v.version === APP_VERSION);
+    // Se não houver entrada, marcar como visto para não spammar.
+    if (!entry) {
+      try {
+        localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION);
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    setWhatsNew(entry);
+    setShowWhatsNew(true);
+  }, [releaseNotes]);
+
+  const dismissWhatsNew = () => {
+    setShowWhatsNew(false);
+    try {
+      localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION);
+    } catch {
+      // ignore
+    }
+  };
+
+  const latestEntry = useMemo(() => {
+    const versions = releaseNotes?.versions ?? [];
+    if (versions.length === 0) return null;
+    const latest = releaseNotes?.latest;
+    if (latest) return versions.find((v) => v.version === latest) ?? versions[0];
+    return versions[0];
+  }, [releaseNotes]);
 
   const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme() ?? getSystemTheme());
 
@@ -95,8 +180,6 @@ export default function Layout() {
 
   return (
     <div className="min-h-dvh bg-gradient-to-b from-background via-background to-muted/20 dark:to-background">
-      <DegreeSetupDialog />
-
       <header className="sticky top-0 z-40 border-b border-border bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -109,8 +192,16 @@ export default function Layout() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Alternar tema (claro/escuro)">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleTheme}
+              title="Mudar tema (claro/escuro)"
+              aria-label="Mudar tema (claro/escuro)"
+              className="gap-2"
+            >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <span className="hidden sm:inline text-xs">{theme === "dark" ? "Modo claro" : "Modo escuro"}</span>
             </Button>
             {!installed && deferred && (
               <Button size="sm" onClick={handleInstall}>
@@ -138,6 +229,24 @@ export default function Layout() {
       </header>
 
       <main className="mx-auto max-w-6xl px-4 pb-24 md:pb-10 pt-4">
+        {showWhatsNew && whatsNew && (
+          <div className="mb-4 rounded-xl border border-border bg-muted/30 p-3 text-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="font-semibold">Novidades na v{whatsNew.version}</div>
+                {whatsNew.date && <div className="text-[11px] text-muted-foreground">{whatsNew.date}</div>}
+                <ul className="mt-2 list-disc pl-5 text-xs text-muted-foreground space-y-1">
+                  {whatsNew.changes.slice(0, 8).map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+              <Button size="sm" variant="secondary" onClick={dismissWhatsNew}>
+                OK
+              </Button>
+            </div>
+          </div>
+        )}
         {updateAvailable && (
         <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -146,6 +255,18 @@ export default function Layout() {
               <div className="text-xs text-muted-foreground">
                 Os teus dados ficam guardados localmente. Por precaução, exporta um backup antes de atualizar.
               </div>
+              {latestEntry && latestEntry.changes.length > 0 ? (
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs text-muted-foreground">
+                    Ver alterações (v{latestEntry.version})
+                  </summary>
+                  <ul className="mt-2 list-disc pl-5 text-xs text-muted-foreground space-y-1">
+                    {latestEntry.changes.slice(0, 10).map((c, i) => (
+                      <li key={i}>{c}</li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={downloadBackup}>

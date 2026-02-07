@@ -1,4 +1,5 @@
-const CACHE = "academic-hub-v1";
+const SW_VERSION = "0.1.1";
+const CACHE = `academic-hub-${SW_VERSION}`;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -9,6 +10,7 @@ self.addEventListener("install", (event) => {
         "./manifest.webmanifest",
         "./pwa-192.png",
         "./pwa-512.png",
+        "./release-notes.json",
       ]).catch(() => {})
     )
   );
@@ -34,6 +36,20 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   const isNav = req.mode === "navigate";
+  // Forçar rede nas notas de versão (para mostrar sempre as alterações mais recentes)
+  if (url.pathname.endsWith("release-notes.json")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
 
   if (isNav) {
     event.respondWith(

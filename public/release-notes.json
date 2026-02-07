@@ -1,0 +1,26 @@
+{
+  "latest": "0.1.1",
+  "versions": [
+    {
+      "version": "0.1.1",
+      "date": "2026-02-07",
+      "changes": [
+        "Removido o pop‑up inicial de escolha de licenciatura (agora é feito em Definições).",
+        "Dashboard mostra o nome da licenciatura selecionada e avisa quando falta escolher.",
+        "Botão de tema passou a indicar claramente 'Modo claro/Modo escuro'.",
+        "Aviso de atualização passa a mostrar 'o que mudou' (notas de versão).",
+        "Service Worker versionado para detetar updates de forma fiável.",
+        "Sem perda de dados: estado guardado em chave estável e migração automática de chaves antigas."
+      ]
+    },
+    {
+      "version": "0.1.0",
+      "date": "2026-02-06",
+      "changes": [
+        "Base do Academic Hub com Dashboard, Cadeiras, Calendário, Histórico e Definições.",
+        "Importação automática de cadeiras por plano (quando disponível) e export/import de backups.",
+        "Modo claro/escuro e suporte PWA (instalação)."
+      ]
+    }
+  ]
+}

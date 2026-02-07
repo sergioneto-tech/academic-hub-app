@@ -12,7 +12,6 @@ self.addEventListener("install", (event) => {
       ]).catch(() => {})
     )
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -56,4 +55,12 @@ self.addEventListener("fetch", (event) => {
       return res;
     }))
   );
+});
+
+// Permitir que o utilizador controle quando quer aplicar a atualização.
+self.addEventListener("message", (event) => {
+  if (!event?.data) return;
+  if (event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });

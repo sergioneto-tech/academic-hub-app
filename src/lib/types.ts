@@ -42,7 +42,13 @@ export type Rules = {
   minExame: number;     // default 5.5
 };
 
+export type AppMeta = {
+  appVersion: string;
+  schemaVersion: number;
+};
+
 export type AppState = {
+  meta?: AppMeta;
   degree: Degree | null;
   courses: Course[];
   assessments: Assessment[];

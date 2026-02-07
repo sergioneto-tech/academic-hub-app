@@ -1,6 +1,8 @@
 import type { AppState, Assessment, Course, Degree, Rules } from "./types";
+import { APP_VERSION, SCHEMA_VERSION } from "./version";
 
-const KEY = "academic_hub_state_v2";
+const KEY = "academic_hub_state";
+const LEGACY_KEYS = ["academic_hub_state_v2", "academic_hub_state_v1"] as const;
 
 function uuid(): string {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -8,6 +10,7 @@ function uuid(): string {
 
 export function defaultState(): AppState {
   return {
+    meta: { appVersion: APP_VERSION, schemaVersion: SCHEMA_VERSION },
     degree: null,
     courses: [],
     assessments: [],
@@ -55,6 +58,12 @@ function migrate(state: any): AppState {
     minExame: Number(r.minExame ?? 5.5),
   }));
 
+  // meta (versões)
+  base.meta = {
+    appVersion: String(state?.meta?.appVersion ?? APP_VERSION),
+    schemaVersion: Number(state?.meta?.schemaVersion ?? SCHEMA_VERSION),
+  };
+
   // grau
   if (base.degree) {
     base.degree = { id: String(base.degree.id ?? uuid()), name: String((base.degree as any).name ?? (base.degree as any).nome ?? "") } as Degree;
@@ -66,8 +75,21 @@ function migrate(state: any): AppState {
 export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return defaultState();
-    return migrate(JSON.parse(raw));
+
+    // 1) Key atual (estável)
+    if (raw) return migrate(JSON.parse(raw));
+
+    // 2) Migração automática de versões antigas (evita perda de dados após updates)
+    for (const k of LEGACY_KEYS) {
+      const legacy = localStorage.getItem(k);
+      if (!legacy) continue;
+      const migrated = migrate(JSON.parse(legacy));
+      // Guardar já no KEY novo (sem apagar o antigo, por segurança)
+      try { localStorage.setItem(KEY, JSON.stringify(migrated)); } catch {}
+      return migrated;
+    }
+
+    return defaultState();
   } catch {
     return defaultState();
   }

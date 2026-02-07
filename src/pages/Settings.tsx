@@ -73,7 +73,7 @@ function SemesterPanel({
                 className={[
                   "rounded-lg border p-4",
                   completed
-                    ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-emerald-950/25"
+                    ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-700/50 dark:bg-emerald-900/25 dark:ring-1 dark:ring-emerald-700/15"
                     : "bg-card",
                 ].join(" ")}
               >

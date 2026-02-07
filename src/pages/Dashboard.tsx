@@ -29,20 +29,6 @@ function daysLeftFromToday(ymdOrDateTime: string): number | null {
   if (!target) return null;
   const today = startOfDay(new Date());
 
-  const downloadBackup = () => {
-    const json = exportData();
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `academic-hub-backup-${stamp}.json`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 3000);
-  };
-
   const diff = startOfDay(target).getTime() - today.getTime();
   return Math.round(diff / 86400000);
 }
@@ -66,6 +52,20 @@ export default function Dashboard() {
   const stats = globalStats(state);
   const today = startOfDay(new Date());
 
+  const downloadBackup = () => {
+    const json = exportData();
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `academic-hub-backup-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 3000);
+  };
+
   const activeCourses = state.courses
     .filter((c) => c.isActive && !c.isCompleted)
     .sort((a, b) => a.code.localeCompare(b.code, "pt-PT"));
@@ -73,13 +73,20 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Hero / cabeçalho */}
-      <div className="rounded-2xl overflow-hidden border gradient-primary text-white shadow-lg">
+      <div className="rounded-2xl overflow-hidden border shadow-lg text-white bg-gradient-to-br from-blue-700 to-blue-500 dark:from-slate-950 dark:to-slate-900">
         <div className="p-5 sm:p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">Painel do utilizador</h1>
             <p className="text-sm text-white/80">
               Visão geral rápida das cadeiras, e‑fólios e datas importantes.
             </p>
+
+            <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs sm:text-sm">
+              <span className="opacity-90">Licenciatura:</span>
+              <span className="font-semibold truncate">
+                {state.degree?.name ? state.degree.name : "Não selecionada"}
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2">
@@ -94,6 +101,22 @@ export default function Dashboard() {
       </div>
 
       
+      {!state.degree && (
+        <div className="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="font-semibold">Falta escolher a tua licenciatura</div>
+              <div className="text-xs text-muted-foreground">
+                Vai a <span className="font-medium">Definições</span> e escolhe a licenciatura que estás a tirar. Assim o plano automático fica correto.
+              </div>
+            </div>
+            <Button asChild size="sm" variant="secondary">
+              <Link to="/definicoes">Ir a Definições</Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {updateAvailable && (
         <Card className="border-warning/40 bg-warning/10">
           <CardHeader className="pb-3">
@@ -203,7 +226,7 @@ export default function Dashboard() {
                 <Link
                   key={c.id}
                   to={`/cadeiras/${c.id}`}
-                  className="block rounded-xl border bg-white/70 backdrop-blur p-4 hover:bg-white/90"
+                  className="block rounded-xl border bg-white/70 backdrop-blur p-4 hover:bg-white/90 dark:bg-slate-900/40 dark:hover:bg-slate-900/55"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

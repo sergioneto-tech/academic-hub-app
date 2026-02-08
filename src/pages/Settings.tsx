@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,51 @@ import { useAppStore } from "@/lib/AppStore";
 import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree } from "@/lib/uabPlan";
 import type { Course } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
+
+// Input numérico com estado local - só grava no blur
+function NumericInput({
+  value,
+  min,
+  max,
+  onCommit,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  onCommit: (v: number) => void;
+}) {
+  const [txt, setTxt] = useState(String(value));
+
+  useEffect(() => {
+    setTxt(String(value));
+  }, [value]);
+
+  const handleBlur = useCallback(() => {
+    const num = parseInt(txt, 10);
+    if (isNaN(num) || num < min || num > max) {
+      // Revert to original value
+      setTxt(String(value));
+    } else if (num !== value) {
+      onCommit(num);
+    }
+  }, [txt, min, max, value, onCommit]);
+
+  return (
+    <Input
+      type="text"
+      inputMode="numeric"
+      value={txt}
+      onChange={(e) => setTxt(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className="w-16 h-8 px-2 py-1 text-sm"
+    />
+  );
+}
 
 function downloadText(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json;charset=utf-8" });
@@ -57,11 +102,11 @@ function SemesterPanel({
 
   return (
     <div className="rounded-lg border">
-      <div className="border-b bg-muted/30 px-4 py-2 text-sm font-semibold">{title}</div>
+      <div className="border-b bg-muted/30 px-3 py-1.5 text-xs font-semibold">{title}</div>
 
-      <div className="space-y-3 p-3">
+      <div className="space-y-2 p-2">
         {sorted.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed p-4 text-center text-xs text-muted-foreground">
             Sem cadeiras neste semestre.
           </div>
         ) : (
@@ -71,52 +116,52 @@ function SemesterPanel({
               <div
                 key={c.id}
                 className={[
-                  "rounded-lg border p-4",
+                  "rounded-lg border p-3",
                   completed
                     ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-700/50 dark:bg-emerald-900/25 dark:ring-1 dark:ring-emerald-700/15"
                     : "bg-card",
                 ].join(" ")}
               >
-                <div className="grid gap-3 md:grid-cols-12 md:items-end">
+                <div className="grid gap-2 md:grid-cols-12 md:items-end">
                   <div className="md:col-span-2">
-                    <Label className="text-xs text-muted-foreground">Código</Label>
-                    <Input value={c.code} onChange={(e) => onUpdate(c.id, { code: e.target.value })} />
+                    <Label className="text-[11px] leading-none text-muted-foreground">Código</Label>
+                    <Input className="h-8 px-2 py-1 text-sm" value={c.code} onChange={(e) => onUpdate(c.id, { code: e.target.value })} />
                   </div>
 
                   <div className="md:col-span-6">
-                    <Label className="text-xs text-muted-foreground">Nome</Label>
-                    <Input value={c.name} onChange={(e) => onUpdate(c.id, { name: e.target.value })} />
+                    <Label className="text-[11px] leading-none text-muted-foreground">Nome</Label>
+                    <Input className="h-8 px-2 py-1 text-sm" value={c.name} onChange={(e) => onUpdate(c.id, { name: e.target.value })} />
                   </div>
 
                   <div className="md:col-span-2">
-                    <Label className="text-xs text-muted-foreground">Ano</Label>
-                    <Input
-                      type="number"
-                      value={String(c.year ?? 1)}
-                      onChange={(e) => onUpdate(c.id, { year: Number(e.target.value || 1) })}
+                    <Label className="text-[11px] leading-none text-muted-foreground">Ano</Label>
+                    <NumericInput
+                      value={c.year ?? 1}
                       min={1}
+                      max={6}
+                      onCommit={(v) => onUpdate(c.id, { year: v })}
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <Label className="text-xs text-muted-foreground">Semestre</Label>
-                    <Input
-                      type="number"
-                      value={String(c.semester ?? 1)}
-                      onChange={(e) => onUpdate(c.id, { semester: Number(e.target.value || 1) })}
+                    <Label className="text-[11px] leading-none text-muted-foreground">Semestre</Label>
+                    <NumericInput
+                      value={c.semester ?? 1}
                       min={1}
                       max={2}
+                      onCommit={(v) => onUpdate(c.id, { semester: v })}
                     />
                   </div>
 
-                  <div className="md:col-span-8 flex flex-wrap items-center gap-4 pt-1">
+                  <div className="md:col-span-8 flex flex-wrap items-center gap-3 pt-0.5">
                     <div className="flex items-center gap-2">
-                      <Switch checked={Boolean(c.isActive)} onCheckedChange={(v) => onUpdate(c.id, { isActive: v })} />
-                      <span className="text-sm font-medium">Ativa</span>
+                      <Switch className="scale-90" checked={Boolean(c.isActive)} onCheckedChange={(v) => onUpdate(c.id, { isActive: v })} />
+                      <span className="text-xs font-medium">Ativa</span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <Switch
+                        className="scale-90"
                         checked={Boolean(c.isCompleted)}
                         onCheckedChange={(v) =>
                           onUpdate(c.id, {
@@ -127,18 +172,18 @@ function SemesterPanel({
                           })
                         }
                       />
-                      <span className="text-sm font-medium">Concluída</span>
+                      <span className="text-xs font-medium">Concluída</span>
                     </div>
 
                     {completed && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-[11px] text-muted-foreground">
                         {c.completedAt ? `Concluída em ${new Date(c.completedAt).toLocaleDateString("pt-PT")}` : "Concluída"}
                       </span>
                     )}
                   </div>
 
                   <div className="md:col-span-4 flex md:justify-end">
-                    <Button variant="destructive" onClick={() => onRemove(c.id)}>
+                    <Button variant="destructive" size="sm" className="h-8 px-3 text-xs" onClick={() => onRemove(c.id)}>
                       Remover
                     </Button>
                   </div>
@@ -170,15 +215,15 @@ function YearBlock({
   const totalYear = sem1.length + sem2.length;
 
   return (
-    <div className="rounded-xl border p-4 md:p-6">
+    <div className="rounded-xl border p-3 md:p-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-lg font-semibold">{year}º Ano</div>
-        <div className="text-sm text-muted-foreground">
+        <div className="text-base font-semibold">{year}º Ano</div>
+        <div className="text-xs text-muted-foreground">
           {totalYear} {pluralCadeiras(totalYear)}
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         <SemesterPanel title="1º Semestre" courses={sem1} orderMap={orderMap} onUpdate={onUpdate} onRemove={onRemove} />
         <SemesterPanel title="2º Semestre" courses={sem2} orderMap={orderMap} onUpdate={onUpdate} onRemove={onRemove} />
       </div>
@@ -262,7 +307,7 @@ export default function SettingsPage() {
     try {
       const text = await file.text();
       const res = importData(text);
-      if (!res.ok) setImportError(res.error);
+      if (!res.ok) setImportError("error" in res ? res.error : "Erro desconhecido");
     } catch {
       setImportError("Não foi possível ler o ficheiro.");
     }
@@ -278,7 +323,7 @@ export default function SettingsPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold">Definições</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Licenciatura, catálogo de cadeiras, backups e preferências. <span className="ml-1">v{APP_VERSION}</span>
             </p>
           </div>
@@ -371,7 +416,7 @@ export default function SettingsPage() {
         <CardHeader>
           <div className="flex items-center justify-between gap-3">
             <CardTitle>Catálogo de cadeiras</CardTitle>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-xs text-muted-foreground">
               {state.courses.length} {pluralCadeiras(state.courses.length)}
             </div>
           </div>

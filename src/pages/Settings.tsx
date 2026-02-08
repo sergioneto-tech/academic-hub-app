@@ -262,7 +262,7 @@ export default function SettingsPage() {
     try {
       const text = await file.text();
       const res = importData(text);
-      if (!res.ok) setImportError(res.error);
+      if (!res.ok) setImportError("error" in res ? res.error : "Erro desconhecido");
     } catch {
       setImportError("Não foi possível ler o ficheiro.");
     }

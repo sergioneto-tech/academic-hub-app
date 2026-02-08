@@ -80,7 +80,7 @@ function PtNumberInput({
 export default function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { state, ensureAssessment, setAssessmentDate, setAssessmentGrade, setAssessmentMaxPoints, markCourseCompleted } = useAppStore();
+  const { state, ensureAssessment, setAssessmentDate, setAssessmentGrade, setAssessmentMaxPoints, markCourseCompleted, updateCourse } = useAppStore();
 
   const course = useMemo(() => state.courses.find((c) => c.id === id), [state.courses, id]);
   const rules = useMemo(() => (id ? getRules(state, id) : null), [state, id]);
@@ -136,6 +136,34 @@ export default function CourseDetail() {
           <h1 className="text-xl md:text-2xl font-semibold leading-tight">
             {course.code} — {course.name}
           </h1>
+          <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="course-year" className="text-xs">Ano:</Label>
+              <select
+                id="course-year"
+                value={course.year ?? 1}
+                onChange={(e) => updateCourse(course.id, { year: Number(e.target.value) })}
+                className="rounded border bg-background px-2 py-1 text-sm"
+              >
+                {[1, 2, 3, 4].map((y) => (
+                  <option key={y} value={y}>{y}º</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="course-semester" className="text-xs">Semestre:</Label>
+              <select
+                id="course-semester"
+                value={course.semester ?? 1}
+                onChange={(e) => updateCourse(course.id, { semester: Number(e.target.value) })}
+                className="rounded border bg-background px-2 py-1 text-sm"
+              >
+                {[1, 2].map((s) => (
+                  <option key={s} value={s}>{s}º</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
         <div className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium ${badgeClass}`}>
           {status.label}

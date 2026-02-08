@@ -21,7 +21,7 @@ function formatUtcTimestamp(d: Date): string {
 
 function ymdToBasic(ymd: string): string {
   // YYYY-MM-DD -> YYYYMMDD
-  return ymd.replaceAll("-", "");
+  return ymd.replace(/-/g, "");
 }
 
 function addDaysToYmd(ymd: string, days: number): string {
@@ -34,10 +34,10 @@ function addDaysToYmd(ymd: string, days: number): string {
 function escapeText(value: string): string {
   // RFC 5545 text escaping
   return value
-    .replaceAll("\\", "\\\\")
-    .replaceAll(";", "\\;")
-    .replaceAll(",", "\\,")
-    .replaceAll(/\r?\n/g, "\\n");
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
 }
 
 function normalizeDateTimeLocal(v: string): { ymd: string; hhmm: string } | null {

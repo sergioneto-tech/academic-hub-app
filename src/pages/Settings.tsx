@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,51 +12,6 @@ import { useAppStore } from "@/lib/AppStore";
 import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree } from "@/lib/uabPlan";
 import type { Course } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
-
-// Input numérico com estado local - só grava no blur
-function NumericInput({
-  value,
-  min,
-  max,
-  onCommit,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onCommit: (v: number) => void;
-}) {
-  const [txt, setTxt] = useState(String(value));
-
-  useEffect(() => {
-    setTxt(String(value));
-  }, [value]);
-
-  const handleBlur = useCallback(() => {
-    const num = parseInt(txt, 10);
-    if (isNaN(num) || num < min || num > max) {
-      // Revert to original value
-      setTxt(String(value));
-    } else if (num !== value) {
-      onCommit(num);
-    }
-  }, [txt, min, max, value, onCommit]);
-
-  return (
-    <Input
-      type="text"
-      inputMode="numeric"
-      value={txt}
-      onChange={(e) => setTxt(e.target.value)}
-      onBlur={handleBlur}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          (e.target as HTMLInputElement).blur();
-        }
-      }}
-      className="w-16"
-    />
-  );
-}
 
 function downloadText(filename: string, text: string) {
   const blob = new Blob([text], { type: "application/json;charset=utf-8" });
@@ -135,21 +90,22 @@ function SemesterPanel({
 
                   <div className="md:col-span-2">
                     <Label className="text-xs text-muted-foreground">Ano</Label>
-                    <NumericInput
-                      value={c.year ?? 1}
+                    <Input
+                      type="number"
+                      value={String(c.year ?? 1)}
+                      onChange={(e) => onUpdate(c.id, { year: Number(e.target.value || 1) })}
                       min={1}
-                      max={6}
-                      onCommit={(v) => onUpdate(c.id, { year: v })}
                     />
                   </div>
 
                   <div className="md:col-span-2">
                     <Label className="text-xs text-muted-foreground">Semestre</Label>
-                    <NumericInput
-                      value={c.semester ?? 1}
+                    <Input
+                      type="number"
+                      value={String(c.semester ?? 1)}
+                      onChange={(e) => onUpdate(c.id, { semester: Number(e.target.value || 1) })}
                       min={1}
                       max={2}
-                      onCommit={(v) => onUpdate(c.id, { semester: v })}
                     />
                   </div>
 
@@ -306,7 +262,7 @@ export default function SettingsPage() {
     try {
       const text = await file.text();
       const res = importData(text);
-      if (!res.ok) setImportError("error" in res ? res.error : "Erro desconhecido");
+      if (!res.ok) setImportError(res.error);
     } catch {
       setImportError("Não foi possível ler o ficheiro.");
     }

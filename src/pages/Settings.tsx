@@ -261,24 +261,22 @@ export default function SettingsPage() {
 
   // --- Sincronização (opcional) ---
   const [syncEnabledLocal, setSyncEnabledLocal] = useState<boolean>(() => Boolean(state.sync?.enabled));
-  const [supabaseUrl, setSupabaseUrl] = useState<string>(() => state.sync?.supabaseUrl ?? "");
-  const [supabaseAnonKey, setSupabaseAnonKey] = useState<string>(() => state.sync?.supabaseAnonKey ?? "");
   const [cloudEmail, setCloudEmail] = useState<string>("");
   const [cloudPass, setCloudPass] = useState<string>("");
   const [session, setSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
     setSyncEnabledLocal(Boolean(state.sync?.enabled));
-    setSupabaseUrl(state.sync?.supabaseUrl ?? "");
-    setSupabaseAnonKey(state.sync?.supabaseAnonKey ?? "");
-  }, [state.sync?.enabled, state.sync?.supabaseUrl, state.sync?.supabaseAnonKey]);
+  }, [state.sync?.enabled]);
 
+  // Configuração do servidor (centralizada). Para escalar para outros estudantes,
+  // o backend deve ser único e controlado pelo administrador da app.
   const cloudConfig: CloudConfig | null = useMemo(() => {
-    const u = supabaseUrl.trim();
-    const k = supabaseAnonKey.trim();
+    const u = (import.meta.env.VITE_SUPABASE_URL || "").trim();
+    const k = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
     if (!u || !k) return null;
     return { supabaseUrl: u, supabaseAnonKey: k };
-  }, [supabaseUrl, supabaseAnonKey]);
+  }, []);
 
   // Carregar sessão guardada (se existir)
   useEffect(() => {
@@ -356,7 +354,7 @@ export default function SettingsPage() {
   };
 
   const saveCloudSettings = () => {
-    setSync({ enabled: syncEnabledLocal, supabaseUrl: supabaseUrl.trim() || undefined, supabaseAnonKey: supabaseAnonKey.trim() || undefined });
+    setSync({ enabled: syncEnabledLocal });
     toast({ title: "Definições guardadas", description: "Sincronização atualizada." });
   };
 
@@ -375,7 +373,7 @@ export default function SettingsPage() {
 
   const onSignUp = async () => {
     if (!cloudConfig) {
-      toast({ title: "Falta configuração", description: "Preenche URL e Anon key do Supabase.", variant: "destructive" });
+      toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
       return;
     }
     try {
@@ -390,7 +388,7 @@ export default function SettingsPage() {
 
   const onSignIn = async () => {
     if (!cloudConfig) {
-      toast({ title: "Falta configuração", description: "Preenche URL e Anon key do Supabase.", variant: "destructive" });
+      toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
       return;
     }
     try {
@@ -553,8 +551,14 @@ export default function SettingsPage() {
           <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
             Para que os teus dados sobrevivam a limpezas do browser e fiquem iguais em qualquer aparelho, precisas de uma
             conta e um backend. Nesta versão, a sincronização é feita via <span className="font-medium">Supabase</span>
-            (tens de criar o teu projeto e colar aqui o URL + Anon key).
+            (servidor central da aplicação).
           </div>
+
+          {!cloudConfig && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
+              Sincronização indisponível: falta configuração do servidor (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).
+            </div>
+          )}
 
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-0.5">
@@ -562,17 +566,6 @@ export default function SettingsPage() {
               <div className="text-xs text-muted-foreground">Se estiver desligado, tudo continua a funcionar só em modo local.</div>
             </div>
             <Switch checked={syncEnabledLocal} onCheckedChange={setSyncEnabledLocal} />
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="grid gap-1">
-              <Label>Supabase URL</Label>
-              <Input placeholder="https://xxxx.supabase.co" value={supabaseUrl} onChange={(e) => setSupabaseUrl(e.target.value)} />
-            </div>
-            <div className="grid gap-1">
-              <Label>Supabase Anon key</Label>
-              <Input placeholder="eyJhbGciOi..." value={supabaseAnonKey} onChange={(e) => setSupabaseAnonKey(e.target.value)} />
-            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">

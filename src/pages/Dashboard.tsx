@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Download, RefreshCw } from "lucide-react";
 import { useUpdate } from "@/lib/UpdateProvider";
 import StatusBadge from "@/components/StatusBadge";
+import DeadlineAlerts, { useDeadlineToasts } from "@/components/DeadlineAlerts";
 import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, exam, getAssessments, globalStats, resit, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { formatPtNumber } from "@/lib/utils";
@@ -51,6 +52,7 @@ export default function Dashboard() {
   const { updateAvailable, applyUpdate } = useUpdate();
   const stats = globalStats(state);
   const today = startOfDay(new Date());
+  useDeadlineToasts(state);
 
   const downloadBackup = () => {
     const json = exportData();
@@ -116,6 +118,8 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <DeadlineAlerts state={state} />
 
       {updateAvailable && (
         <Card className="border-warning/40 bg-warning/10">

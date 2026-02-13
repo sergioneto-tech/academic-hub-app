@@ -188,6 +188,9 @@ export default function Layout() {
               <div className="text-[10px] text-muted-foreground">v{APP_VERSION}</div>
             </div>
             <div className="text-xs text-muted-foreground">Planeamento e notas (UAb)</div>
+            <div className="text-[10px] text-muted-foreground">
+              Não oficial — aplicação independente, não afiliada nem endossada pela Universidade Aberta (UAb).
+            </div>
             <div className="text-[10px] text-muted-foreground truncate">por Sérgio Neto · Estudante de LEI (UAb, 23/24)</div>
           </div>
 

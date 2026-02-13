@@ -47,10 +47,27 @@ export type AppMeta = {
   schemaVersion: number;
 };
 
+export type SyncSettings = {
+  /** Ativar/desativar sincronização em cloud (opcional). */
+  enabled: boolean;
+
+  /** URL do projeto Supabase (ex.: https://xxxx.supabase.co). */
+  supabaseUrl?: string;
+
+  /** Anon key do projeto Supabase (Settings > API). */
+  supabaseAnonKey?: string;
+
+  /** Data/hora do último upload/download realizado (informativo). */
+  lastSyncAt?: string; // ISO
+};
+
 export type AppState = {
   meta?: AppMeta;
   degree: Degree | null;
   courses: Course[];
   assessments: Assessment[];
   rules: Rules[];
+
+  /** Definições opcionais (compatível com versões antigas). */
+  sync?: SyncSettings;
 };

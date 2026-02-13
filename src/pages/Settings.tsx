@@ -12,6 +12,18 @@ import { useAppStore } from "@/lib/AppStore";
 import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree } from "@/lib/uabPlan";
 import type { Course } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
+import { toast } from "@/components/ui/use-toast";
+import {
+  type CloudConfig,
+  type AuthSession,
+  fetchRemoteState,
+  getStoredSession,
+  refreshSession,
+  signIn,
+  signUp,
+  storeSession,
+  upsertRemoteState,
+} from "@/lib/cloudSync";
 
 // Input numérico com estado local - só grava no blur
 function NumericInput({
@@ -232,7 +244,7 @@ function YearBlock({
 }
 
 export default function SettingsPage() {
-  const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, resetData } =
+  const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, resetData, setSync } =
     useAppStore();
 
   const currentDegreeId = state.degree?.id ?? "";
@@ -246,6 +258,36 @@ export default function SettingsPage() {
 
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
+
+  // --- Sincronização (opcional) ---
+  const [syncEnabledLocal, setSyncEnabledLocal] = useState<boolean>(() => Boolean(state.sync?.enabled));
+  const [supabaseUrl, setSupabaseUrl] = useState<string>(() => state.sync?.supabaseUrl ?? "");
+  const [supabaseAnonKey, setSupabaseAnonKey] = useState<string>(() => state.sync?.supabaseAnonKey ?? "");
+  const [cloudEmail, setCloudEmail] = useState<string>("");
+  const [cloudPass, setCloudPass] = useState<string>("");
+  const [session, setSession] = useState<AuthSession | null>(null);
+
+  useEffect(() => {
+    setSyncEnabledLocal(Boolean(state.sync?.enabled));
+    setSupabaseUrl(state.sync?.supabaseUrl ?? "");
+    setSupabaseAnonKey(state.sync?.supabaseAnonKey ?? "");
+  }, [state.sync?.enabled, state.sync?.supabaseUrl, state.sync?.supabaseAnonKey]);
+
+  const cloudConfig: CloudConfig | null = useMemo(() => {
+    const u = supabaseUrl.trim();
+    const k = supabaseAnonKey.trim();
+    if (!u || !k) return null;
+    return { supabaseUrl: u, supabaseAnonKey: k };
+  }, [supabaseUrl, supabaseAnonKey]);
+
+  // Carregar sessão guardada (se existir)
+  useEffect(() => {
+    if (!cloudConfig) {
+      setSession(null);
+      return;
+    }
+    setSession(getStoredSession(cloudConfig));
+  }, [cloudConfig]);
 
   const selectedOpt = useMemo(() => getDegreeOptionById(selectedDegreeId), [selectedDegreeId]);
 
@@ -310,6 +352,97 @@ export default function SettingsPage() {
       if (!res.ok) setImportError("error" in res ? res.error : "Erro desconhecido");
     } catch {
       setImportError("Não foi possível ler o ficheiro.");
+    }
+  };
+
+  const saveCloudSettings = () => {
+    setSync({ enabled: syncEnabledLocal, supabaseUrl: supabaseUrl.trim() || undefined, supabaseAnonKey: supabaseAnonKey.trim() || undefined });
+    toast({ title: "Definições guardadas", description: "Sincronização atualizada." });
+  };
+
+  const ensureFreshSession = async () => {
+    if (!cloudConfig || !session) throw new Error("Sem sessão.");
+    // Refresh simples (útil quando o token expira).
+    try {
+      const next = await refreshSession(cloudConfig, session);
+      storeSession(cloudConfig, next);
+      setSession(next);
+      return next;
+    } catch {
+      return session;
+    }
+  };
+
+  const onSignUp = async () => {
+    if (!cloudConfig) {
+      toast({ title: "Falta configuração", description: "Preenche URL e Anon key do Supabase.", variant: "destructive" });
+      return;
+    }
+    try {
+      const s = await signUp(cloudConfig, cloudEmail.trim(), cloudPass);
+      storeSession(cloudConfig, s);
+      setSession(s);
+      toast({ title: "Conta criada", description: "Conta criada e sessão iniciada." });
+    } catch (e) {
+      toast({ title: "Falha ao criar conta", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
+    }
+  };
+
+  const onSignIn = async () => {
+    if (!cloudConfig) {
+      toast({ title: "Falta configuração", description: "Preenche URL e Anon key do Supabase.", variant: "destructive" });
+      return;
+    }
+    try {
+      const s = await signIn(cloudConfig, cloudEmail.trim(), cloudPass);
+      storeSession(cloudConfig, s);
+      setSession(s);
+      toast({ title: "Sessão iniciada", description: "Login efetuado." });
+    } catch (e) {
+      toast({ title: "Falha ao entrar", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
+    }
+  };
+
+  const onSignOut = () => {
+    if (!cloudConfig) return;
+    storeSession(cloudConfig, null);
+    setSession(null);
+    toast({ title: "Sessão terminada" });
+  };
+
+  const onUploadToCloud = async () => {
+    if (!cloudConfig || !session) {
+      toast({ title: "Sem sessão", description: "Faz login primeiro.", variant: "destructive" });
+      return;
+    }
+    try {
+      const fresh = await ensureFreshSession();
+      await upsertRemoteState(cloudConfig, fresh, state);
+      setSync({ lastSyncAt: new Date().toISOString() });
+      toast({ title: "Upload concluído", description: "Dados locais guardados na cloud." });
+    } catch (e) {
+      toast({ title: "Falha no upload", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
+    }
+  };
+
+  const onDownloadFromCloud = async () => {
+    if (!cloudConfig || !session) {
+      toast({ title: "Sem sessão", description: "Faz login primeiro.", variant: "destructive" });
+      return;
+    }
+    try {
+      const fresh = await ensureFreshSession();
+      const remote = await fetchRemoteState(cloudConfig, fresh);
+      if (!remote?.state) {
+        toast({ title: "Sem dados na cloud", description: "Ainda não há dados guardados para esta conta." });
+        return;
+      }
+      const res = importData(JSON.stringify(remote.state));
+      if (!res.ok) throw new Error("Erro ao aplicar dados da cloud.");
+      setSync({ lastSyncAt: new Date().toISOString() });
+      toast({ title: "Download concluído", description: "Dados da cloud aplicados neste dispositivo." });
+    } catch (e) {
+      toast({ title: "Falha no download", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
     }
   };
 
@@ -408,6 +541,82 @@ export default function SettingsPage() {
 
           <div className="text-xs text-muted-foreground">
             Dica: a aplicação guarda dados localmente no teu dispositivo. Exportar serve como salvaguarda (ex.: antes de atualizar ou trocar de computador/telemóvel).
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Conta e sincronização (opcional)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
+            Para que os teus dados sobrevivam a limpezas do browser e fiquem iguais em qualquer aparelho, precisas de uma
+            conta e um backend. Nesta versão, a sincronização é feita via <span className="font-medium">Supabase</span>
+            (tens de criar o teu projeto e colar aqui o URL + Anon key).
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="text-sm font-medium">Ativar sincronização</div>
+              <div className="text-xs text-muted-foreground">Se estiver desligado, tudo continua a funcionar só em modo local.</div>
+            </div>
+            <Switch checked={syncEnabledLocal} onCheckedChange={setSyncEnabledLocal} />
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-1">
+              <Label>Supabase URL</Label>
+              <Input placeholder="https://xxxx.supabase.co" value={supabaseUrl} onChange={(e) => setSupabaseUrl(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label>Supabase Anon key</Label>
+              <Input placeholder="eyJhbGciOi..." value={supabaseAnonKey} onChange={(e) => setSupabaseAnonKey(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={saveCloudSettings}>Guardar definições</Button>
+            {state.sync?.lastSyncAt && (
+              <div className="flex items-center text-xs text-muted-foreground">
+                Última sync: {new Date(state.sync.lastSyncAt).toLocaleString("pt-PT")}
+              </div>
+            )}
+          </div>
+
+          <Separator />
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-1">
+              <Label>Email</Label>
+              <Input value={cloudEmail} onChange={(e) => setCloudEmail(e.target.value)} placeholder="teu@email.com" />
+            </div>
+            <div className="grid gap-1">
+              <Label>Password</Label>
+              <Input value={cloudPass} onChange={(e) => setCloudPass(e.target.value)} type="password" placeholder="••••••••" />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={onSignUp} disabled={!cloudConfig}>Criar conta</Button>
+            <Button onClick={onSignIn} variant="outline" disabled={!cloudConfig}>Entrar</Button>
+            <Button onClick={onSignOut} variant="ghost" disabled={!cloudConfig || !session}>Sair</Button>
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            Estado da sessão: {session ? (<span className="text-emerald-600 dark:text-emerald-400 font-medium">ligada</span>) : (<span>desligada</span>)}
+          </div>
+
+          <Separator />
+
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={onUploadToCloud} disabled={!cloudConfig || !session}>Guardar na cloud (upload)</Button>
+            <Button onClick={onDownloadFromCloud} variant="outline" disabled={!cloudConfig || !session}>Carregar da cloud (download)</Button>
+          </div>
+
+          <div className="text-xs text-muted-foreground">
+            Importante: esta funcionalidade precisa da tabela/segurança no Supabase. No ZIP vem um ficheiro
+            <span className="font-medium"> supabase/schema.sql</span> com o SQL pronto para criar a tabela e as RLS.
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { AppState, AssessmentType, Course, Degree } from "@/lib/types";
+import type { AppState, AssessmentType, Course, Degree, SyncSettings } from "@/lib/types";
 import { defaultState, loadState, saveState, storage as storageApi } from "@/lib/storage";
 import { clamp } from "@/lib/utils";
 import type { PlanCourseSeed } from "@/lib/uabPlan";
@@ -27,6 +27,9 @@ type Store = {
 
   // Conclusão
   markCourseCompleted: (courseId: string) => void;
+
+  // Sincronização (opcional)
+  setSync: (patch: Partial<SyncSettings>) => void;
 
   // Backup/restore
   exportData: () => string;
@@ -207,6 +210,12 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             c.id === courseId ? { ...c, isCompleted: true, isActive: false, completedAt: now } : c,
           ),
         };
+        commit(next);
+      },
+
+      setSync(patch) {
+        const prev = state.sync ?? { enabled: false };
+        const next: AppState = { ...state, sync: { ...prev, ...patch } };
         commit(next);
       },
 

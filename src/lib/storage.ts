@@ -1,4 +1,4 @@
-import type { AppState, Assessment, Course, Degree, Rules } from "./types";
+import type { AppState, Assessment, Course, Degree, Rules, SyncSettings } from "./types";
 import { APP_VERSION, SCHEMA_VERSION } from "./version";
 
 const KEY = "academic_hub_state";
@@ -15,6 +15,7 @@ export function defaultState(): AppState {
     courses: [],
     assessments: [],
     rules: [],
+    sync: { enabled: false },
   };
 }
 
@@ -24,6 +25,7 @@ function migrate(state: any): AppState {
     courses: Array.isArray(state?.courses) ? state.courses : [],
     assessments: Array.isArray(state?.assessments) ? state.assessments : [],
     rules: Array.isArray(state?.rules) ? state.rules : [],
+    sync: undefined,
   };
 
   // garantir campos mínimos
@@ -63,6 +65,16 @@ function migrate(state: any): AppState {
     appVersion: String(state?.meta?.appVersion ?? APP_VERSION),
     schemaVersion: Number(state?.meta?.schemaVersion ?? SCHEMA_VERSION),
   };
+
+  // Sync (opcional, pode não existir em estados antigos)
+  const s = state?.sync;
+  const sync: SyncSettings = {
+    enabled: Boolean(s?.enabled ?? false),
+    supabaseUrl: s?.supabaseUrl ? String(s.supabaseUrl) : undefined,
+    supabaseAnonKey: s?.supabaseAnonKey ? String(s.supabaseAnonKey) : undefined,
+    lastSyncAt: s?.lastSyncAt ? String(s.lastSyncAt) : undefined,
+  };
+  base.sync = sync;
 
   // grau
   if (base.degree) {

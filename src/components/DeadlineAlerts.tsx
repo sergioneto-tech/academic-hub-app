@@ -38,13 +38,22 @@ function buildAlerts(state: AppState): AlertItem[] {
   for (const course of activeCourses) {
     const label = `${course.code} — ${course.name}`;
 
-    // E-fólios: alertar quando falta 1 dia para o fim (véspera) ou é o último dia
+    // E-fólios: alertar início (véspera/dia) e fim (véspera/dia) do período de entrega
     const efolios = getAssessments(state, course.id, "efolio");
     for (const ef of efolios) {
-      if (!ef.endDate) continue;
-      const days = daysUntil(ef.endDate);
-      if (days !== null && days >= 0 && days <= 1) {
-        alerts.push({ id: ef.id, courseId: course.id, courseName: label, label: ef.name, daysLeft: days, type: "efolio" });
+      // Alerta para início do período de entrega
+      if (ef.startDate) {
+        const daysStart = daysUntil(ef.startDate);
+        if (daysStart !== null && daysStart >= 0 && daysStart <= 1) {
+          alerts.push({ id: `${ef.id}-start`, courseId: course.id, courseName: label, label: `${ef.name} (início)`, daysLeft: daysStart, type: "efolio" });
+        }
+      }
+      // Alerta para fim do período de entrega
+      if (ef.endDate) {
+        const daysEnd = daysUntil(ef.endDate);
+        if (daysEnd !== null && daysEnd >= 0 && daysEnd <= 1) {
+          alerts.push({ id: `${ef.id}-end`, courseId: course.id, courseName: label, label: `${ef.name} (fim)`, daysLeft: daysEnd, type: "efolio" });
+        }
       }
     }
 

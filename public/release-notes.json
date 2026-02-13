@@ -1,6 +1,16 @@
 {
-  "latest": "0.1.1",
+  "latest": "0.1.2",
   "versions": [
+    {
+      "version": "0.1.2",
+      "date": "2026-02-13",
+      "changes": [
+        "Nova opção de Conta + Sincronização (Supabase) para manter dados iguais em qualquer aparelho e sobreviver a limpezas do browser.",
+        "Migração sem chatices: podes criar conta e fazer upload dos dados que já tens (não precisas refazer tudo).",
+        "Aviso 'Não oficial': app independente, não afiliada nem endossada pela Universidade Aberta (UAb).",
+        "Inclui SQL pronto (supabase/schema.sql) para criar tabela e RLS de forma segura."
+      ]
+    },
     {
       "version": "0.1.1",
       "date": "2026-02-07",

@@ -137,22 +137,25 @@ function SemesterPanel({
                 <div className="grid gap-2 md:grid-cols-12 md:items-end">
                   <div className="md:col-span-2">
                     <Label className="text-[11px] leading-none text-muted-foreground">Código</Label>
-                    <Input className="h-8 px-2 py-1 text-sm" value={c.code} onChange={(e) => onUpdate(c.id, { code: e.target.value })} />
+                    <Input
+                      className="h-8 px-2 py-1 text-sm"
+                      value={c.code}
+                      onChange={(e) => onUpdate(c.id, { code: e.target.value })}
+                    />
                   </div>
 
                   <div className="md:col-span-6">
                     <Label className="text-[11px] leading-none text-muted-foreground">Nome</Label>
-                    <Input className="h-8 px-2 py-1 text-sm" value={c.name} onChange={(e) => onUpdate(c.id, { name: e.target.value })} />
+                    <Input
+                      className="h-8 px-2 py-1 text-sm"
+                      value={c.name}
+                      onChange={(e) => onUpdate(c.id, { name: e.target.value })}
+                    />
                   </div>
 
                   <div className="md:col-span-2">
                     <Label className="text-[11px] leading-none text-muted-foreground">Ano</Label>
-                    <NumericInput
-                      value={c.year ?? 1}
-                      min={1}
-                      max={6}
-                      onCommit={(v) => onUpdate(c.id, { year: v })}
-                    />
+                    <NumericInput value={c.year ?? 1} min={1} max={6} onCommit={(v) => onUpdate(c.id, { year: v })} />
                   </div>
 
                   <div className="md:col-span-2">
@@ -167,7 +170,11 @@ function SemesterPanel({
 
                   <div className="md:col-span-8 flex flex-wrap items-center gap-3 pt-0.5">
                     <div className="flex items-center gap-2">
-                      <Switch className="scale-90" checked={Boolean(c.isActive)} onCheckedChange={(v) => onUpdate(c.id, { isActive: v })} />
+                      <Switch
+                        className="scale-90"
+                        checked={Boolean(c.isActive)}
+                        onCheckedChange={(v) => onUpdate(c.id, { isActive: v })}
+                      />
                       <span className="text-xs font-medium">Ativa</span>
                     </div>
 
@@ -189,7 +196,9 @@ function SemesterPanel({
 
                     {completed && (
                       <span className="text-[11px] text-muted-foreground">
-                        {c.completedAt ? `Concluída em ${new Date(c.completedAt).toLocaleDateString("pt-PT")}` : "Concluída"}
+                        {c.completedAt
+                          ? `Concluída em ${new Date(c.completedAt).toLocaleDateString("pt-PT")}`
+                          : "Concluída"}
                       </span>
                     )}
                   </div>
@@ -244,8 +253,18 @@ function YearBlock({
 }
 
 export default function SettingsPage() {
-  const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, resetData, setSync } =
-    useAppStore();
+  const {
+    state,
+    setDegree,
+    mergePlanCourses,
+    addCourse,
+    updateCourse,
+    removeCourse,
+    exportData,
+    importData,
+    resetData,
+    setSync,
+  } = useAppStore();
 
   const currentDegreeId = state.degree?.id ?? "";
 
@@ -303,13 +322,16 @@ export default function SettingsPage() {
   const canAutoLoadPlan = useMemo(() => !!state.degree && planSeeds.length > 0, [state.degree, planSeeds.length]);
 
   const grouped = useMemo(() => {
-    return state.courses.reduce((acc, c) => {
-      const y = Number(c.year) || 0;
-      const s = c.semester === 2 ? 2 : 1;
-      if (!acc[y]) acc[y] = { 1: [], 2: [] };
-      acc[y][s].push(c);
-      return acc;
-    }, {} as Record<number, { 1: Course[]; 2: Course[] }>);
+    return state.courses.reduce(
+      (acc, c) => {
+        const y = Number(c.year) || 0;
+        const s = c.semester === 2 ? 2 : 1;
+        if (!acc[y]) acc[y] = { 1: [], 2: [] };
+        acc[y][s].push(c);
+        return acc;
+      },
+      {} as Record<number, { 1: Course[]; 2: Course[] }>,
+    );
   }, [state.courses]);
 
   const years = useMemo(() => {
@@ -373,7 +395,11 @@ export default function SettingsPage() {
 
   const onSignUp = async () => {
     if (!cloudConfig) {
-      toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
+      toast({
+        title: "Sincronização indisponível",
+        description: "Falta configuração do servidor (Supabase).",
+        variant: "destructive",
+      });
       return;
     }
     try {
@@ -382,13 +408,21 @@ export default function SettingsPage() {
       setSession(s);
       toast({ title: "Conta criada", description: "Conta criada e sessão iniciada." });
     } catch (e) {
-      toast({ title: "Falha ao criar conta", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
+      toast({
+        title: "Falha ao criar conta",
+        description: e instanceof Error ? e.message : "Erro",
+        variant: "destructive",
+      });
     }
   };
 
   const onSignIn = async () => {
     if (!cloudConfig) {
-      toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
+      toast({
+        title: "Sincronização indisponível",
+        description: "Falta configuração do servidor (Supabase).",
+        variant: "destructive",
+      });
       return;
     }
     try {
@@ -440,7 +474,11 @@ export default function SettingsPage() {
       setSync({ lastSyncAt: new Date().toISOString() });
       toast({ title: "Download concluído", description: "Dados da cloud aplicados neste dispositivo." });
     } catch (e) {
-      toast({ title: "Falha no download", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
+      toast({
+        title: "Falha no download",
+        description: e instanceof Error ? e.message : "Erro",
+        variant: "destructive",
+      });
     }
   };
 
@@ -494,7 +532,8 @@ export default function SettingsPage() {
             </div>
 
             <div className="text-xs text-muted-foreground">
-              Fonte: wiki.dcet.uab.pt. A lista inclui as licenciaturas do Guia dos Cursos (apenas algumas têm plano automático embebido nesta versão).
+              Fonte: wiki.dcet.uab.pt. A lista inclui as licenciaturas do Guia dos Cursos (apenas algumas têm plano
+              automático embebido nesta versão).
             </div>
           </div>
         </CardContent>
@@ -532,13 +571,12 @@ export default function SettingsPage() {
           </div>
 
           {importError && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
-              {importError}
-            </div>
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">{importError}</div>
           )}
 
           <div className="text-xs text-muted-foreground">
-            Dica: a aplicação guarda dados localmente no teu dispositivo. Exportar serve como salvaguarda (ex.: antes de atualizar ou trocar de computador/telemóvel).
+            Dica: a aplicação guarda dados localmente no teu dispositivo. Exportar serve como salvaguarda (ex.: antes de
+            atualizar ou trocar de computador/telemóvel).
           </div>
         </CardContent>
       </Card>
@@ -549,8 +587,9 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
-            Para que os teus dados sobrevivam a limpezas do browser e fiquem iguais em qualquer aparelho, precisas de uma
-            conta e um backend. Nesta versão, a sincronização é feita via <span className="font-medium">Supabase</span>
+            Para que os teus dados sobrevivam a limpezas do browser e fiquem iguais em qualquer aparelho, precisas de
+            uma conta e um backend. Nesta versão, a sincronização é feita via{" "}
+            <span className="font-medium">Supabase</span>
             (servidor central da aplicação).
           </div>
 
@@ -563,13 +602,17 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between gap-3">
             <div className="space-y-0.5">
               <div className="text-sm font-medium">Ativar sincronização</div>
-              <div className="text-xs text-muted-foreground">Se estiver desligado, tudo continua a funcionar só em modo local.</div>
+              <div className="text-xs text-muted-foreground">
+                Se estiver desligado, tudo continua a funcionar só em modo local.
+              </div>
             </div>
             <Switch checked={syncEnabledLocal} onCheckedChange={setSyncEnabledLocal} />
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={saveCloudSettings}>Guardar definições</Button>
+            <Button variant="secondary" onClick={saveCloudSettings}>
+              Guardar definições
+            </Button>
             {state.sync?.lastSyncAt && (
               <div className="flex items-center text-xs text-muted-foreground">
                 Última sync: {new Date(state.sync.lastSyncAt).toLocaleString("pt-PT")}
@@ -586,25 +629,45 @@ export default function SettingsPage() {
             </div>
             <div className="grid gap-1">
               <Label>Password</Label>
-              <Input value={cloudPass} onChange={(e) => setCloudPass(e.target.value)} type="password" placeholder="••••••••" />
+              <Input
+                value={cloudPass}
+                onChange={(e) => setCloudPass(e.target.value)}
+                type="password"
+                placeholder="••••••••"
+              />
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button onClick={onSignUp} disabled={!cloudConfig}>Criar conta</Button>
-            <Button onClick={onSignIn} variant="outline" disabled={!cloudConfig}>Entrar</Button>
-            <Button onClick={onSignOut} variant="ghost" disabled={!cloudConfig || !session}>Sair</Button>
+            <Button onClick={onSignUp} disabled={!cloudConfig}>
+              Criar conta
+            </Button>
+            <Button onClick={onSignIn} variant="outline" disabled={!cloudConfig}>
+              Entrar
+            </Button>
+            <Button onClick={onSignOut} variant="ghost" disabled={!cloudConfig || !session}>
+              Sair
+            </Button>
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Estado da sessão: {session ? (<span className="text-emerald-600 dark:text-emerald-400 font-medium">ligada</span>) : (<span>desligada</span>)}
+            Estado da sessão:{" "}
+            {session ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-medium">ligada</span>
+            ) : (
+              <span>desligada</span>
+            )}
           </div>
 
           <Separator />
 
           <div className="flex flex-wrap gap-2">
-            <Button onClick={onUploadToCloud} disabled={!cloudConfig || !session}>Guardar na cloud (upload)</Button>
-            <Button onClick={onDownloadFromCloud} variant="outline" disabled={!cloudConfig || !session}>Carregar da cloud (download)</Button>
+            <Button onClick={onUploadToCloud} disabled={!cloudConfig || !session}>
+              Guardar na cloud (upload)
+            </Button>
+            <Button onClick={onDownloadFromCloud} variant="outline" disabled={!cloudConfig || !session}>
+              Carregar da cloud (download)
+            </Button>
           </div>
 
           <div className="text-xs text-muted-foreground">

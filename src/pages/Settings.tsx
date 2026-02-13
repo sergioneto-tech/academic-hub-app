@@ -273,7 +273,7 @@ export default function SettingsPage() {
   // o backend deve ser único e controlado pelo administrador da app.
   const cloudConfig: CloudConfig | null = useMemo(() => {
     const u = (import.meta.env.VITE_SUPABASE_URL || "").trim();
-    const k = (import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+    const k = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
     if (!u || !k) return null;
     return { supabaseUrl: u, supabaseAnonKey: k };
   }, []);

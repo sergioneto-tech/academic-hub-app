@@ -1,6 +1,14 @@
 {
-  "latest": "0.1.2",
+  "latest": "0.1.3",
   "versions": [
+    {
+      "version": "0.1.3",
+      "date": "2026-02-13",
+      "changes": [
+        "Corrigida a sincronização cloud: ligação ao backend Lovable Cloud agora funciona sem configuração manual.",
+        "Criação de conta e login operacionais."
+      ]
+    },
     {
       "version": "0.1.2",
       "date": "2026-02-13",

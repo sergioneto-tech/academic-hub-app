@@ -90,7 +90,7 @@ export default function CourseDetail() {
     if (!id) return;
     ensureAssessment(id, "efolio", "e-fólio A");
     ensureAssessment(id, "efolio", "e-fólio B");
-    ensureAssessment(id, "exam", "p-fólio");
+    ensureAssessment(id, "exam", "g-fólio");
     ensureAssessment(id, "resit", "recurso");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -269,7 +269,7 @@ export default function CourseDetail() {
 
       <Card className="bg-white/70 backdrop-blur">
         <CardHeader>
-          <CardTitle>p‑Fólio (Exame)</CardTitle>
+          <CardTitle>g‑Fólio (Exame)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {!exam ? (

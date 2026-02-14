@@ -1,6 +1,15 @@
 {
-  "latest": "0.1.3",
+  "latest": "0.1.4",
   "versions": [
+    {
+      "version": "0.1.4",
+      "date": "2026-02-14",
+      "changes": [
+        "Base de dados completa com todas as 12 licenciaturas da UAb e respetivas cadeiras (fonte: guiadoscursos.uab.pt).",
+        "Todas as licenciaturas suportam agora carregamento automático do plano de estudos.",
+        "Textos da secção de sincronização simplificados."
+      ]
+    },
     {
       "version": "0.1.3",
       "date": "2026-02-13",

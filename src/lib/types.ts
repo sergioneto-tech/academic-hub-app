@@ -73,6 +73,10 @@ export type StudyBlock = {
   startDate: string;
   /** Data fim (YYYY-MM-DD) */
   endDate: string;
+  /** Hora início (HH:MM), opcional */
+  startTime?: string;
+  /** Hora fim (HH:MM), opcional */
+  endTime?: string;
   status: StudyBlockStatus;
   notes?: string;
 };

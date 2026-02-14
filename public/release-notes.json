@@ -1,6 +1,16 @@
 {
-  "latest": "0.1.6",
+  "latest": "0.1.7",
   "versions": [
+    {
+      "version": "0.1.7",
+      "date": "2026-02-14",
+      "changes": [
+        "Novo Plano de Estudos: visão geral do curso por ano/semestre com barra de progresso.",
+        "Novo Plano de Estudo Pessoal: organiza semanas de estudo com kanban (Por fazer, Em progresso, Feito).",
+        "Exportação .ics do plano pessoal para Google Calendar, Outlook, Apple Calendar.",
+        "Nova entrada 'Plano' na barra lateral de navegação."
+      ]
+    },
     {
       "version": "0.1.6",
       "date": "2026-02-14",

@@ -384,10 +384,19 @@ export default function SettingsPage() {
       return;
     }
     try {
-      const s = await signUp(cloudConfig, cloudEmail.trim(), cloudPass);
-      storeSession(cloudConfig, s);
-      setSession(s);
-      toast({ title: "Conta criada", description: "Conta criada e sessão iniciada." });
+      const result = await signUp(cloudConfig, cloudEmail.trim(), cloudPass);
+      if (result.confirmationRequired) {
+        toast({
+          title: "Verifica o teu email",
+          description: "Foi enviado um link de confirmação para o teu email. Clica nele e depois volta aqui para fazer login.",
+        });
+        return;
+      }
+      if (result.session) {
+        storeSession(cloudConfig, result.session);
+        setSession(result.session);
+        toast({ title: "Conta criada", description: "Conta criada e sessão iniciada." });
+      }
     } catch (e) {
       toast({ title: "Falha ao criar conta", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
     }

@@ -76,13 +76,25 @@ async function postJson<T>(url: string, init: RequestInit): Promise<T> {
   return json as T;
 }
 
-export async function signUp(config: CloudConfig, email: string, password: string): Promise<AuthSession> {
+export type SignUpResult = {
+  session: AuthSession | null;
+  confirmationRequired: boolean;
+};
+
+export async function signUp(config: CloudConfig, email: string, password: string): Promise<SignUpResult> {
   const url = `${normUrl(config.supabaseUrl)}/auth/v1/signup`;
-  return postJson<AuthSession>(url, {
+  const data = await postJson<any>(url, {
     method: "POST",
     headers: headers(config),
     body: JSON.stringify({ email, password }),
   });
+
+  // When email confirmation is required, Supabase returns the user object
+  // but without a valid access_token / refresh_token
+  if (!data?.access_token) {
+    return { session: null, confirmationRequired: true };
+  }
+  return { session: data as AuthSession, confirmationRequired: false };
 }
 
 export async function signIn(config: CloudConfig, email: string, password: string): Promise<AuthSession> {

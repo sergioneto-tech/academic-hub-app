@@ -325,8 +325,15 @@ export default function SettingsPage() {
   };
 
   const importPlan = () => {
-    if (!state.degree) return;
-    mergePlanCourses(planSeeds);
+    // If degree not saved yet, save it first
+    if (selectedOpt && (!state.degree || state.degree.id !== selectedOpt.id)) {
+      setDegree({ id: selectedOpt.id, name: selectedOpt.name });
+    }
+    const deg = selectedOpt ? { id: selectedOpt.id, name: selectedOpt.name } : state.degree;
+    if (!deg) return;
+    const seeds = getPlanCoursesForDegree(deg);
+    if (seeds.length === 0) return;
+    mergePlanCourses(seeds);
   };
 
   const clearDegree = () => {
@@ -485,7 +492,7 @@ export default function SettingsPage() {
               <Button onClick={applyDegree} variant="default" disabled={!selectedOpt}>
                 Guardar
               </Button>
-              <Button onClick={importPlan} variant="secondary" disabled={!state.degree || !canAutoLoadPlan}>
+              <Button onClick={importPlan} variant="secondary" disabled={!selectedOpt}>
                 Carregar cadeiras (plano automático)
               </Button>
               <Button onClick={clearDegree} variant="outline" disabled={!state.degree}>

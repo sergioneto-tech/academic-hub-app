@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
 import type { AppState, AssessmentType, Course, Degree, StudyBlock, SyncSettings } from "@/lib/types";
-import { defaultState, loadState, saveState, storage as storageApi } from "@/lib/storage";
+import { defaultState, loadState, migrate, saveState, storage as storageApi } from "@/lib/storage";
 import { clamp } from "@/lib/utils";
 import type { PlanCourseSeed } from "@/lib/uabPlan";
 
@@ -39,6 +39,7 @@ type Store = {
   // Backup/restore
   exportData: () => string;
   importData: (jsonText: string) => { ok: true } | { ok: false; error: string };
+  replaceState: (raw: unknown) => void;
   resetData: () => void;
 };
 
@@ -305,14 +306,24 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
 
       importData(jsonText) {
         try {
-          // Usar o migrador existente para manter compatibilidade.
-          storageApi.import(jsonText);
+          const ok = storageApi.import(jsonText);
+          if (!ok) return { ok: false, error: "Dados inválidos ou corrompidos." } as const;
           const next = loadState();
           commit(next);
           return { ok: true } as const;
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Falha ao importar.";
           return { ok: false, error: msg } as const;
+        }
+      },
+
+      replaceState(raw: unknown) {
+        try {
+          const migrated = migrate(raw);
+          commit(migrated);
+        } catch (e) {
+          console.error("[AppStore] replaceState failed:", e);
+          throw e;
         }
       },
 

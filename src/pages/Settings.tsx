@@ -244,7 +244,7 @@ function YearBlock({
 }
 
 export default function SettingsPage() {
-  const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, resetData, setSync } =
+  const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, replaceState, resetData, setSync } =
     useAppStore();
 
   const currentDegreeId = state.degree?.id ?? "";
@@ -461,9 +461,17 @@ export default function SettingsPage() {
         toast({ title: "Sem dados na cloud", description: "Ainda não há dados guardados para esta conta." });
         return;
       }
-      const res = importData(JSON.stringify(remote.state));
-      if (!res.ok) throw new Error("Erro ao aplicar dados da cloud.");
-      setSync({ lastSyncAt: new Date().toISOString() });
+      // Merge sync timestamp into the cloud data before replacing state
+      // (avoids race condition between replaceState and setSync)
+      const rawWithSync = {
+        ...(remote.state as Record<string, unknown>),
+        sync: {
+          ...((remote.state as Record<string, unknown>)?.sync as Record<string, unknown> ?? {}),
+          enabled: true,
+          lastSyncAt: new Date().toISOString(),
+        },
+      };
+      replaceState(rawWithSync);
       toast({ title: "Download concluído", description: "Dados da cloud aplicados neste dispositivo." });
     } catch (e) {
       toast({ title: "Falha no download", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });

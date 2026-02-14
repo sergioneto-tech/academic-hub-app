@@ -20,7 +20,7 @@ export function defaultState(): AppState {
   };
 }
 
-function migrate(state: any): AppState {
+export function migrate(state: any): AppState {
   const base: AppState = {
     degree: state?.degree ?? null,
     courses: Array.isArray(state?.courses) ? state.courses : [],
@@ -146,7 +146,8 @@ export const storage = {
       const migrated = migrate(data);
       saveState(migrated);
       return true;
-    } catch {
+    } catch (e) {
+      console.error("[storage] import failed:", e);
       return false;
     }
   },

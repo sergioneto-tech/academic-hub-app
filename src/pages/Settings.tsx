@@ -413,7 +413,17 @@ export default function SettingsPage() {
       setSession(s);
       toast({ title: "Sessão iniciada", description: "Login efetuado." });
     } catch (e) {
-      toast({ title: "Falha ao entrar", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
+      const msg = e instanceof Error ? e.message : "Erro";
+      const isUnconfirmed = msg.toLowerCase().includes("email not confirmed") || msg.toLowerCase().includes("email_not_confirmed");
+      if (isUnconfirmed) {
+        toast({
+          title: "Email não confirmado",
+          description: "Precisas de clicar no link de confirmação enviado para o teu email antes de poderes entrar.",
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Falha ao entrar", description: msg, variant: "destructive" });
+      }
     }
   };
 

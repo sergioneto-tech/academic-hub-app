@@ -1,4 +1,4 @@
-import type { AppState, Assessment, Course, Degree, Rules, SyncSettings } from "./types";
+import type { AppState, Assessment, Course, Degree, Rules, StudyBlock, SyncSettings } from "./types";
 import { APP_VERSION, SCHEMA_VERSION } from "./version";
 
 const KEY = "academic_hub_state";
@@ -15,6 +15,7 @@ export function defaultState(): AppState {
     courses: [],
     assessments: [],
     rules: [],
+    studyBlocks: [],
     sync: { enabled: false },
   };
 }
@@ -25,6 +26,7 @@ function migrate(state: any): AppState {
     courses: Array.isArray(state?.courses) ? state.courses : [],
     assessments: Array.isArray(state?.assessments) ? state.assessments : [],
     rules: Array.isArray(state?.rules) ? state.rules : [],
+    studyBlocks: Array.isArray(state?.studyBlocks) ? state.studyBlocks : [],
     sync: undefined,
   };
 
@@ -58,6 +60,18 @@ function migrate(state: any): AppState {
     courseId: String(r.courseId ?? ""),
     minAptoExame: Number(r.minAptoExame ?? 3.5),
     minExame: Number(r.minExame ?? 5.5),
+  }));
+
+  // Study blocks (pode não existir em estados antigos)
+  base.studyBlocks = (base.studyBlocks ?? []).map((b: any): StudyBlock => ({
+    id: String(b.id ?? uuid()),
+    courseId: String(b.courseId ?? ""),
+    title: String(b.title ?? ""),
+    activity: ["reading", "exercises", "revision", "efolio", "other"].includes(b.activity) ? b.activity : "other",
+    startDate: String(b.startDate ?? ""),
+    endDate: String(b.endDate ?? ""),
+    status: ["todo", "in_progress", "done"].includes(b.status) ? b.status : "todo",
+    notes: b.notes ? String(b.notes) : undefined,
   }));
 
   // meta (versões)

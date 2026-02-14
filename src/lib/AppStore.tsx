@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { AppState, AssessmentType, Course, Degree, SyncSettings } from "@/lib/types";
+import type { AppState, AssessmentType, Course, Degree, StudyBlock, SyncSettings } from "@/lib/types";
 import { defaultState, loadState, saveState, storage as storageApi } from "@/lib/storage";
 import { clamp } from "@/lib/utils";
 import type { PlanCourseSeed } from "@/lib/uabPlan";
@@ -27,6 +27,11 @@ type Store = {
 
   // Conclusão
   markCourseCompleted: (courseId: string) => void;
+
+  // Blocos de estudo
+  addStudyBlock: (block: Omit<StudyBlock, "id">) => string;
+  updateStudyBlock: (blockId: string, patch: Partial<StudyBlock>) => void;
+  removeStudyBlock: (blockId: string) => void;
 
   // Sincronização (opcional)
   setSync: (patch: Partial<SyncSettings>) => void;
@@ -256,6 +261,33 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           courses: s.courses.map((c) =>
             c.id === courseId ? { ...c, isCompleted: true, isActive: false, completedAt: now } : c,
           ),
+        };
+        commit(next);
+      },
+
+      addStudyBlock(block) {
+        const s = getState();
+        const id = uuid();
+        const newBlock: StudyBlock = { ...block, id };
+        const next: AppState = { ...s, studyBlocks: [...(s.studyBlocks ?? []), newBlock] };
+        commit(next);
+        return id;
+      },
+
+      updateStudyBlock(blockId, patch) {
+        const s = getState();
+        const next: AppState = {
+          ...s,
+          studyBlocks: (s.studyBlocks ?? []).map((b) => (b.id === blockId ? { ...b, ...patch } : b)),
+        };
+        commit(next);
+      },
+
+      removeStudyBlock(blockId) {
+        const s = getState();
+        const next: AppState = {
+          ...s,
+          studyBlocks: (s.studyBlocks ?? []).filter((b) => b.id !== blockId),
         };
         commit(next);
       },

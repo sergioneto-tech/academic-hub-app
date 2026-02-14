@@ -61,29 +61,38 @@ function normCode(code: string): string {
 export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => loadState());
 
+  const commitFn = (next: AppState) => {
+    setState(next);
+    saveState(next);
+  };
+
+  // Use a ref to always have access to current state inside callbacks
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
+
   const api: Store = useMemo(() => {
-    const commit = (next: AppState) => {
-      setState(next);
-      saveState(next);
-    };
+    const commit = commitFn;
+    const getState = () => stateRef.current;
 
     return {
       state,
 
       setDegree(degree) {
-        const next: AppState = { ...state, degree };
+        const next: AppState = { ...getState(), degree };
         commit(next);
       },
 
       setDegreeName(name) {
+        const s = getState();
         const next: AppState = {
-          ...state,
-          degree: state.degree ? { ...state.degree, name } : { id: uuid(), name },
+          ...s,
+          degree: s.degree ? { ...s.degree, name } : { id: uuid(), name },
         };
         commit(next);
       },
 
       addCourse(seed) {
+        const s = getState();
         const id = uuid();
         const nextCourse: Course = {
           id,
@@ -95,25 +104,42 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           isCompleted: false,
         };
 
-        const next: AppState = { ...state, courses: [...state.courses, nextCourse] };
+        const next: AppState = { ...s, courses: [...s.courses, nextCourse] };
         commit(next);
         return id;
       },
 
       updateCourse(courseId, patch) {
+        const s = getState();
         const next: AppState = {
-          ...state,
-          courses: state.courses.map((c) => (c.id === courseId ? { ...c, ...patch } : c)),
+          ...s,
+          courses: s.courses.map((c) => (c.id === courseId ? { ...c, ...patch } : c)),
         };
+
+        // Auto-create assessments when course is activated
+        if (patch.isActive === true) {
+          const hasAssessments = next.assessments.some((a) => a.courseId === courseId);
+          if (!hasAssessments) {
+            const newAssessments = [
+              { id: uuid(), courseId, type: "efolio" as const, name: "e-fólio A", maxPoints: 4, grade: null },
+              { id: uuid(), courseId, type: "efolio" as const, name: "e-fólio B", maxPoints: 4, grade: null },
+              { id: uuid(), courseId, type: "exam" as const, name: "g-fólio", maxPoints: 12, grade: null },
+              { id: uuid(), courseId, type: "resit" as const, name: "recurso", maxPoints: 20, grade: null },
+            ];
+            next.assessments = [...next.assessments, ...newAssessments];
+          }
+        }
+
         commit(next);
       },
 
       removeCourse(courseId) {
+        const s = getState();
         const next: AppState = {
-          ...state,
-          courses: state.courses.filter((c) => c.id !== courseId),
-          assessments: state.assessments.filter((a) => a.courseId !== courseId),
-          rules: state.rules.filter((r) => r.courseId !== courseId),
+          ...s,
+          courses: s.courses.filter((c) => c.id !== courseId),
+          assessments: s.assessments.filter((a) => a.courseId !== courseId),
+          rules: s.rules.filter((r) => r.courseId !== courseId),
         };
         commit(next);
       },
@@ -121,34 +147,36 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       mergePlanCourses(seeds) {
         if (!seeds || seeds.length === 0) return;
 
-        const byCode = new Map(state.courses.map((c) => [normCode(c.code), c]));
+        const s = getState();
+        const byCode = new Map(s.courses.map((c) => [normCode(c.code), c]));
         const toAdd: Course[] = [];
 
-        for (const s of seeds) {
-          const code = normCode(s.code);
+        for (const seed of seeds) {
+          const code = normCode(seed.code);
           if (!code) continue;
           if (byCode.has(code)) continue;
 
           toAdd.push({
             id: uuid(),
             code,
-            name: (s.name ?? "").trim(),
-            year: Number(s.year) || 1,
-            semester: Number(s.semester) || 1,
+            name: (seed.name ?? "").trim(),
+            year: Number(seed.year) || 1,
+            semester: Number(seed.semester) || 1,
             isActive: false,
             isCompleted: false,
           });
         }
 
         if (toAdd.length === 0) return;
-        const next: AppState = { ...state, courses: [...state.courses, ...toAdd] };
+        const next: AppState = { ...s, courses: [...s.courses, ...toAdd] };
         commit(next);
       },
 
       setAssessmentGrade(assessmentId, grade) {
+        const s = getState();
         const next: AppState = {
-          ...state,
-          assessments: state.assessments.map((a) => {
+          ...s,
+          assessments: s.assessments.map((a) => {
             if (a.id !== assessmentId) return a;
             const max = Number(a.maxPoints) || 0;
             const v = grade === null ? null : clamp(grade, 0, max);
@@ -159,10 +187,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       setAssessmentMaxPoints(assessmentId, maxPoints) {
+        const s = getState();
         const mp = Math.max(0, Number(maxPoints) || 0);
         const next: AppState = {
-          ...state,
-          assessments: state.assessments.map((a) => {
+          ...s,
+          assessments: s.assessments.map((a) => {
             if (a.id !== assessmentId) return a;
             const g = a.grade === null ? null : clamp(a.grade, 0, mp);
             return { ...a, maxPoints: mp, grade: g };
@@ -172,20 +201,22 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       setAssessmentDate(assessmentId, fields) {
+        const s = getState();
         const next: AppState = {
-          ...state,
-          assessments: state.assessments.map((a) => (a.id === assessmentId ? { ...a, ...fields } : a)),
+          ...s,
+          assessments: s.assessments.map((a) => (a.id === assessmentId ? { ...a, ...fields } : a)),
         };
         commit(next);
       },
 
       ensureAssessment(courseId, type, name) {
-        const existing = state.assessments.find((a) => a.courseId === courseId && a.type === type && a.name === name);
+        const s = getState();
+        const existing = s.assessments.find((a) => a.courseId === courseId && a.type === type && a.name === name);
         if (existing) return existing.id;
 
         const id = uuid();
         const next: AppState = {
-          ...state,
+          ...s,
           assessments: [
             ...state.assessments,
             {
@@ -203,10 +234,11 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       markCourseCompleted(courseId) {
+        const s = getState();
         const now = new Date().toISOString();
         const next: AppState = {
-          ...state,
-          courses: state.courses.map((c) =>
+          ...s,
+          courses: s.courses.map((c) =>
             c.id === courseId ? { ...c, isCompleted: true, isActive: false, completedAt: now } : c,
           ),
         };
@@ -214,13 +246,14 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       },
 
       setSync(patch) {
-        const prev = state.sync ?? { enabled: false };
-        const next: AppState = { ...state, sync: { ...prev, ...patch } };
+        const s = getState();
+        const prev = s.sync ?? { enabled: false };
+        const next: AppState = { ...s, sync: { ...prev, ...patch } };
         commit(next);
       },
 
       exportData() {
-        return JSON.stringify(state, null, 2);
+        return JSON.stringify(getState(), null, 2);
       },
 
       importData(jsonText) {
@@ -241,6 +274,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit(next);
       },
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

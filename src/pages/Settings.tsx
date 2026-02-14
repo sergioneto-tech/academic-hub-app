@@ -494,7 +494,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="text-xs text-muted-foreground">
-              Fonte: wiki.dcet.uab.pt. A lista inclui as licenciaturas do Guia dos Cursos (apenas algumas têm plano automático embebido nesta versão).
+              Fonte: <a href="https://guiadoscursos.uab.pt/" target="_blank" rel="noopener noreferrer" className="underline">Guia dos Cursos UAb</a>. As cadeiras são carregadas a partir dos dados incluídos na aplicação.
             </div>
           </div>
         </CardContent>

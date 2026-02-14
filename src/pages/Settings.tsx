@@ -550,13 +550,12 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="rounded-lg border bg-muted/20 p-3 text-xs text-muted-foreground">
             Para que os teus dados sobrevivam a limpezas do browser e fiquem iguais em qualquer aparelho, precisas de uma
-            conta e um backend. Nesta versão, a sincronização é feita via <span className="font-medium">Supabase</span>
-            (servidor central da aplicação).
+            conta. Cria uma conta abaixo e usa os botões de upload/download para sincronizar.
           </div>
 
           {!cloudConfig && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
-              Sincronização indisponível: falta configuração do servidor (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY).
+              Sincronização indisponível: falta configuração do servidor.
             </div>
           )}
 
@@ -608,8 +607,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Importante: esta funcionalidade precisa da tabela/segurança no Supabase. No ZIP vem um ficheiro
-            <span className="font-medium"> supabase/schema.sql</span> com o SQL pronto para criar a tabela e as RLS.
+            Os dados são guardados de forma segura no backend da aplicação.
           </div>
         </CardContent>
       </Card>

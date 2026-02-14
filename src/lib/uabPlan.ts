@@ -19,8 +19,7 @@ export type PlanCourseSeed = {
 };
 
 export const DEGREE_OPTIONS: DegreeOption[] = [
-  { id: "lei3", name: "Licenciatura em Engenharia Informática (Plano oficial – 3 anos)", sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-engenharia-informatica/" },
-  { id: "lei5", name: "Licenciatura em Engenharia Informática (Plano alternativo – 5 anos)", sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-engenharia-informatica/" },
+  { id: "lei", name: "Licenciatura em Engenharia Informática", sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-engenharia-informatica/" },
   { id: "uab-lca", name: "Licenciatura em Ciências do Ambiente", sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-ciencias-do-ambiente/" },
   { id: "uab-lcs", name: "Licenciatura em Ciências Sociais", sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-ciencias-sociais/" },
   { id: "uab-led", name: "Licenciatura em Educação", sourceUrl: "https://guiadoscursos.uab.pt/en/cursos/licenciatura-em-educacao/" },
@@ -35,7 +34,7 @@ export const DEGREE_OPTIONS: DegreeOption[] = [
 ];
 
 const PLAN_BY_DEGREE: Record<string, PlanCourseSeed[]> = {
-  lei3: [
+  lei: [
     { code: "21002", name: "Álgebra Linear I", year: 1, semester: 1 },
     { code: "21037", name: "Elementos de Probabilidades e Estatística", year: 1, semester: 2 },
     { code: "21010", name: "Arquitetura de Computadores", year: 1, semester: 1 },
@@ -69,40 +68,6 @@ const PLAN_BY_DEGREE: Record<string, PlanCourseSeed[]> = {
     { code: "21184", name: "Projeto de Engenharia Informática", year: 3, semester: 2 },
     { code: "21181", name: "Segurança em Redes e Computadores", year: 3, semester: 1 },
   ],
-  lei5: [
-    { code: "21173", name: "Introdução à Programação", year: 1, semester: 1 },
-    { code: "21178", name: "Laboratório de Programação", year: 1, semester: 2 },
-    { code: "21175", name: "Análise Infinitesimal", year: 1, semester: 1 },
-    { code: "21037", name: "Elementos de Probabilidades e Estatística", year: 1, semester: 2 },
-    { code: "21174", name: "Sistemas Computacionais", year: 1, semester: 1 },
-    { code: "21177", name: "Modelação de Sistemas de Informação", year: 1, semester: 2 },
-    { code: "21176", name: "Ética e Práticas de Engenharia", year: 1, semester: 1 },
-    { code: "21002", name: "Álgebra Linear I", year: 2, semester: 1 },
-    { code: "21082", name: "Matemática Finita", year: 2, semester: 2 },
-    { code: "21010", name: "Arquitetura de Computadores", year: 2, semester: 1 },
-    { code: "21111", name: "Sistemas Operativos", year: 2, semester: 2 },
-    { code: "21093", name: "Programação por Objetos", year: 2, semester: 1 },
-    { code: "21046", name: "Estruturas de Dados e Algoritmos Fundamentais", year: 2, semester: 2 },
-    { code: "21048", name: "Física Geral", year: 3, semester: 1 },
-    { code: "21076", name: "Investigação Operacional", year: 3, semester: 2 },
-    { code: "21053", name: "Fundamentos de Bases de Dados", year: 3, semester: 1 },
-    { code: "21077", name: "Linguagens de Programação", year: 3, semester: 2 },
-    { code: "21078", name: "Linguagens e Computação", year: 3, semester: 1 },
-    { code: "21179", name: "Laboratório de Desenvolvimento de Software", year: 3, semester: 2 },
-    { code: "21106", name: "Sistemas em Rede", year: 4, semester: 1 },
-    { code: "21071", name: "Introdução à Inteligência Artificial", year: 4, semester: 2 },
-    { code: "21180", name: "Computação Numérica", year: 4, semester: 1 },
-    { code: "21182", name: "Laboratório de Sistemas e Serviços Web", year: 4, semester: 2 },
-    { code: "21181", name: "Segurança em Redes e Computadores", year: 4, semester: 1 },
-    { code: "21108", name: "Sistemas Distribuídos", year: 4, semester: 2 },
-    { code: "21103", name: "Sistemas de Gestão de Bases de Dados", year: 4, semester: 1 },
-    { code: "21020", name: "Computação Gráfica", year: 5, semester: 1 },
-    { code: "21097", name: "Raciocínio e Representação do Conhecimento", year: 5, semester: 2 },
-    { code: "21062", name: "Gestão de Projetos Informáticos", year: 5, semester: 1 },
-    { code: "21018", name: "Compilação", year: 5, semester: 2 },
-    { code: "21110", name: "Sistemas Multimédia", year: 5, semester: 1 },
-    { code: "21184", name: "Projeto de Engenharia Informática", year: 5, semester: 2 },
-  ],
   "uab-lca": LCA_COURSES,
   "uab-lcs": LCS_COURSES,
   "uab-led": LED_COURSES,
@@ -125,9 +90,12 @@ export function resolveDegreeOption(degree: Degree | null): DegreeOption | null 
   if (!degree) return null;
   const byId = getDegreeOptionById(degree.id);
   if (byId) return byId;
+  // Compat: old ids lei3/lei5 → lei
+  const id = degree.id ?? "";
+  if (id === "lei3" || id === "lei5") return getDegreeOptionById("lei");
   const name = (degree.name || "").toLowerCase();
   if (name.includes("engenharia") && name.includes("inform")) {
-    return getDegreeOptionById("lei3");
+    return getDegreeOptionById("lei");
   }
   return null;
 }

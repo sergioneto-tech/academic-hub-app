@@ -81,15 +81,8 @@ export default function Layout() {
     if (lastSeen === APP_VERSION) return;
 
     const entry = versions.find((v) => v.version === APP_VERSION);
-    // Se não houver entrada, marcar como visto para não spammar.
-    if (!entry) {
-      try {
-        localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION);
-      } catch {
-        // ignore
-      }
-      return;
-    }
+    // Se não houver entrada para esta versão, não fazer nada (não marcar como visto).
+    if (!entry) return;
 
     setWhatsNew(entry);
     setShowWhatsNew(true);

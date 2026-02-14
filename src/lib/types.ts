@@ -61,12 +61,29 @@ export type SyncSettings = {
   lastSyncAt?: string; // ISO
 };
 
+export type StudyBlockStatus = "todo" | "in_progress" | "done";
+
+export type StudyBlock = {
+  id: UUID;
+  courseId: UUID;
+  title: string;
+  /** Tipo de atividade */
+  activity: "reading" | "exercises" | "revision" | "efolio" | "other";
+  /** Data início (YYYY-MM-DD) */
+  startDate: string;
+  /** Data fim (YYYY-MM-DD) */
+  endDate: string;
+  status: StudyBlockStatus;
+  notes?: string;
+};
+
 export type AppState = {
   meta?: AppMeta;
   degree: Degree | null;
   courses: Course[];
   assessments: Assessment[];
   rules: Rules[];
+  studyBlocks?: StudyBlock[];
 
   /** Definições opcionais (compatível com versões antigas). */
   sync?: SyncSettings;

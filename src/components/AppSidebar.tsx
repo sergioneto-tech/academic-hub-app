@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Calendar,
+  ClipboardList,
   GraduationCap,
   History,
   LayoutDashboard,
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Cadeiras", url: "/cadeiras", icon: BookOpen },
+  { title: "Plano", url: "/plano", icon: ClipboardList },
   { title: "Calendário", url: "/calendario", icon: Calendar },
   { title: "Histórico", url: "/historico", icon: History },
 ];
@@ -57,7 +59,8 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => {
                 const isActive = location.pathname === item.url || 
-                  (item.url === "/cadeiras" && location.pathname.startsWith("/cadeiras"));
+                  (item.url === "/cadeiras" && location.pathname.startsWith("/cadeiras")) ||
+                  (item.url === "/plano" && location.pathname.startsWith("/plano"));
                 
                 return (
                   <SidebarMenuItem key={item.title}>

@@ -30,6 +30,7 @@ const LAST_SEEN_VERSION_KEY = "academic_hub_last_seen_version";
 const NAV = [
   { to: "/", label: "Dashboard" },
   { to: "/cadeiras", label: "Cadeiras" },
+  { to: "/plano", label: "Plano" },
   { to: "/calendario", label: "Calendário" },
   { to: "/historico", label: "Histórico" },
   { to: "/definicoes", label: "Definições" },
@@ -283,7 +284,7 @@ export default function Layout() {
 
       {/* Bottom nav para telemóvel (vertical) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto max-w-6xl px-2 py-2 grid grid-cols-5 gap-1">
+        <div className="mx-auto max-w-6xl px-2 py-2 grid grid-cols-6 gap-1">
           {NAV.map((n) => (
             <NavLink
               key={n.to}

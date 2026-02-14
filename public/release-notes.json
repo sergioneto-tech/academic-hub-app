@@ -1,6 +1,15 @@
 {
-  "latest": "0.1.5",
+  "latest": "0.1.6",
   "versions": [
+    {
+      "version": "0.1.6",
+      "date": "2026-02-14",
+      "changes": [
+        "Corrigido carregamento de cadeiras: agora carrega apenas as cadeiras do curso selecionado (antes acumulava de vários cursos).",
+        "LEI unificada numa só opção (sem plano 3/5 anos separado).",
+        "Notificação de novidades agora aparece corretamente ao abrir a app."
+      ]
+    },
     {
       "version": "0.1.5",
       "date": "2026-02-14",
@@ -8,52 +17,23 @@
         "Corrigido botão 'Carregar cadeiras' que não funcionava corretamente.",
         "E-fólios e g-fólio são agora criados automaticamente ao ativar uma cadeira.",
         "Exame renomeado de 'p-fólio' para 'g-fólio' (nomenclatura atual da UAb).",
-        "Fonte dos dados corrigida: Guia dos Cursos UAb (não wiki).",
-        "Notificação de novidades ao abrir a aplicação após atualização."
+        "Fonte dos dados corrigida: Guia dos Cursos UAb (não wiki)."
       ]
     },
     {
       "version": "0.1.4",
       "date": "2026-02-14",
       "changes": [
-        "Base de dados completa com todas as 12 licenciaturas da UAb e respetivas cadeiras (fonte: guiadoscursos.uab.pt).",
-        "Todas as licenciaturas suportam agora carregamento automático do plano de estudos.",
-        "Textos da secção de sincronização simplificados."
+        "Base de dados completa com todas as 12 licenciaturas da UAb e respetivas cadeiras.",
+        "Todas as licenciaturas suportam carregamento automático do plano de estudos."
       ]
     },
     {
       "version": "0.1.3",
       "date": "2026-02-13",
       "changes": [
-        "Corrigida a sincronização cloud: ligação ao backend Lovable Cloud agora funciona sem configuração manual.",
+        "Corrigida a sincronização cloud.",
         "Criação de conta e login operacionais."
-      ]
-    },
-    {
-      "version": "0.1.2",
-      "date": "2026-02-13",
-      "changes": [
-        "Nova opção de Conta + Sincronização para manter dados iguais em qualquer aparelho.",
-        "Migração sem chatices: podes criar conta e fazer upload dos dados que já tens.",
-        "Aviso 'Não oficial': app independente, não afiliada nem endossada pela Universidade Aberta (UAb)."
-      ]
-    },
-    {
-      "version": "0.1.1",
-      "date": "2026-02-07",
-      "changes": [
-        "Removido o pop‑up inicial de escolha de licenciatura (agora é feito em Definições).",
-        "Dashboard mostra o nome da licenciatura selecionada e avisa quando falta escolher.",
-        "Aviso de atualização passa a mostrar 'o que mudou' (notas de versão)."
-      ]
-    },
-    {
-      "version": "0.1.0",
-      "date": "2026-02-06",
-      "changes": [
-        "Base do Academic Hub com Dashboard, Cadeiras, Calendário, Histórico e Definições.",
-        "Importação automática de cadeiras por plano e export/import de backups.",
-        "Modo claro/escuro e suporte PWA (instalação)."
       ]
     }
   ]

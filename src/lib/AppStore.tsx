@@ -148,7 +148,15 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         if (!seeds || seeds.length === 0) return;
 
         const s = getState();
-        const byCode = new Map(s.courses.map((c) => [normCode(c.code), c]));
+        const seedCodes = new Set(seeds.map((seed) => normCode(seed.code)));
+
+        // Remove inactive/uncompleted courses that are NOT in the new plan
+        // (keeps active and completed courses from any degree)
+        const keepCourses = s.courses.filter(
+          (c) => c.isActive || c.isCompleted || seedCodes.has(normCode(c.code))
+        );
+
+        const byCode = new Map(keepCourses.map((c) => [normCode(c.code), c]));
         const toAdd: Course[] = [];
 
         for (const seed of seeds) {
@@ -167,8 +175,15 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           });
         }
 
-        if (toAdd.length === 0) return;
-        const next: AppState = { ...s, courses: [...s.courses, ...toAdd] };
+        const newCourses = [...keepCourses, ...toAdd];
+        // Also clean up orphaned assessments/rules
+        const courseIds = new Set(newCourses.map((c) => c.id));
+        const next: AppState = {
+          ...s,
+          courses: newCourses,
+          assessments: s.assessments.filter((a) => courseIds.has(a.courseId)),
+          rules: s.rules.filter((r) => courseIds.has(r.courseId)),
+        };
         commit(next);
       },
 

@@ -41,14 +41,12 @@ function buildAlerts(state: AppState): AlertItem[] {
     // E-fólios: alertar início (véspera/dia) e fim (véspera/dia) do período de entrega
     const efolios = getAssessments(state, course.id, "efolio");
     for (const ef of efolios) {
-      // Alerta para início do período de entrega
       if (ef.startDate) {
         const daysStart = daysUntil(ef.startDate);
         if (daysStart !== null && daysStart >= 0 && daysStart <= 1) {
           alerts.push({ id: `${ef.id}-start`, courseId: course.id, courseName: label, label: `${ef.name} (início)`, daysLeft: daysStart, type: "efolio" });
         }
       }
-      // Alerta para fim do período de entrega
       if (ef.endDate) {
         const daysEnd = daysUntil(ef.endDate);
         if (daysEnd !== null && daysEnd >= 0 && daysEnd <= 1) {
@@ -57,7 +55,7 @@ function buildAlerts(state: AppState): AlertItem[] {
       }
     }
 
-    // Exame: alertar 7 dias antes e na véspera (e no dia)
+    // Exame
     const ex = getAssessments(state, course.id, "exam")[0];
     if (ex?.date) {
       const days = daysUntil(ex.date);
@@ -66,13 +64,40 @@ function buildAlerts(state: AppState): AlertItem[] {
       }
     }
 
-    // Recurso: mesma lógica do exame
+    // Recurso
     const rc = getAssessments(state, course.id, "resit")[0];
     if (rc?.date) {
       const days = daysUntil(rc.date);
       if (days !== null && days >= 0 && (days <= 1 || days === 7)) {
         alerts.push({ id: rc.id, courseId: course.id, courseName: label, label: rc.name ?? "Recurso", daysLeft: days, type: "resit" });
       }
+    }
+  }
+
+  // Blocos de estudo pessoal prestes a iniciar (próximos 3 dias)
+  const studyBlocks = state.studyBlocks ?? [];
+  for (const block of studyBlocks) {
+    if (block.status === "done") continue;
+    const days = daysUntil(block.startDate);
+    if (days !== null && days >= 0 && days <= 3) {
+      const course = state.courses.find((c) => c.id === block.courseId);
+      const courseName = course ? `${course.code} — ${course.name}` : "Cadeira desconhecida";
+      const activityLabels: Record<string, string> = {
+        reading: "📖 Leitura",
+        exercises: "✏️ Exercícios",
+        revision: "🔄 Revisão",
+        efolio: "📝 e-Fólio",
+        other: "📌 Outro",
+      };
+      const actLabel = activityLabels[block.activity] ?? block.activity;
+      alerts.push({
+        id: `study-${block.id}`,
+        courseId: block.courseId,
+        courseName: courseName,
+        label: `${actLabel}: ${block.title}`,
+        daysLeft: days,
+        type: "efolio", // reuse type for styling
+      });
     }
   }
 

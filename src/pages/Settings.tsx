@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { useAppStore } from "@/lib/AppStore";
-import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree } from "@/lib/uabPlan";
+import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree, getCourseEcts, getCourseArea, type PlanCourseSeed } from "@/lib/uabPlan";
 import type { Course } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { toast } from "@/components/ui/use-toast";
@@ -65,7 +65,7 @@ function NumericInput({
           (e.target as HTMLInputElement).blur();
         }
       }}
-      className="w-16 h-8 px-2 py-1 text-sm"
+      className="w-12 h-7 px-1.5 py-0.5 text-xs"
     />
   );
 }
@@ -90,12 +90,14 @@ function SemesterPanel({
   title,
   courses,
   orderMap,
+  planCourses,
   onUpdate,
   onRemove,
 }: {
   title: string;
   courses: Course[];
   orderMap: Map<string, number>;
+  planCourses: PlanCourseSeed[];
   onUpdate: (courseId: string, patch: Partial<Course>) => void;
   onRemove: (courseId: string) => void;
 }) {
@@ -145,7 +147,7 @@ function SemesterPanel({
                     </div>
                   </div>
 
-                  {/* Row 2: Year, Semester, toggles, remove */}
+                  {/* Row 2: Year, Sem, ECTS, Area, toggles, remove */}
                   <div className="flex flex-wrap items-center gap-2">
                     <div className="flex items-center gap-1">
                       <span className="text-[10px] text-muted-foreground">Ano</span>
@@ -155,6 +157,10 @@ function SemesterPanel({
                       <span className="text-[10px] text-muted-foreground">Sem</span>
                       <NumericInput value={c.semester ?? 1} min={1} max={2} onCommit={(v) => onUpdate(c.id, { semester: v })} />
                     </div>
+                    <span className="text-[10px] font-medium text-muted-foreground">{getCourseEcts(planCourses, c.code)} ECTS</span>
+                    {getCourseArea(planCourses, c.code) && (
+                      <span className="text-[10px] italic text-muted-foreground">{getCourseArea(planCourses, c.code)}</span>
+                    )}
 
                     <div className="flex items-center gap-1.5">
                       <Switch className="scale-75" checked={Boolean(c.isActive)} onCheckedChange={(v) => onUpdate(c.id, { isActive: v })} />
@@ -201,6 +207,7 @@ function YearBlock({
   sem1,
   sem2,
   orderMap,
+  planCourses,
   onUpdate,
   onRemove,
 }: {
@@ -208,6 +215,7 @@ function YearBlock({
   sem1: Course[];
   sem2: Course[];
   orderMap: Map<string, number>;
+  planCourses: PlanCourseSeed[];
   onUpdate: (courseId: string, patch: Partial<Course>) => void;
   onRemove: (courseId: string) => void;
 }) {
@@ -223,8 +231,8 @@ function YearBlock({
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <SemesterPanel title="1º Semestre" courses={sem1} orderMap={orderMap} onUpdate={onUpdate} onRemove={onRemove} />
-        <SemesterPanel title="2º Semestre" courses={sem2} orderMap={orderMap} onUpdate={onUpdate} onRemove={onRemove} />
+        <SemesterPanel title="1º Semestre" courses={sem1} orderMap={orderMap} planCourses={planCourses} onUpdate={onUpdate} onRemove={onRemove} />
+        <SemesterPanel title="2º Semestre" courses={sem2} orderMap={orderMap} planCourses={planCourses} onUpdate={onUpdate} onRemove={onRemove} />
       </div>
     </div>
   );
@@ -672,6 +680,7 @@ export default function SettingsPage() {
                     sem1={sem1}
                     sem2={sem2}
                     orderMap={orderMap}
+                    planCourses={planSeeds}
                     onUpdate={(id, patch) => updateCourse(id, patch)}
                     onRemove={(id) => removeCourse(id)}
                   />

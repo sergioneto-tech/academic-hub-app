@@ -1,6 +1,17 @@
 {
-  "latest": "0.1.8",
+  "latest": "0.1.9",
   "versions": [
+    {
+      "version": "0.1.9",
+      "date": "2026-02-15",
+      "changes": [
+        "ECTS e Área Científica reais para todas as 12 licenciaturas da UAb (dados do guiadoscursos.uab.pt).",
+        "Sincronização automática: ao ativar sync e fazer login, os dados são enviados para a cloud automaticamente (sem clicar no botão).",
+        "Cartões de cadeira nas Definições mais compactos e interativos no telemóvel.",
+        "Nova página 'Ajuda' sempre acessível na navegação com manual completo de utilização.",
+        "Navegação inferior no telemóvel agora inclui separador 'Ajuda'."
+      ]
+    },
     {
       "version": "0.1.8",
       "date": "2026-02-15",

@@ -34,6 +34,7 @@ const NAV = [
   { to: "/calendario", label: "Calendário" },
   { to: "/historico", label: "Histórico" },
   { to: "/definicoes", label: "Definições" },
+  { to: "/ajuda", label: "Ajuda" },
 ];
 
 export default function Layout() {
@@ -299,7 +300,7 @@ export default function Layout() {
 
       {/* Bottom nav para telemóvel (vertical) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 border-t border-border bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto max-w-6xl px-2 py-2 grid grid-cols-6 gap-1">
+        <div className="mx-auto max-w-6xl px-2 py-2 grid grid-cols-7 gap-1">
           {NAV.map((n) => (
             <NavLink
               key={n.to}

@@ -1,9 +1,11 @@
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Course, Assessment, Rules, AppState } from "@/types";
 import { getCourseStatus, totalEFolios, finalGradeRounded } from "@/lib/calculations";
 import { ChevronRight, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
+import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
 
 interface CourseCardProps {
   course: Course;
@@ -14,6 +16,8 @@ export function CourseCard({ course, state }: CourseCardProps) {
   const status = getCourseStatus(state, course.id);
   const totalEF = totalEFolios(state, course.id);
   const notaFinal = finalGradeRounded(state, course.id);
+  const planCourses = useMemo(() => getPlanCoursesForDegree(state.degree), [state.degree]);
+  const area = getCourseArea(planCourses, course.code);
   
   return (
     <Link to={`/cadeiras/${course.id}`}>
@@ -30,6 +34,7 @@ export function CourseCard({ course, state }: CourseCardProps) {
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {course.code} • {course.year}º ano • {course.semester}º sem
+                  {area && <span className="italic"> • {area}</span>}
                 </p>
               </div>
             </div>

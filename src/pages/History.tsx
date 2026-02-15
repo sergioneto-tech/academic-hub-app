@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
 import { finalGrade, globalStats } from "@/lib/calculations";
 import type { AppState, Course } from "@/lib/types";
+import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
 
 function sortByCompletedAtDesc(a: Course, b: Course) {
   return (b.completedAt ?? "").localeCompare(a.completedAt ?? "");
@@ -15,10 +17,12 @@ function SemesterPanel({
   title,
   courses,
   state,
+  planCourses,
 }: {
   title: string;
   courses: Course[];
   state: AppState;
+  planCourses: import("@/lib/uabPlan").PlanCourseSeed[];
 }) {
   const sorted = [...courses].sort(sortByCompletedAtDesc);
 
@@ -44,6 +48,9 @@ function SemesterPanel({
                     <div className="truncate font-semibold">{c.name}</div>
                     <div className="mt-0.5 text-sm text-muted-foreground">
                       {c.code}
+                      {getCourseArea(planCourses, c.code) && (
+                        <span className="italic"> • {getCourseArea(planCourses, c.code)}</span>
+                      )}
                     </div>
                   </div>
 
@@ -70,6 +77,7 @@ function SemesterPanel({
 export default function HistoryPage() {
   const { state } = useAppStore();
   const stats = globalStats(state);
+  const planCourses = useMemo(() => getPlanCoursesForDegree(state.degree), [state.degree]);
 
   const completed = state.courses.filter((c) => c.isCompleted);
 
@@ -155,8 +163,8 @@ export default function HistoryPage() {
 
                   {/* Em mobile fica 1 coluna (melhor legibilidade); em desktop vira 2 colunas como na grelha do plano */}
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <SemesterPanel title="1º Semestre" courses={sem1} state={state} />
-                    <SemesterPanel title="2º Semestre" courses={sem2} state={state} />
+                    <SemesterPanel title="1º Semestre" courses={sem1} state={state} planCourses={planCourses} />
+                    <SemesterPanel title="2º Semestre" courses={sem2} state={state} planCourses={planCourses} />
                   </div>
                 </div>
               );

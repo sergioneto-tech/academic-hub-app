@@ -185,7 +185,7 @@ export default function Layout() {
             <div className="text-[10px] text-muted-foreground">
               Não oficial — aplicação independente, não afiliada nem endossada pela Universidade Aberta (UAb).
             </div>
-            <div className="text-[10px] text-muted-foreground truncate">por Sérgio Neto · Estudante de LEI (UAb, 23/24)</div>
+            <div className="text-[10px] text-muted-foreground truncate">por Sérgio Neto · Estudante de LEI (UAb, 23/24) · Criada em janeiro 2026</div>
           </div>
 
           <div className="flex items-center gap-2">
@@ -237,6 +237,21 @@ export default function Layout() {
                     <li key={i}>{c}</li>
                   ))}
                 </ul>
+                <details className="mt-2">
+                  <summary className="cursor-pointer text-xs text-primary font-medium">
+                    📖 Como usar a aplicação
+                  </summary>
+                  <div className="mt-2 text-xs text-muted-foreground space-y-2">
+                    <p><strong>1. Escolher licenciatura:</strong> Vai a <em>Definições</em> e seleciona o teu curso. As cadeiras são carregadas automaticamente.</p>
+                    <p><strong>2. Ativar cadeiras:</strong> Em <em>Definições</em>, ativa as cadeiras que estás a frequentar este semestre (toggle "Ativa").</p>
+                    <p><strong>3. Registar notas:</strong> Clica numa cadeira ativa para introduzir notas dos e-fólios, g-fólio e recurso.</p>
+                    <p><strong>4. Acompanhar progresso:</strong> O <em>Dashboard</em> mostra cadeiras ativas, média, eventos e ECTS concluídos.</p>
+                    <p><strong>5. Plano de Estudos:</strong> Vê o progresso global do curso com ECTS e área científica de cada cadeira.</p>
+                    <p><strong>6. Plano Pessoal:</strong> Organiza o teu estudo com um quadro Kanban (tarefas, datas, exportação .ics).</p>
+                    <p><strong>7. Sincronização:</strong> Em <em>Definições</em>, cria conta e sincroniza entre dispositivos via cloud.</p>
+                    <p><strong>8. Backup:</strong> Exporta/importa dados em JSON para segurança.</p>
+                  </div>
+                </details>
               </div>
               <Button size="sm" variant="secondary" onClick={dismissWhatsNew}>
                 OK

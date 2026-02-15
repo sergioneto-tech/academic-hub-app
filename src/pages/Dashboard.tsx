@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,9 @@ import { useUpdate } from "@/lib/UpdateProvider";
 import StatusBadge from "@/components/StatusBadge";
 import DeadlineAlerts, { useDeadlineToasts } from "@/components/DeadlineAlerts";
 import { useAppStore } from "@/lib/AppStore";
-import { courseStatusLabel, exam, getAssessments, globalStats, resit, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
+import { courseStatusLabel, exam, getAssessments, globalStats, resit, totalEctsCompleted, totalEctsDegree, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { formatPtNumber } from "@/lib/utils";
+import { getPlanCoursesForDegree } from "@/lib/uabPlan";
 
 function parseYmd(ymd: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
@@ -51,6 +53,9 @@ export default function Dashboard() {
   const { state, exportData } = useAppStore();
   const { updateAvailable, applyUpdate } = useUpdate();
   const stats = globalStats(state);
+  const planCourses = useMemo(() => getPlanCoursesForDegree(state.degree), [state.degree]);
+  const ectsCompleted = useMemo(() => totalEctsCompleted(state, planCourses), [state, planCourses]);
+  const ectsTotal = useMemo(() => totalEctsDegree(planCourses), [planCourses]);
   const today = startOfDay(new Date());
   useDeadlineToasts(state);
 
@@ -145,7 +150,7 @@ export default function Dashboard() {
       )}
 
 {/* KPIs */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Card className="bg-card/70 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Ativas</CardTitle>
@@ -172,6 +177,15 @@ export default function Dashboard() {
             <CardTitle className="text-sm">Eventos (datas)</CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">{stats.eventsCount}</CardContent>
+        </Card>
+
+        <Card className="bg-card/70 backdrop-blur col-span-2 lg:col-span-1">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">ECTS concluídos</CardTitle>
+          </CardHeader>
+          <CardContent className="text-2xl font-semibold">
+            {ectsCompleted}{ectsTotal > 0 && <span className="text-sm font-normal text-muted-foreground"> / {ectsTotal}</span>}
+          </CardContent>
         </Card>
       </div>
 

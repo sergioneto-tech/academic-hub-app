@@ -142,6 +142,21 @@ export function globalStats(state: AppState) {
   };
 }
 
+/** Calculate total ECTS for completed courses using plan data */
+export function totalEctsCompleted(state: AppState, planCourses: { code: string; ects?: number }[]): number {
+  const completedCodes = new Set(
+    state.courses.filter(c => c.isCompleted).map(c => c.code)
+  );
+  return planCourses
+    .filter(pc => completedCodes.has(pc.code))
+    .reduce((acc, pc) => acc + (pc.ects ?? 6), 0);
+}
+
+/** Calculate total ECTS for the full degree */
+export function totalEctsDegree(planCourses: { ects?: number }[]): number {
+  return planCourses.reduce((acc, pc) => acc + (pc.ects ?? 6), 0);
+}
+
 // Compat: código antigo importava `finalGrade`
 export function finalGrade(state: AppState, courseId: string): number | null {
   return finalGradeRounded(state, courseId);

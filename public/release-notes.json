@@ -1,6 +1,18 @@
 {
-  "latest": "0.1.7",
+  "latest": "0.1.8",
   "versions": [
+    {
+      "version": "0.1.8",
+      "date": "2026-02-15",
+      "changes": [
+        "ECTS e Área Científica visíveis no Plano de Estudos para cada cadeira.",
+        "Novo separador 'ECTS concluídos' no dashboard com contagem total.",
+        "Plano de Estudos agora mostra apenas cadeiras ativas e por fazer; concluídas ficam numa secção recolhível no final.",
+        "Separadores do dashboard agora aparecem 2 por linha no telemóvel para melhor visualização.",
+        "Secção 'Sobre a app' com manual de utilização integrado para novos utilizadores.",
+        "Corrigida sincronização cloud entre dispositivos."
+      ]
+    },
     {
       "version": "0.1.7",
       "date": "2026-02-14",

@@ -1,12 +1,15 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { Badge } from "@/components/ui/badge";
+import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
 
 export default function CoursesPage() {
   const { state } = useAppStore();
   const courses = state.courses.filter(c => c.isActive && !c.isCompleted);
+  const planCourses = useMemo(() => getPlanCoursesForDegree(state.degree), [state.degree]);
 
   return (
     <div className="space-y-6">
@@ -39,7 +42,12 @@ export default function CoursesPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="font-semibold">{c.name}</div>
-                      <div className="text-sm text-muted-foreground">{c.code} • e-fólios: {ef.toFixed(1)} / {efMax.toFixed(1)}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {c.code} • e-fólios: {ef.toFixed(1)} / {efMax.toFixed(1)}
+                        {getCourseArea(planCourses, c.code) && (
+                          <span className="italic"> • {getCourseArea(planCourses, c.code)}</span>
+                        )}
+                      </div>
                     </div>
                     <Badge
                       variant={badgeVariant}

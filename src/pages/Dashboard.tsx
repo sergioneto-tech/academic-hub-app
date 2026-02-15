@@ -9,7 +9,7 @@ import DeadlineAlerts, { useDeadlineToasts } from "@/components/DeadlineAlerts";
 import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, exam, getAssessments, globalStats, resit, totalEctsCompleted, totalEctsDegree, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { formatPtNumber } from "@/lib/utils";
-import { getPlanCoursesForDegree } from "@/lib/uabPlan";
+import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
 
 function parseYmd(ymd: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
@@ -253,6 +253,11 @@ export default function Dashboard() {
                         E‑fólios: {formatPtNumber(ef)} / {formatPtNumber(efMax)}
                         {ex?.date ? ` • Exame: ${datePart(ex.date)}` : ""}
                       </div>
+                      {getCourseArea(planCourses, c.code) && (
+                        <div className="mt-0.5 text-[10px] italic text-muted-foreground/70">
+                          {getCourseArea(planCourses, c.code)}
+                        </div>
+                      )}
 
                       {(examLine || resitLine || efolioLines.length > 0) && (
                         <div className="mt-2 space-y-1">

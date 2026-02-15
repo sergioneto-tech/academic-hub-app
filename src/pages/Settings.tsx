@@ -128,75 +128,62 @@ function SemesterPanel({
               <div
                 key={c.id}
                 className={[
-                  "rounded-lg border p-3",
+                  "rounded-lg border p-2.5",
                   completed
                     ? "border-emerald-200 bg-emerald-50/80 dark:border-emerald-700/50 dark:bg-emerald-900/25 dark:ring-1 dark:ring-emerald-700/15"
                     : "bg-card",
                 ].join(" ")}
               >
-                <div className="grid gap-2 md:grid-cols-12 md:items-end">
-                  <div className="md:col-span-2">
-                    <Label className="text-[11px] leading-none text-muted-foreground">Código</Label>
-                    <Input className="h-8 px-2 py-1 text-sm" value={c.code} onChange={(e) => onUpdate(c.id, { code: e.target.value })} />
+                <div className="flex flex-col gap-1.5">
+                  {/* Row 1: Code + Name */}
+                  <div className="flex gap-2">
+                    <div className="w-20 shrink-0">
+                      <Input className="h-7 px-1.5 py-0.5 text-xs" value={c.code} onChange={(e) => onUpdate(c.id, { code: e.target.value })} placeholder="Código" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Input className="h-7 px-1.5 py-0.5 text-xs" value={c.name} onChange={(e) => onUpdate(c.id, { name: e.target.value })} placeholder="Nome" />
+                    </div>
                   </div>
 
-                  <div className="md:col-span-6">
-                    <Label className="text-[11px] leading-none text-muted-foreground">Nome</Label>
-                    <Input className="h-8 px-2 py-1 text-sm" value={c.name} onChange={(e) => onUpdate(c.id, { name: e.target.value })} />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Label className="text-[11px] leading-none text-muted-foreground">Ano</Label>
-                    <NumericInput
-                      value={c.year ?? 1}
-                      min={1}
-                      max={6}
-                      onCommit={(v) => onUpdate(c.id, { year: v })}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Label className="text-[11px] leading-none text-muted-foreground">Semestre</Label>
-                    <NumericInput
-                      value={c.semester ?? 1}
-                      min={1}
-                      max={2}
-                      onCommit={(v) => onUpdate(c.id, { semester: v })}
-                    />
-                  </div>
-
-                  <div className="md:col-span-8 flex flex-wrap items-center gap-3 pt-0.5">
-                    <div className="flex items-center gap-2">
-                      <Switch className="scale-90" checked={Boolean(c.isActive)} onCheckedChange={(v) => onUpdate(c.id, { isActive: v })} />
-                      <span className="text-xs font-medium">Ativa</span>
+                  {/* Row 2: Year, Semester, toggles, remove */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">Ano</span>
+                      <NumericInput value={c.year ?? 1} min={1} max={6} onCommit={(v) => onUpdate(c.id, { year: v })} />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground">Sem</span>
+                      <NumericInput value={c.semester ?? 1} min={1} max={2} onCommit={(v) => onUpdate(c.id, { semester: v })} />
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <Switch className="scale-75" checked={Boolean(c.isActive)} onCheckedChange={(v) => onUpdate(c.id, { isActive: v })} />
+                      <span className="text-[10px] font-medium">Ativa</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
                       <Switch
-                        className="scale-90"
+                        className="scale-75"
                         checked={Boolean(c.isCompleted)}
                         onCheckedChange={(v) =>
                           onUpdate(c.id, {
                             isCompleted: v,
                             completedAt: v ? (c.completedAt ?? new Date().toISOString()) : undefined,
-                            // opcional: se marcar como concluída, geralmente deixa de estar "ativa"
                             isActive: v ? false : c.isActive,
                           })
                         }
                       />
-                      <span className="text-xs font-medium">Concluída</span>
+                      <span className="text-[10px] font-medium">Concluída</span>
                     </div>
 
                     {completed && (
-                      <span className="text-[11px] text-muted-foreground">
-                        {c.completedAt ? `Concluída em ${new Date(c.completedAt).toLocaleDateString("pt-PT")}` : "Concluída"}
+                      <span className="text-[10px] text-muted-foreground">
+                        {c.completedAt ? new Date(c.completedAt).toLocaleDateString("pt-PT") : ""}
                       </span>
                     )}
-                  </div>
 
-                  <div className="md:col-span-4 flex md:justify-end">
-                    <Button variant="destructive" size="sm" className="h-8 px-3 text-xs" onClick={() => onRemove(c.id)}>
-                      Remover
+                    <Button variant="destructive" size="sm" className="h-6 px-2 text-[10px] ml-auto" onClick={() => onRemove(c.id)}>
+                      ✕
                     </Button>
                   </div>
                 </div>

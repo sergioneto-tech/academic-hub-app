@@ -9,8 +9,12 @@ import CourseDetail from "./pages/CourseDetail";
 import SettingsPage from "./pages/Settings";
 import StudyPlan from "./pages/StudyPlan";
 import PersonalStudyPlan from "./pages/PersonalStudyPlan";
+import HelpPage from "./pages/Help";
+import { useAutoSync } from "./hooks/useAutoSync";
 
 export default function App() {
+  useAutoSync();
+
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -22,6 +26,7 @@ export default function App() {
         <Route path="/plano" element={<StudyPlan />} />
         <Route path="/plano/estudo" element={<PersonalStudyPlan />} />
         <Route path="/definicoes" element={<SettingsPage />} />
+        <Route path="/ajuda" element={<HelpPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

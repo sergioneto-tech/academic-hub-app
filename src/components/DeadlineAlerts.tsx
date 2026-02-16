@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { AppState } from "@/lib/types";
 import { getAssessments } from "@/lib/calculations";
 import { getAcademicAlerts, UAB_LINKS, ACADEMIC_YEAR, type CalendarAlert } from "@/lib/uabAcademicCalendar";
-import { EXAM_CALENDAR_PDF } from "@/lib/uabExamDates";
+
 
 type AlertItem = {
   id: string;
@@ -194,12 +194,12 @@ export default function DeadlineAlerts({ state }: { state: AppState }) {
               href={a.link}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-3 rounded-lg border p-3 transition-colors hover:opacity-80 ${academicTone(a)}`}
+              className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors hover:opacity-80 ${academicTone(a)}`}
             >
-              <span className="text-base shrink-0">{a.icon}</span>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium truncate">{a.label}</div>
-                <div className="text-xs text-muted-foreground">{a.description}</div>
+              <span className="text-sm shrink-0">{a.icon}</span>
+              <div className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2 gap-y-0">
+                <span className="text-sm font-medium">{a.label}</span>
+                <span className="text-[11px] text-muted-foreground">{a.description}</span>
               </div>
               <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
             </a>
@@ -234,15 +234,6 @@ export default function DeadlineAlerts({ state }: { state: AppState }) {
           className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
         >
           📋 Candidaturas
-          <ExternalLink className="h-3 w-3" />
-        </a>
-        <a
-          href={EXAM_CALENDAR_PDF}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
-          📄 Calendário de Provas (PDF)
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>

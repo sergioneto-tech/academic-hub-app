@@ -180,10 +180,10 @@ export default function DeadlineAlerts({ state }: { state: AppState }) {
   const hasAny = alerts.length > 0 || academicAlerts.length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Alertas do calendário académico UAb */}
       {academicAlerts.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <GraduationCap className="h-4 w-4 text-primary" />
             Calendário Académico {ACADEMIC_YEAR}
@@ -194,49 +194,35 @@ export default function DeadlineAlerts({ state }: { state: AppState }) {
               href={a.link}
               target="_blank"
               rel="noopener noreferrer"
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 transition-colors hover:opacity-80 ${academicTone(a)}`}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors hover:opacity-80 ${academicTone(a)}`}
             >
-              <span className="text-sm shrink-0">{a.icon}</span>
-              <div className="min-w-0 flex-1 flex flex-wrap items-baseline gap-x-2 gap-y-0">
-                <span className="text-sm font-medium">{a.label}</span>
-                <span className="text-[11px] text-muted-foreground">{a.description}</span>
-              </div>
-              <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+              <span className="text-xs shrink-0">{a.icon}</span>
+              <span className="text-xs font-medium truncate">{a.label}</span>
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-auto">{a.description}</span>
+              <ExternalLink className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
             </a>
           ))}
+          {/* Links rápidos UAb inline */}
+          <div className="flex items-center gap-1.5 pt-0.5">
+            {[
+              { href: UAB_LINKS.calendarioLetivo, icon: "📅", label: "Letivo" },
+              { href: UAB_LINKS.avaliacao, icon: "📝", label: "Provas" },
+              { href: UAB_LINKS.candidaturas, icon: "📋", label: "Candidaturas" },
+            ].map((l) => (
+              <a
+                key={l.label}
+                href={l.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                {l.icon} {l.label}
+                <ExternalLink className="h-2.5 w-2.5" />
+              </a>
+            ))}
+          </div>
         </div>
       )}
-
-      {/* Links rápidos UAb */}
-      <div className="flex flex-wrap gap-2">
-        <a
-          href={UAB_LINKS.calendarioLetivo}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
-          📅 Calendário Letivo
-          <ExternalLink className="h-3 w-3" />
-        </a>
-        <a
-          href={UAB_LINKS.avaliacao}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
-          📝 Calendário de Provas
-          <ExternalLink className="h-3 w-3" />
-        </a>
-        <a
-          href={UAB_LINKS.candidaturas}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-        >
-          📋 Candidaturas
-          <ExternalLink className="h-3 w-3" />
-        </a>
-      </div>
 
       {/* Alertas de prazos de cadeiras */}
       {alerts.length > 0 && (

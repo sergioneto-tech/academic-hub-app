@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, RefreshCw, ExternalLink } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { useUpdate } from "@/lib/UpdateProvider";
 import StatusBadge from "@/components/StatusBadge";
 import DeadlineAlerts, { useDeadlineToasts } from "@/components/DeadlineAlerts";
@@ -10,7 +10,7 @@ import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, exam, getAssessments, globalStats, resit, totalEctsCompleted, totalEctsDegree, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { formatPtNumber } from "@/lib/utils";
 import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
-import { getExamDates, EXAM_CALENDAR_PDF } from "@/lib/uabExamDates";
+import { getExamDates } from "@/lib/uabExamDates";
 
 function parseYmd(ymd: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
@@ -276,16 +276,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Link para calendário de provas oficial */}
-        <a
-          href={EXAM_CALENDAR_PDF}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
-        >
-          📄 Calendário de Provas 2025/2026 (PDF oficial)
-          <ExternalLink className="h-3 w-3" />
-        </a>
       </div>
     </div>
   );

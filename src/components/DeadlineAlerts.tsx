@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type { AppState } from "@/lib/types";
 import { getAssessments } from "@/lib/calculations";
 import { getAcademicAlerts, UAB_LINKS, ACADEMIC_YEAR, type CalendarAlert } from "@/lib/uabAcademicCalendar";
+import { EXAM_CALENDAR_PDF } from "@/lib/uabExamDates";
 
 type AlertItem = {
   id: string;
@@ -233,6 +234,15 @@ export default function DeadlineAlerts({ state }: { state: AppState }) {
           className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
         >
           📋 Candidaturas
+          <ExternalLink className="h-3 w-3" />
+        </a>
+        <a
+          href={EXAM_CALENDAR_PDF}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+        >
+          📄 Calendário de Provas (PDF)
           <ExternalLink className="h-3 w-3" />
         </a>
       </div>

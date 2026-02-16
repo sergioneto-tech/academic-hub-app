@@ -1,6 +1,16 @@
 {
-  "latest": "0.1.9",
+  "latest": "0.2.0",
   "versions": [
+    {
+      "version": "0.2.0",
+      "date": "2026-02-16",
+      "changes": [
+        "Calendário de Provas UAb 2025/2026 integrado: cada cadeira ativa mostra automaticamente a data do exame normal e recurso.",
+        "Alertas automáticos do calendário académico (matrículas, exames, pausas letivas) com links diretos para o portal UAb.",
+        "Dashboard compacto: cartões de KPIs e painel do utilizador otimizados para telemóvel.",
+        "Links rápidos para o Calendário Letivo, Calendário de Provas e Candidaturas da UAb."
+      ]
+    },
     {
       "version": "0.1.9",
       "date": "2026-02-15",

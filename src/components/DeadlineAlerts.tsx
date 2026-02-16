@@ -188,20 +188,22 @@ export default function DeadlineAlerts({ state }: { state: AppState }) {
             <GraduationCap className="h-4 w-4 text-primary" />
             Calendário Académico {ACADEMIC_YEAR}
           </div>
-          {academicAlerts.map((a) => (
-            <a
-              key={a.id}
-              href={a.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors hover:opacity-80 ${academicTone(a)}`}
-            >
-              <span className="text-xs shrink-0">{a.icon}</span>
-              <span className="text-xs font-medium truncate">{a.label}</span>
-              <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-auto">{a.description}</span>
-              <ExternalLink className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
-            </a>
-          ))}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {academicAlerts.map((a) => (
+              <a
+                key={a.id}
+                href={a.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 transition-colors hover:opacity-80 ${academicTone(a)}`}
+              >
+                <span className="text-xs shrink-0">{a.icon}</span>
+                <span className="text-xs font-medium truncate">{a.label}</span>
+                <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-auto">{a.description}</span>
+                <ExternalLink className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+              </a>
+            ))}
+          </div>
           {/* Links rápidos UAb inline */}
           <div className="flex items-center gap-1.5 pt-0.5">
             {[

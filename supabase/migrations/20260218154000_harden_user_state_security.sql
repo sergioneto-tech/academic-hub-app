@@ -8,7 +8,7 @@ ALTER TABLE IF EXISTS public.user_state FORCE ROW LEVEL SECURITY;
 
 -- Privileges (extra layer above RLS)
 REVOKE ALL ON TABLE public.user_state FROM anon;
-GRANT SELECT, INSERT, UPDATE ON TABLE public.user_state TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_state TO authenticated;
 
 -- Policies (explicitly for authenticated)
 DROP POLICY IF EXISTS "user_state_select_own" ON public.user_state;
@@ -32,3 +32,11 @@ FOR UPDATE
 TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+
+-- Allow authenticated users to delete their own data
+DROP POLICY IF EXISTS "user_state_delete_own" ON public.user_state;
+CREATE POLICY "user_state_delete_own"
+ON public.user_state
+FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);

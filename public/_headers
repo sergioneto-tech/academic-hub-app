@@ -1,5 +1,7 @@
 /*
   # Security headers (MDN Observatory)
   Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https://dayettlozmkjagrymjai.supabase.co wss://dayettlozmkjagrymjai.supabase.co; worker-src 'self' blob:; manifest-src 'self'; form-action 'self'; upgrade-insecure-requests
+  # Report-Only (para afinar sem partir a app). Ver violações na consola do browser.
+  Content-Security-Policy-Report-Only: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline' 'report-sample'; script-src 'self' 'report-sample'; connect-src 'self' https://dayettlozmkjagrymjai.supabase.co wss://dayettlozmkjagrymjai.supabase.co; worker-src 'self' blob:; manifest-src 'self'; form-action 'self'; upgrade-insecure-requests
   X-Frame-Options: DENY
   Cross-Origin-Resource-Policy: same-site

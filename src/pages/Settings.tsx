@@ -13,6 +13,7 @@ import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree, getCourse
 import type { Course } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import {
   type CloudConfig,
   type AuthSession,
@@ -259,6 +260,7 @@ export default function SettingsPage() {
   const [cloudEmail, setCloudEmail] = useState<string>("");
   const [cloudPass, setCloudPass] = useState<string>("");
   const [session, setSession] = useState<AuthSession | null>(null);
+  const [resetBusy, setResetBusy] = useState<boolean>(false);
 
   useEffect(() => {
     setSyncEnabledLocal(Boolean(state.sync?.enabled));
@@ -427,6 +429,42 @@ export default function SettingsPage() {
     storeSession(cloudConfig, null);
     setSession(null);
     toast({ title: "Sessão terminada" });
+  };
+
+  const onForgotPassword = async () => {
+    if (!cloudConfig) {
+      toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
+      return;
+    }
+    const email = cloudEmail.trim();
+    if (!email) {
+      toast({ title: "Indica o email", description: "Escreve o teu email e volta a tentar.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setResetBusy(true);
+      const redirectTo = `${window.location.origin}/reset-password`;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+      // Não revelar se o email existe (evita enumeração de contas)
+      if (error) {
+        console.warn("[ForgotPassword]", error);
+      }
+
+      toast({
+        title: "Email enviado (se existir conta)",
+        description: "Se existir uma conta com este email, vais receber uma mensagem para definires uma nova password (verifica também o spam).",
+      });
+    } catch (e) {
+      // Mantém resposta genérica
+      toast({
+        title: "Pedido enviado (se existir conta)",
+        description: "Se existir uma conta com este email, vais receber uma mensagem para definires uma nova password.",
+      });
+    } finally {
+      setResetBusy(false);
+    }
   };
 
   const onUploadToCloud = async () => {
@@ -622,6 +660,18 @@ export default function SettingsPage() {
             <Button onClick={onSignUp} disabled={!cloudConfig}>Criar conta</Button>
             <Button onClick={onSignIn} variant="outline" disabled={!cloudConfig}>Entrar</Button>
             <Button onClick={onSignOut} variant="ghost" disabled={!cloudConfig || !session}>Sair</Button>
+          </div>
+
+          <div>
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto px-0 py-0 text-xs"
+              onClick={onForgotPassword}
+              disabled={!cloudConfig || resetBusy || !cloudEmail.trim()}
+            >
+              {resetBusy ? "A enviar..." : "Esqueci-me da password"}
+            </Button>
           </div>
 
           <div className="text-xs text-muted-foreground">

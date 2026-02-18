@@ -18,9 +18,9 @@ alter table public.user_state enable row level security;
 -- (Hardening) força RLS mesmo para o owner da tabela (não afeta roles com BYPASSRLS)
 alter table public.user_state force row level security;
 
--- (Hardening) bloqueia acesso anónimo ao nível de permissões (além do RLS)
+-- (Hardening) bloqueia acesso anonimo ao nivel de permissoes (alem do RLS)
 revoke all on table public.user_state from anon;
-grant select, insert, update on table public.user_state to authenticated;
+grant select, insert, update, delete on table public.user_state to authenticated;
 
 -- Só o próprio utilizador pode ler a sua linha
 drop policy if exists "user_state_select_own" on public.user_state;
@@ -47,9 +47,10 @@ to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
 
--- Opcional: impedir deletes (mantém histórico)
--- drop policy if exists "user_state_delete_own" on public.user_state;
--- create policy "user_state_delete_own"
--- on public.user_state
--- for delete
--- using (false);
+-- So o proprio utilizador pode apagar a sua linha
+drop policy if exists "user_state_delete_own" on public.user_state;
+create policy "user_state_delete_own"
+on public.user_state
+for delete
+to authenticated
+using (auth.uid() = user_id);

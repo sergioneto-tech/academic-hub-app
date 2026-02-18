@@ -7,6 +7,7 @@ import HistoryPage from "./pages/History";
 import CoursesPage from "./pages/Courses";
 import CourseDetail from "./pages/CourseDetail";
 import SettingsPage from "./pages/Settings";
+import ResetPasswordPage from "./pages/ResetPassword";
 import StudyPlan from "./pages/StudyPlan";
 import PersonalStudyPlan from "./pages/PersonalStudyPlan";
 import HelpPage from "./pages/Help";
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="/plano" element={<StudyPlan />} />
         <Route path="/plano/estudo" element={<PersonalStudyPlan />} />
         <Route path="/definicoes" element={<SettingsPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/ajuda" element={<HelpPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

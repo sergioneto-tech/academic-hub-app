@@ -186,3 +186,43 @@ export async function upsertRemoteState(config: CloudConfig, session: AuthSessio
   const rows = (json as UserStateRow[]) ?? [];
   return rows[0] ?? (payload as unknown as UserStateRow);
 }
+
+export async function deleteUserAccount(config: CloudConfig, session: AuthSession): Promise<void> {
+  // Primeiro, apagar os dados do utilizador na tabela user_state
+  const deleteStateUrl = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?user_id=eq.${session.user.id}`;
+  const deleteStateRes = await fetch(deleteStateUrl, {
+    method: "DELETE",
+    headers: headers(config, session),
+  });
+
+  if (!deleteStateRes.ok) {
+    const text = await deleteStateRes.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      // ignore
+    }
+    const msg = json?.message || json?.hint || json?.details || json?.error || deleteStateRes.statusText || "Erro ao apagar dados";
+    throw new Error(String(msg));
+  }
+
+  // Depois, apagar a conta de autenticação
+  const deleteAuthUrl = `${normUrl(config.supabaseUrl)}/auth/v1/user`;
+  const deleteAuthRes = await fetch(deleteAuthUrl, {
+    method: "DELETE",
+    headers: headers(config, session),
+  });
+
+  if (!deleteAuthRes.ok) {
+    const text = await deleteAuthRes.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      // ignore
+    }
+    const msg = json?.message || json?.hint || json?.details || json?.error || deleteAuthRes.statusText || "Erro ao apagar conta";
+    throw new Error(String(msg));
+  }
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppStore } from "@/lib/AppStore";
 import { getPlanCoursesForDegree } from "@/lib/uabPlan";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Moon, Sun, RefreshCw, Download } from "lucide-react";
@@ -38,8 +38,34 @@ const NAV = [
 ];
 
 export default function Layout() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const { state, mergePlanCourses, exportData } = useAppStore();
   const { updateAvailable, applyUpdate } = useUpdate();
+
+  // Se o utilizador abrir um link de recuperação de password (Supabase) e ele cair no
+  // Dashboard por causa do redirect, redireciona automaticamente para Definições.
+  // Isto garante que aparece a secção para definir a nova password.
+  useEffect(() => {
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    const isRecovery = hash.includes("type=recovery") || search.includes("type=recovery") || location.pathname === "/reset-password";
+    if (!isRecovery) return;
+    if (location.pathname === "/definicoes") return;
+
+    const params = new URLSearchParams(location.search);
+    if (!params.has("recovery")) params.set("recovery", "1");
+
+    navigate(
+      {
+        pathname: "/definicoes",
+        search: `?${params.toString()}`,
+        hash: location.hash,
+      },
+      { replace: true }
+    );
+  }, [location.pathname, location.search, location.hash, navigate]);
 
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNotesData | null>(null);
   const [whatsNew, setWhatsNew] = useState<ReleaseNotesEntry | null>(null);

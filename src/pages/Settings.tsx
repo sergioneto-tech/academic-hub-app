@@ -25,6 +25,7 @@ import {
   signUp,
   storeSession,
   upsertRemoteState,
+  deleteUserAccount,
 } from "@/lib/cloudSync";
 
 // Input numérico com estado local - só grava no blur
@@ -274,6 +275,11 @@ export default function SettingsPage() {
   const [newPw1, setNewPw1] = useState<string>("");
   const [newPw2, setNewPw2] = useState<string>("");
   const [savingRecovery, setSavingRecovery] = useState<boolean>(false);
+
+  // --- Exclusao de conta ---
+  const [deleteAccountMode, setDeleteAccountMode] = useState<boolean>(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<string>("");
+  const [deletingAccount, setDeletingAccount] = useState<boolean>(false);
 
   useEffect(() => {
     setSyncEnabledLocal(Boolean(state.sync?.enabled));
@@ -633,6 +639,42 @@ export default function SettingsPage() {
     }
   };
 
+  const onDeleteAccount = async () => {
+    if (!cloudConfig || !session) {
+      toast({ title: "Sem sessao", description: "Faz login primeiro.", variant: "destructive" });
+      return;
+    }
+
+    if (deleteConfirmation !== "apagar") {
+      toast({ title: "Confirmacao invalida", description: "Escreve 'apagar' para confirmar.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      setDeletingAccount(true);
+      const fresh = await ensureFreshSession();
+      await deleteUserAccount(cloudConfig, fresh);
+
+      storeSession(cloudConfig, null);
+      setSession(null);
+      resetData();
+      setDeleteAccountMode(false);
+      setDeleteConfirmation("");
+
+      toast({
+        title: "Conta eliminada",
+        description: "A tua conta e todos os dados associados foram eliminados permanentemente.",
+      });
+
+      setTimeout(() => navigate("/"), 2000);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erro";
+      toast({ title: "Falha ao eliminar conta", description: msg, variant: "destructive" });
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   const onAddCourse = () => {
     addCourse({ code: "", name: "", year: 1, semester: 1 });
   };
@@ -857,8 +899,58 @@ export default function SettingsPage() {
           </div>
 
           <div className="text-xs text-muted-foreground">
-            Os dados são guardados de forma segura no backend da aplicação.
+            Os dados sao guardados de forma segura no backend da aplicacao.
           </div>
+
+          <Separator />
+
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-destructive">Zona de Perigo</h3>
+              <p className="text-xs text-muted-foreground mt-1">Eliminar a tua conta e todos os dados associados permanentemente.</p>
+            </div>
+            <Button onClick={() => setDeleteAccountMode(!deleteAccountMode)} variant="destructive">
+              {deleteAccountMode ? "Cancelar" : "Eliminar Conta"}
+            </Button>
+          </div>
+
+          {deleteAccountMode && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 space-y-3">
+              <div className="text-sm font-medium">Confirmar eliminacao de conta</div>
+              <p className="text-xs text-muted-foreground">
+                Esta acao e irreversivel. Todos os teus dados (cadeiras, avaliacoes, blocos de estudo) serao eliminados permanentemente do servidor.
+              </p>
+              <div className="grid gap-2">
+                <Label htmlFor="delete-confirm">Escreve "apagar" para confirmar:</Label>
+                <Input
+                  id="delete-confirm"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder="apagar"
+                  type="text"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={onDeleteAccount}
+                  variant="destructive"
+                  disabled={deleteConfirmation !== "apagar" || deletingAccount || !session}
+                >
+                  {deletingAccount ? "A eliminar..." : "Eliminar conta permanentemente"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setDeleteAccountMode(false);
+                    setDeleteConfirmation("");
+                  }}
+                  variant="outline"
+                  disabled={deletingAccount}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

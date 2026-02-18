@@ -5,6 +5,32 @@ export type CloudConfig = {
   supabaseAnonKey: string;
 };
 
+function decodeBase64Url(input: string): string {
+  const b64 = input.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+  return atob(b64 + pad);
+}
+
+function getJwtRole(jwt: string): string | undefined {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length < 2) return undefined;
+    const payload = JSON.parse(decodeBase64Url(parts[1]));
+    return payload?.role;
+  } catch {
+    return undefined;
+  }
+}
+
+function assertNotServiceRoleKey(key: string) {
+  const role = getJwtRole(key);
+  if (role === "service_role") {
+    throw new Error(
+      "Configuração insegura: foi detetada uma service-role key no frontend. Usa SEMPRE a anon/publishable key (VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_ANON_KEY).",
+    );
+  }
+}
+
 export type AuthSession = {
   access_token: string;
   refresh_token: string;
@@ -52,6 +78,8 @@ export function storeSession(config: CloudConfig, session: AuthSession | null) {
 }
 
 function headers(config: CloudConfig, session?: AuthSession | null) {
+  // Nunca permitir service_role no cliente
+  assertNotServiceRoleKey(config.supabaseAnonKey);
   const h: Record<string, string> = {
     apikey: config.supabaseAnonKey,
     "Content-Type": "application/json",

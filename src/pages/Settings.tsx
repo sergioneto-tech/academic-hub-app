@@ -564,7 +564,9 @@ export default function SettingsPage() {
       setResetBusy(true);
       // Nota: mesmo que o Supabase ignore o redirect (URL não autorizada), o link vem com type=recovery
       // e o Layout vai redirecionar para este separador automaticamente.
-      const redirectTo = `${window.location.origin}/definicoes?recovery=1`;
+      // O redirect aponta para a raiz — o main.tsx intercepta os tokens do hash
+      // e redireciona automaticamente para #/definicoes?recovery=1
+      const redirectTo = window.location.origin;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
       // Não revelar se o email existe (evita enumeração de contas)

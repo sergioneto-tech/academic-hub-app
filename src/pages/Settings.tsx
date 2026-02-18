@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -240,6 +241,9 @@ function YearBlock({
 }
 
 export default function SettingsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const { state, setDegree, mergePlanCourses, addCourse, updateCourse, removeCourse, exportData, importData, replaceState, resetData, setSync } =
     useAppStore();
 
@@ -253,6 +257,7 @@ export default function SettingsPage() {
   }, [currentDegreeId]);
 
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const exchangedCodeRef = useRef<string | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
   // --- Sincronização (opcional) ---
@@ -261,6 +266,14 @@ export default function SettingsPage() {
   const [cloudPass, setCloudPass] = useState<string>("");
   const [session, setSession] = useState<AuthSession | null>(null);
   const [resetBusy, setResetBusy] = useState<boolean>(false);
+
+  // --- Recuperação de password (Supabase Auth) ---
+  const [recoveryMode, setRecoveryMode] = useState<boolean>(false);
+  const [recoveryReady, setRecoveryReady] = useState<boolean>(true);
+  const [hasRecoverySession, setHasRecoverySession] = useState<boolean>(false);
+  const [newPw1, setNewPw1] = useState<string>("");
+  const [newPw2, setNewPw2] = useState<string>("");
+  const [savingRecovery, setSavingRecovery] = useState<boolean>(false);
 
   useEffect(() => {
     setSyncEnabledLocal(Boolean(state.sync?.enabled));
@@ -283,6 +296,111 @@ export default function SettingsPage() {
     }
     setSession(getStoredSession(cloudConfig));
   }, [cloudConfig]);
+
+  // Se o link de recuperação cair no Dashboard (/) ou noutro separador,
+  // o Layout redireciona para /definicoes?recovery=1 e esta secção trata do resto.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const wantsRecovery = params.get("recovery") === "1" || window.location.hash.includes("type=recovery");
+
+    if (!wantsRecovery) {
+      setRecoveryMode(false);
+      setHasRecoverySession(false);
+      setRecoveryReady(true);
+      return;
+    }
+
+    setRecoveryMode(true);
+    setRecoveryReady(false);
+
+    let cancelled = false;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (cancelled) return;
+      if (event === "PASSWORD_RECOVERY") setHasRecoverySession(true);
+      if (s) setHasRecoverySession(true);
+    });
+
+    (async () => {
+      // PKCE: por vezes chega com ?code=...
+      try {
+        const code = params.get("code");
+        if (code && exchangedCodeRef.current !== code) {
+          exchangedCodeRef.current = code;
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) console.warn("[PasswordRecovery][exchangeCodeForSession]", error);
+        }
+      } catch (e) {
+        console.warn("[PasswordRecovery][exchangeCodeForSession]", e);
+      }
+
+      // Fallback: verificar sessão
+      try {
+        const { data } = await supabase.auth.getSession();
+        if (!cancelled && data?.session) setHasRecoverySession(true);
+      } catch {
+        // ignore
+      }
+
+      if (!cancelled) setRecoveryReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [location.search, location.hash]);
+
+  const canSaveRecovery = useMemo(() => newPw1.length >= 8 && newPw1 === newPw2, [newPw1, newPw2]);
+
+  const clearRecoveryUrl = () => {
+    navigate({ pathname: "/definicoes", search: "", hash: "" }, { replace: true });
+  };
+
+  const onSaveNewPassword = async () => {
+    if (!hasRecoverySession) {
+      toast({
+        title: "Link inválido",
+        description: "Abre novamente o link de recuperação enviado para o teu email.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!canSaveRecovery) {
+      toast({
+        title: "Verifica a password",
+        description: "A password deve ter pelo menos 8 caracteres e as duas caixas devem coincidir.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setSavingRecovery(true);
+      const { error } = await supabase.auth.updateUser({ password: newPw1 });
+      if (error) throw error;
+
+      toast({
+        title: "Password atualizada",
+        description: "Já podes entrar novamente com a nova password.",
+      });
+
+      // Terminar sessão criada pelo link e limpar a sessão local da sincronização
+      await supabase.auth.signOut();
+      if (cloudConfig) storeSession(cloudConfig, null);
+      setSession(null);
+
+      setNewPw1("");
+      setNewPw2("");
+      clearRecoveryUrl();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Erro";
+      toast({ title: "Falha ao atualizar password", description: msg, variant: "destructive" });
+    } finally {
+      setSavingRecovery(false);
+    }
+  };
 
   const selectedOpt = useMemo(() => getDegreeOptionById(selectedDegreeId), [selectedDegreeId]);
 
@@ -444,7 +562,9 @@ export default function SettingsPage() {
 
     try {
       setResetBusy(true);
-      const redirectTo = `${window.location.origin}/reset-password`;
+      // Nota: mesmo que o Supabase ignore o redirect (URL não autorizada), o link vem com type=recovery
+      // e o Layout vai redirecionar para este separador automaticamente.
+      const redirectTo = `${window.location.origin}/definicoes?recovery=1`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
 
       // Não revelar se o email existe (evita enumeração de contas)
@@ -527,6 +647,55 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {recoveryMode && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recuperar password</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!recoveryReady ? (
+              <div className="text-sm text-muted-foreground">A verificar link de recuperação...</div>
+            ) : !hasRecoverySession ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm">
+                  Este link não parece válido/ativo. Abre novamente o link enviado para o teu email.
+                </div>
+                <Button variant="secondary" onClick={clearRecoveryUrl}>
+                  Fechar
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <Label>Nova password</Label>
+                  <Input value={newPw1} onChange={(e) => setNewPw1(e.target.value)} type="password" placeholder="Mínimo 8 caracteres" />
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>Confirmar password</Label>
+                  <Input value={newPw2} onChange={(e) => setNewPw2(e.target.value)} type="password" placeholder="Repetir" />
+                </div>
+
+                <Separator />
+
+                <div className="flex flex-wrap gap-2">
+                  <Button onClick={onSaveNewPassword} disabled={!canSaveRecovery || savingRecovery}>
+                    {savingRecovery ? "A guardar..." : "Guardar nova password"}
+                  </Button>
+                  <Button variant="outline" onClick={clearRecoveryUrl}>
+                    Cancelar
+                  </Button>
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  Depois de alterar a password, faz login novamente abaixo para reativar a sincronização neste dispositivo.
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

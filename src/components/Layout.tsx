@@ -212,7 +212,7 @@ export default function Layout() {
             <div className="text-[10px] text-muted-foreground">
               Não oficial — aplicação independente, não afiliada nem endossada pela Universidade Aberta (UAb).
             </div>
-            <div className="text-[10px] text-muted-foreground truncate">por Sérgio Neto · Estudante de LEI (UAb, 23/24) · Criada em janeiro 2026</div>
+            <div className="text-[10px] text-muted-foreground truncate">por Sérgio Neto · Estudante de LEI (UAb, 23/24) · Criada em jan 26</div>
           </div>
 
           <div className="flex items-center gap-2">

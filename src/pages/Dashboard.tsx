@@ -12,6 +12,8 @@ import { formatPtNumber } from "@/lib/utils";
 import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
 import { getExamDates } from "@/lib/uabExamDates";
 
+const UPDATE_DEFER_KEY = "academicHub:updateDeferred";
+
 function parseYmd(ymd: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null;
   const [y, m, d] = ymd.split("-").map((x) => Number(x));
@@ -144,10 +146,10 @@ export default function Dashboard() {
 
       <DeadlineAlerts state={state} />
 
-      {updateAvailable && (
+      {updateAvailable && localStorage.getItem(UPDATE_DEFER_KEY) && (
         <Card className="border-warning/40 bg-warning/10">
           <CardContent className="p-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm text-muted-foreground">Atualização disponível!</div>
+            <div className="text-sm text-muted-foreground">Atualização disponível (adiada)!</div>
             <div className="flex flex-wrap gap-2">
               <Button size="sm" variant="secondary" onClick={downloadBackup}>
                 <Download className="mr-1 h-3 w-3" /> Backup
@@ -194,20 +196,46 @@ export default function Dashboard() {
               const effectiveResitDate = rc?.date || examDates?.resitDate || null;
 
               const efolioLines = getAssessments(state, c.id, "efolio")
-                .filter((a) => a.startDate && a.endDate)
+                .filter((a) => a.startDate || a.endDate || a.gradeReleaseDate)
                 .map((a) => {
-                  const s = parseYmd(a.startDate!);
-                  const e = parseYmd(a.endDate!);
-                  if (!s || !e) return null;
-                  const ss = startOfDay(s);
-                  const ee = startOfDay(e);
-                  if (today < ss || today > ee) return null;
-                  const daysLeft = Math.round((ee.getTime() - today.getTime()) / 86400000);
-                  const cls = toneClassForDaysLeft(daysLeft);
-                  const text = daysLeft === 0 ? `Último dia: ${a.name}` : `${a.name} termina em ${fmtDaysLeft(daysLeft)}`;
-                  return { key: a.id, cls, text };
+                  const s = a.startDate ? parseYmd(a.startDate) : null;
+                  const e = a.endDate ? parseYmd(a.endDate) : null;
+                  const g = a.gradeReleaseDate ? parseYmd(a.gradeReleaseDate) : null;
+
+                  const ss = s ? startOfDay(s) : null;
+                  const ee = e ? startOfDay(e) : null;
+                  const gg = g ? startOfDay(g) : null;
+
+                  // 1) Antes do início -> contagem para começar
+                  if (ss && today < ss) {
+                    const daysLeft = Math.round((ss.getTime() - today.getTime()) / 86400000);
+                    const cls = toneClassForDaysLeft(daysLeft);
+                    const text = daysLeft === 0 ? `${a.name} começa hoje` : `${a.name} começa em ${fmtDaysLeft(daysLeft)}`;
+                    return { key: `${a.id}-pre`, cls, text, sort: daysLeft };
+                  }
+
+                  // 2) Durante -> contagem para entrega
+                  if (ss && ee && today >= ss && today <= ee) {
+                    const daysLeft = Math.round((ee.getTime() - today.getTime()) / 86400000);
+                    const cls = toneClassForDaysLeft(daysLeft);
+                    const text = daysLeft === 0 ? `Último dia: ${a.name}` : `${a.name} termina em ${fmtDaysLeft(daysLeft)}`;
+                    return { key: `${a.id}-during`, cls, text, sort: daysLeft };
+                  }
+
+                  // 3) Depois -> contagem para publicação da nota (se existir)
+                  if (ee && gg && today > ee && today <= gg) {
+                    const daysLeft = Math.round((gg.getTime() - today.getTime()) / 86400000);
+                    const cls = toneClassForDaysLeft(daysLeft);
+                    const text = daysLeft === 0 ? `Nota hoje: ${a.name}` : `Nota de ${a.name} em ${fmtDaysLeft(daysLeft)}`;
+                    return { key: `${a.id}-grade`, cls, text, sort: daysLeft };
+                  }
+
+                  return null;
                 })
-                .filter((x): x is { key: string; cls: string; text: string } => Boolean(x));
+                .filter((x): x is { key: string; cls: string; text: string; sort: number } => Boolean(x))
+                .sort((a, b) => a.sort - b.sort)
+                .slice(0, 2)
+                .map(({ key, cls, text }) => ({ key, cls, text }));
 
               const examDays = effectiveExamDate ? daysLeftFromToday(effectiveExamDate) : null;
               const examLine = examDays !== null && examDays >= 0

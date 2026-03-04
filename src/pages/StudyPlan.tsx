@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Download, BookOpen, CheckCircle2, Circle, PlayCircle, ChevronDown, ChevronRight } from "lucide-react";
 import { buildIcsForActiveCourses, downloadIcs, suggestIcsFilename } from "@/lib/ics";
 import { Link } from "react-router-dom";
@@ -59,7 +60,11 @@ export default function StudyPlan() {
   );
 
   const handleExportIcs = () => {
-    const ics = buildIcsForActiveCourses(state);
+    const opts = {
+      semester: exportMode === "sem1" ? (1 as const) : exportMode === "sem2" ? (2 as const) : undefined,
+      includePast: exportMode === "all",
+    };
+    const ics = buildIcsForActiveCourses(state, opts);
     downloadIcs(suggestIcsFilename(), ics);
   };
 
@@ -130,7 +135,19 @@ export default function StudyPlan() {
           <h1 className="text-2xl font-bold text-foreground">Plano de Estudos</h1>
           <p className="text-sm text-muted-foreground mt-1">{state.degree.name}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <Select value={exportMode} onValueChange={(v) => setExportMode(v as any)}>
+            <SelectTrigger className="w-full sm:w-[220px]" aria-label="Filtro de exportação">
+              <SelectValue placeholder="Exportar…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="future">Apenas futuros</SelectItem>
+              <SelectItem value="sem1">1º semestre</SelectItem>
+              <SelectItem value="sem2">2º semestre</SelectItem>
+              <SelectItem value="all">Ano completo</SelectItem>
+            </SelectContent>
+          </Select>
+
           <Button variant="outline" size="sm" onClick={handleExportIcs}>
             <Download className="h-4 w-4 mr-2" />
             Exportar .ics

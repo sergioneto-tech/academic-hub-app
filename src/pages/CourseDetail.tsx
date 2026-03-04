@@ -261,6 +261,11 @@ export default function CourseDetail() {
                   value={a.endDate}
                   onChange={(v) => setAssessmentDate(a.id, { endDate: v })}
                 />
+                <DateField
+                  label="Nota (publicação)"
+                  value={a.gradeReleaseDate}
+                  onChange={(v) => setAssessmentDate(a.id, { gradeReleaseDate: v })}
+                />
               </div>
             </div>
           ))}

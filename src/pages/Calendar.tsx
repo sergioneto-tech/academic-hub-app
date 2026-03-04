@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/AppStore";
 import { buildIcsForActiveCourses, downloadIcs, suggestIcsFilename } from "@/lib/ics";
 
@@ -8,8 +10,14 @@ type EventItem = { when: string; title: string; subtitle: string; tag: string };
 export default function CalendarPage() {
   const { state } = useAppStore();
 
+  const [exportMode, setExportMode] = useState<"future" | "sem1" | "sem2" | "all">("future");
+
   function handleExportIcs() {
-    const ics = buildIcsForActiveCourses(state);
+    const opts = {
+      semester: exportMode === "sem1" ? (1 as const) : exportMode === "sem2" ? (2 as const) : undefined,
+      includePast: exportMode === "all",
+    };
+    const ics = buildIcsForActiveCourses(state, opts);
     downloadIcs(suggestIcsFilename(), ics);
   }
 
@@ -22,6 +30,7 @@ export default function CalendarPage() {
     if (a.type === "efolio") {
       if (a.startDate) events.push({ when: a.startDate, title: `${a.name} - Início`, subtitle: courseLine, tag: "Início" });
       if (a.endDate) events.push({ when: a.endDate, title: `${a.name} - Fim`, subtitle: courseLine, tag: "Entrega" });
+      if (a.gradeReleaseDate) events.push({ when: a.gradeReleaseDate, title: `${a.name} - Nota`, subtitle: courseLine, tag: "Nota" });
     } else {
       if (a.date) events.push({ when: a.date, title: a.type === "exam" ? `${a.name} (Exame)` : "Recurso", subtitle: courseLine, tag: a.type === "exam" ? "Exame" : "Recurso" });
     }
@@ -35,9 +44,23 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-2xl font-semibold">Calendário</div>
-        <Button variant="secondary" onClick={handleExportIcs}>
-          Exportar para o telemóvel (.ics)
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <Select value={exportMode} onValueChange={(v) => setExportMode(v as any)}>
+            <SelectTrigger className="w-full sm:w-[260px]">
+              <SelectValue placeholder="Exportar…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="future">Apenas eventos futuros (todas as cadeiras)</SelectItem>
+              <SelectItem value="sem1">1º semestre (apenas eventos futuros)</SelectItem>
+              <SelectItem value="sem2">2º semestre (apenas eventos futuros)</SelectItem>
+              <SelectItem value="all">Ano completo (inclui eventos passados)</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Button variant="secondary" onClick={handleExportIcs}>
+            Exportar para o telemóvel (.ics)
+          </Button>
+        </div>
       </div>
 
       <Card>

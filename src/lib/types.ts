@@ -33,6 +33,7 @@ export type Assessment = {
   // Datas
   startDate?: string; // e-fólio
   endDate?: string;   // e-fólio
+  gradeReleaseDate?: string; // publicação da nota (opcional)
   date?: string;      // exame / recurso
 };
 

@@ -83,6 +83,14 @@ type IcsEvent = {
   alarms?: { trigger: string; description?: string }[];
 };
 
+export type IcsExportOptions = {
+  /** Exportar apenas cadeiras do semestre indicado (1 ou 2). Se omitido, exporta todas as cadeiras ativas. */
+  semester?: 1 | 2;
+  /** Se true, inclui eventos já passados. Por defeito (false) exporta apenas eventos futuros. */
+  includePast?: boolean;
+};
+
+
 function buildIcs(events: IcsEvent[], calendarName = "Academic Hub"): string {
   const lines: string[] = [];
   lines.push("BEGIN:VCALENDAR");
@@ -153,16 +161,21 @@ function makeUid(prefix: string): string {
   return `${prefix}@academic-hub.local`;
 }
 
-function getActiveCourseIds(state: AppState): Set<string> {
-  return new Set(state.courses.filter((c) => c.isActive && !c.isCompleted).map((c) => c.id));
+function getActiveCourseIds(state: AppState, semester?: 1 | 2): Set<string> {
+  return new Set(
+    state.courses
+      .filter((c) => c.isActive && !c.isCompleted)
+      .filter((c) => (semester ? c.semester === semester : true))
+      .map((c) => c.id)
+  );
 }
 
 function isReallyResit(state: AppState, courseId: string): boolean {
   return courseStatusLabel(state, courseId).label === "Recurso";
 }
 
-function buildEventsForActiveCourses(state: AppState): IcsEvent[] {
-  const active = getActiveCourseIds(state);
+function buildEventsForActiveCourses(state: AppState, opts?: { semester?: 1 | 2 }): IcsEvent[] {
+  const active = getActiveCourseIds(state, opts?.semester);
   const events: IcsEvent[] = [];
 
   for (const a of state.assessments) {
@@ -194,6 +207,18 @@ function buildEventsForActiveCourses(state: AppState): IcsEvent[] {
           dtStart: dt,
           dtEnd: ymdToBasic(addDaysToYmd(a.endDate, 1)),
           // All-day event, but remind at 09:00 local (9h after midnight)
+          alarms: [{ trigger: "PT9H" }],
+        });
+      }
+      if (a.gradeReleaseDate) {
+        const dt = ymdToBasic(a.gradeReleaseDate);
+        events.push({
+          uid: makeUid(`${a.id}-grade`),
+          summary: `${courseDesc} — ${a.name} (Nota publicada)`,
+          description: courseDesc,
+          allDay: true,
+          dtStart: dt,
+          dtEnd: ymdToBasic(addDaysToYmd(a.gradeReleaseDate, 1)),
           alarms: [{ trigger: "PT9H" }],
         });
       }
@@ -231,8 +256,29 @@ function buildEventsForActiveCourses(state: AppState): IcsEvent[] {
   return events;
 }
 
-export function buildIcsForActiveCourses(state: AppState): string {
-  const events = buildEventsForActiveCourses(state);
+
+function localTodayYmd(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = pad2(d.getMonth() + 1);
+  const day = pad2(d.getDate());
+  return `${y}-${m}-${day}`;
+}
+
+function eventStartYmd(ev: IcsEvent): string {
+  // dtStart: YYYYMMDD or YYYYMMDDTHHMMSS(Z)
+  const s = ev.dtStart.slice(0, 8);
+  return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+}
+
+function filterFutureEvents(events: IcsEvent[], includePast?: boolean): IcsEvent[] {
+  if (includePast) return events;
+  const today = localTodayYmd();
+  return events.filter((ev) => eventStartYmd(ev) >= today);
+}
+
+export function buildIcsForActiveCourses(state: AppState, opts?: IcsExportOptions): string {
+  const events = filterFutureEvents(buildEventsForActiveCourses(state, { semester: opts?.semester }), opts?.includePast);
   return buildIcs(events, "Academic Hub (UAb)");
 }
 

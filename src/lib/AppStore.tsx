@@ -22,7 +22,7 @@ type Store = {
   // Avaliação
   setAssessmentGrade: (assessmentId: string, grade: number | null) => void;
   setAssessmentMaxPoints: (assessmentId: string, maxPoints: number) => void;
-  setAssessmentDate: (assessmentId: string, fields: { startDate?: string; endDate?: string; date?: string }) => void;
+  setAssessmentDate: (assessmentId: string, fields: { startDate?: string; endDate?: string; gradeReleaseDate?: string; date?: string }) => void;
   ensureAssessment: (courseId: string, type: AssessmentType, name: string) => string;
 
   // Conclusão

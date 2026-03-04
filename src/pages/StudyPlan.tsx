@@ -15,6 +15,12 @@ export default function StudyPlan() {
   const { state } = useAppStore();
   const [showCompleted, setShowCompleted] = useState(false);
 
+  // Modo de exportacao do calendario (.ics)
+  // - future: apenas eventos futuros (recomendado)
+  // - sem1/sem2: apenas cadeiras desse semestre (e apenas eventos futuros)
+  // - all: inclui eventos passados
+  const [exportMode, setExportMode] = useState<"future" | "sem1" | "sem2" | "all">("future");
+
   const planCourses = useMemo(() => getPlanCoursesForDegree(state.degree), [state.degree]);
 
   const coursesByYearSemester = useMemo(() => {

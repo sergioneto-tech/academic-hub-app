@@ -47,9 +47,9 @@ function toneClassForDaysLeft(daysLeft: number): string {
 
 function boxClassForDaysLeft(daysLeft: number): string {
   // realçar prazos próximos (sem mudar cores globais da app)
-  if (daysLeft === 0) return \"rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5\";
-  if (daysLeft >= 1 && daysLeft <= 5) return \"rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5\";
-  return \"\";
+  if (daysLeft === 0) return "rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5";
+  if (daysLeft >= 1 && daysLeft <= 5) return "rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5";
+  return "";
 }
 
 function fmtDaysLeft(daysLeft: number): string {

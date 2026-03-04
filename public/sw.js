@@ -1,4 +1,4 @@
-const SW_VERSION = "0.1.1";
+const SW_VERSION = "0.2.1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 self.addEventListener("install", (event) => {
@@ -52,14 +52,19 @@ self.addEventListener("fetch", (event) => {
 
 
   if (isNav) {
+    // Cache-first para permitir que o utilizador escolha quando aplicar atualizações
+    // (o SW novo fica em waiting até clicar "Atualizar agora")
     event.respondWith(
-      fetch(req)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          return res;
-        })
-        .catch(() => caches.match(req).then((c) => c || caches.match("./")))
+      caches.match(req).then((cached) => {
+        if (cached) return cached;
+        return fetch(req)
+          .then((res) => {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+            return res;
+          })
+          .catch(() => caches.match("./"));
+      })
     );
     return;
   }

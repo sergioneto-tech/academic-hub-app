@@ -76,12 +76,12 @@ export default function CalendarPage() {
             future.map((e, idx) => (
               <div key={idx} className="flex items-center justify-between rounded-lg border p-4">
                 <div>
-                  <div className="font-medium">{e.title}</div>
-                  <div className="text-sm text-muted-foreground">{e.subtitle}</div>
+                  <div className="font-medium text-muted-foreground">{e.title}</div>
+                  <div className="text-sm text-muted-foreground/80">{e.subtitle}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium">{new Date(e.when).toLocaleDateString("pt-PT")}</div>
-                  <div className="text-xs text-muted-foreground">{e.tag}</div>
+                  <div className="text-sm font-medium text-muted-foreground">{new Date(e.when).toLocaleDateString("pt-PT")}</div>
+                  <div className="text-xs text-muted-foreground/70">{e.tag}</div>
                 </div>
               </div>
             ))
@@ -89,20 +89,20 @@ export default function CalendarPage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border bg-muted/20">
         <CardHeader>
           <CardTitle>Eventos Passados</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {past.slice(0, 20).map((e, idx) => (
-            <div key={idx} className="flex items-center justify-between rounded-lg border p-4">
+            <div key={idx} className="flex items-center justify-between rounded-lg border border-muted-foreground/20 bg-muted/30 p-4">
               <div>
-                <div className="font-medium">{e.title}</div>
-                <div className="text-sm text-muted-foreground">{e.subtitle}</div>
+                <div className="font-medium text-muted-foreground">{e.title}</div>
+                <div className="text-sm text-muted-foreground/80">{e.subtitle}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium">{new Date(e.when).toLocaleDateString("pt-PT")}</div>
-                <div className="text-xs text-muted-foreground">{e.tag}</div>
+                <div className="text-sm font-medium text-muted-foreground">{new Date(e.when).toLocaleDateString("pt-PT")}</div>
+                <div className="text-xs text-muted-foreground/70">{e.tag}</div>
               </div>
             </div>
           ))}

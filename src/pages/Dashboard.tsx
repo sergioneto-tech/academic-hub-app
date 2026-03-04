@@ -45,6 +45,13 @@ function toneClassForDaysLeft(daysLeft: number): string {
   return "text-muted-foreground";
 }
 
+function boxClassForDaysLeft(daysLeft: number): string {
+  // realçar prazos próximos (sem mudar cores globais da app)
+  if (daysLeft === 0) return \"rounded-md border border-destructive/30 bg-destructive/10 px-2 py-0.5\";
+  if (daysLeft >= 1 && daysLeft <= 5) return \"rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5\";
+  return \"\";
+}
+
 function fmtDaysLeft(daysLeft: number): string {
   if (daysLeft === 0) return "hoje";
   if (daysLeft === 1) return "1 dia";
@@ -196,57 +203,62 @@ export default function Dashboard() {
               const effectiveResitDate = rc?.date || examDates?.resitDate || null;
 
               const efolioLines = getAssessments(state, c.id, "efolio")
-                .filter((a) => a.startDate || a.endDate || a.gradeReleaseDate)
-                .map((a) => {
-                  const s = a.startDate ? parseYmd(a.startDate) : null;
-                  const e = a.endDate ? parseYmd(a.endDate) : null;
-                  const g = a.gradeReleaseDate ? parseYmd(a.gradeReleaseDate) : null;
+  .filter((a) => a.startDate || a.endDate || a.gradeReleaseDate)
+  .map((a) => {
+    const s = a.startDate ? parseYmd(a.startDate) : null;
+    const e = a.endDate ? parseYmd(a.endDate) : null;
+    const g = a.gradeReleaseDate ? parseYmd(a.gradeReleaseDate) : null;
 
-                  const ss = s ? startOfDay(s) : null;
-                  const ee = e ? startOfDay(e) : null;
-                  const gg = g ? startOfDay(g) : null;
+    const ss = s ? startOfDay(s) : null;
+    const ee = e ? startOfDay(e) : null;
+    const gg = g ? startOfDay(g) : null;
 
-                  // 1) Antes do início -> contagem para começar
-                  if (ss && today < ss) {
-                    const daysLeft = Math.round((ss.getTime() - today.getTime()) / 86400000);
-                    const cls = toneClassForDaysLeft(daysLeft);
-                    const text = daysLeft === 0 ? `${a.name} começa hoje` : `${a.name} começa em ${fmtDaysLeft(daysLeft)}`;
-                    return { key: `${a.id}-pre`, cls, text, sort: daysLeft };
-                  }
+    // 1) Antes do início -> contagem para começar
+    if (ss && today < ss) {
+      const daysLeft = Math.round((ss.getTime() - today.getTime()) / 86400000);
+      const cls = toneClassForDaysLeft(daysLeft);
+      const text = daysLeft === 0 ? `${a.name} começa hoje` : `${a.name} começa em ${fmtDaysLeft(daysLeft)}`;
+      return { key: `${a.id}-pre`, cls, text, sort: daysLeft };
+    }
 
-                  // 2) Durante -> contagem para entrega
-                  if (ss && ee && today >= ss && today <= ee) {
-                    const daysLeft = Math.round((ee.getTime() - today.getTime()) / 86400000);
-                    const cls = toneClassForDaysLeft(daysLeft);
-                    const text = daysLeft === 0 ? `Último dia: ${a.name}` : `${a.name} termina em ${fmtDaysLeft(daysLeft)}`;
-                    return { key: `${a.id}-during`, cls, text, sort: daysLeft };
-                  }
+    // 2) Durante -> contagem para entrega
+    if (ss && ee && today >= ss && today <= ee) {
+      const daysLeft = Math.round((ee.getTime() - today.getTime()) / 86400000);
+      const cls = toneClassForDaysLeft(daysLeft);
+      const text = daysLeft === 0 ? `Último dia: ${a.name}` : `${a.name} termina em ${fmtDaysLeft(daysLeft)}`;
+      return { key: `${a.id}-during`, cls, text, sort: daysLeft };
+    }
 
-                  // 3) Depois -> contagem para publicação da nota (se existir)
-                  if (ee && gg && today > ee && today <= gg) {
-                    const daysLeft = Math.round((gg.getTime() - today.getTime()) / 86400000);
-                    const cls = toneClassForDaysLeft(daysLeft);
-                    const text = daysLeft === 0 ? `Nota hoje: ${a.name}` : `Nota de ${a.name} em ${fmtDaysLeft(daysLeft)}`;
-                    return { key: `${a.id}-grade`, cls, text, sort: daysLeft };
-                  }
+    // 3) Depois -> contagem para publicação da nota (se existir)
+    if (ee && gg && today > ee && today <= gg) {
+      const daysLeft = Math.round((gg.getTime() - today.getTime()) / 86400000);
+      const cls = toneClassForDaysLeft(daysLeft);
+      const text = daysLeft === 0 ? `Nota hoje: ${a.name}` : `Nota de ${a.name} em ${fmtDaysLeft(daysLeft)}`;
+      return { key: `${a.id}-grade`, cls, text, sort: daysLeft };
+    }
 
-                  return null;
-                })
-                .filter((x): x is { key: string; cls: string; text: string; sort: number } => Boolean(x))
-                .sort((a, b) => a.sort - b.sort)
-                .slice(0, 2)
-                .map(({ key, cls, text }) => ({ key, cls, text }));
+    return null;
+  })
+  .filter((x): x is { key: string; cls: string; text: string; sort: number } => Boolean(x))
+  .sort((a, b) => a.sort - b.sort)
+  .slice(0, 2)
+  .map(({ key, cls, text, sort }) => ({ key, cls, text, daysLeft: sort }));
 
-              const examDays = effectiveExamDate ? daysLeftFromToday(effectiveExamDate) : null;
-              const examLine = examDays !== null && examDays >= 0
-                ? { cls: toneClassForDaysLeft(examDays), text: examDays === 0 ? "Exame hoje" : `Exame em ${fmtDaysLeft(examDays)}` }
-                : null;
+const examDays = effectiveExamDate ? daysLeftFromToday(effectiveExamDate) : null;
+const examLine = examDays !== null && examDays >= 0
+  ? { key: `${c.id}-exam`, cls: toneClassForDaysLeft(examDays), text: examDays === 0 ? "Exame hoje" : `Exame em ${fmtDaysLeft(examDays)}`, daysLeft: examDays }
+  : null;
 
-              const showResit = st.label === "Recurso" && Boolean(effectiveResitDate);
-              const resitDays = showResit && effectiveResitDate ? daysLeftFromToday(effectiveResitDate) : null;
-              const resitLine = resitDays !== null && resitDays >= 0
-                ? { cls: toneClassForDaysLeft(resitDays), text: resitDays === 0 ? "Recurso hoje" : `Recurso em ${fmtDaysLeft(resitDays)}` }
-                : null;
+const showResit = st.label === "Recurso" && Boolean(effectiveResitDate);
+const resitDays = showResit && effectiveResitDate ? daysLeftFromToday(effectiveResitDate) : null;
+const resitLine = resitDays !== null && resitDays >= 0
+  ? { key: `${c.id}-resit`, cls: toneClassForDaysLeft(resitDays), text: resitDays === 0 ? "Recurso hoje" : `Recurso em ${fmtDaysLeft(resitDays)}`, daysLeft: resitDays }
+  : null;
+
+// Ordenar por urgência (mais próximo primeiro)
+const timeLines = [examLine, resitLine, ...efolioLines]
+  .filter((x): x is { key: string; cls: string; text: string; daysLeft: number } => Boolean(x))
+  .sort((a, b) => a.daysLeft - b.daysLeft);
 
               return (
                 <Link
@@ -268,19 +280,18 @@ export default function Dashboard() {
                         </div>
                       )}
 
-                      {(examLine || resitLine || efolioLines.length > 0) && (
-                        <div className="mt-1.5 space-y-0.5">
-                          {examLine && (
-                            <div className={`text-[11px] font-medium ${examLine.cls}`}>⏳ {examLine.text}</div>
-                          )}
-                          {resitLine && (
-                            <div className={`text-[11px] font-medium ${resitLine.cls}`}>⏳ {resitLine.text}</div>
-                          )}
-                          {efolioLines.map((l) => (
-                            <div key={l.key} className={`text-[11px] font-medium ${l.cls}`}>⏳ {l.text}</div>
-                          ))}
-                        </div>
-                      )}
+                      {timeLines.length > 0 && (
+  <div className="mt-1.5 space-y-0.5">
+    {timeLines.map((l) => (
+      <div
+        key={l.key}
+        className={`text-[11px] font-medium ${l.cls} ${boxClassForDaysLeft(l.daysLeft)}`}
+      >
+        ⏳ {l.text}
+      </div>
+    ))}
+  </div>
+)}
 
                       {/* Show exam dates from UAb calendar when no countdown is active */}
                       {!examLine && !resitLine && examDates && (

@@ -14,7 +14,19 @@ export type Course = {
   isActive: boolean;
   isCompleted: boolean;
   completedAt?: string; // ISO
+
+  /** Sessões (ex.: abertura, antes de e‑fólios, antes de exame). */
+  sessions?: CourseSession[];
 };
+
+export type CourseSession = {
+  id: UUID;
+  /** Título curto da sessão (ex.: "sessão de abertura"). */
+  title: string;
+  /** Data/hora local em formato ISO (YYYY-MM-DD ou YYYY-MM-DDTHH:MM). */
+  dateTime: string;
+};
+
 
 export type AssessmentType = "efolio" | "exam" | "resit";
 

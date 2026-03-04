@@ -40,6 +40,17 @@ export function migrate(state: any): AppState {
     isActive: Boolean(c.isActive ?? c.ativa ?? false),
     isCompleted: Boolean(c.isCompleted ?? c.concluida ?? false),
     completedAt: c.completedAt ? String(c.completedAt) : undefined,
+
+    sessions: (() => {
+      const raw = (c.sessions ?? c.sessoes);
+      if (!Array.isArray(raw)) return undefined;
+      const mapped = raw.map((s: any) => ({
+        id: String(s.id ?? uuid()),
+        title: String(s.title ?? s.titulo ?? s.name ?? "Sessão"),
+        dateTime: String(s.dateTime ?? s.dataHora ?? s.datetime ?? s.date ?? s.data ?? ""),
+      })).filter((s: any) => !!s.dateTime);
+      return mapped.length ? mapped : undefined;
+    })(),
   }));
 
   base.assessments = base.assessments.map((a: any): Assessment => ({
@@ -53,6 +64,7 @@ export function migrate(state: any): AppState {
     grade: typeof a.grade === "number" ? a.grade : (a.grade === null ? null : null),
     startDate: a.startDate ? String(a.startDate) : undefined,
     endDate: a.endDate ?? a.dataFim ? String(a.endDate ?? a.dataFim) : undefined,
+    gradeReleaseDate: a.gradeReleaseDate ?? a.dataNota ?? a.grade_release ? String(a.gradeReleaseDate ?? a.dataNota ?? a.grade_release) : undefined,
     date: a.date ?? a.dataExame ? String(a.date ?? a.dataExame) : undefined,
   }));
 

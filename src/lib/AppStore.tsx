@@ -13,7 +13,7 @@ type Store = {
 
   // Cadeiras (catálogo)
   addCourse: (seed: { code: string; name: string; year: number; semester: number }) => string;
-  updateCourse: (courseId: string, patch: Partial<Pick<Course, "code" | "name" | "year" | "semester" | "isActive" | "isCompleted" | "completedAt">>) => void;
+  updateCourse: (courseId: string, patch: Partial<Pick<Course, "code" | "name" | "year" | "semester" | "isActive" | "isCompleted" | "completedAt" | "sessions">>) => void;
   removeCourse: (courseId: string) => void;
 
   // Importação “seed” do plano de estudos

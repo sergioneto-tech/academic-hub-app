@@ -246,6 +246,32 @@ function buildEventsForActiveCourses(state: AppState, opts?: { semester?: 1 | 2 
     });
   }
 
+
+  // Sessões (ex.: abertura, antes de e‑fólios, antes de exame)
+  for (const c of state.courses) {
+    if (!active.has(c.id)) continue;
+    const sessions = (c as any).sessions;
+    if (!Array.isArray(sessions) || sessions.length === 0) continue;
+
+    const courseDesc = courseLine(state, c.id);
+
+    for (const s of sessions) {
+      const dtStart = dtLocalToIcsDateTime(String((s as any).dateTime ?? ""));
+      if (!dtStart) continue;
+
+      const title = String((s as any).title ?? "Sessão").trim() || "Sessão";
+
+      events.push({
+        uid: makeUid(`${c.id}-session-${String((s as any).id ?? "") || dtStart}`),
+        summary: `${courseDesc} — Sessão: ${title}`,
+        description: courseDesc,
+        allDay: false,
+        dtStart,
+        alarms: [{ trigger: "-P1D" }],
+      });
+    }
+  }
+
   // Ordenar: all-day por data, date-time por data/hora
   events.sort((a, b) => {
     const aa = a.allDay ? a.dtStart : a.dtStart;

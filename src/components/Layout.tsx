@@ -9,6 +9,8 @@ import { applyTheme, getStoredTheme, getSystemTheme, storeTheme, type ThemeMode 
 import { useUpdate } from "@/lib/UpdateProvider";
 import { APP_VERSION } from "@/lib/version";
 
+const UPDATE_DEFER_KEY = "academicHub:updateDeferred";
+
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -133,7 +135,20 @@ export default function Layout() {
     return versions[0];
   }, [releaseNotes]);
 
-  const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme() ?? getSystemTheme());
+  
+  const [deferUpdate, setDeferUpdate] = useState(() => {
+    const v = latestEntry?.version;
+    if (!v) return false;
+    return localStorage.getItem(UPDATE_DEFER_KEY) === v;
+  });
+
+  useEffect(() => {
+    const v = latestEntry?.version;
+    if (!v) return;
+    setDeferUpdate(localStorage.getItem(UPDATE_DEFER_KEY) === v);
+  }, [latestEntry?.version]);
+
+const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme() ?? getSystemTheme());
 
   useEffect(() => {
     applyTheme(theme);
@@ -286,7 +301,7 @@ export default function Layout() {
             </div>
           </div>
         )}
-        {updateAvailable && (
+        {updateAvailable && !deferUpdate && (
         <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
@@ -312,7 +327,24 @@ export default function Layout() {
                 <Download className="mr-2 h-4 w-4" />
                 Exportar backup
               </Button>
-              <Button size="sm" onClick={applyUpdate}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const v = latestEntry?.version;
+                  if (v) localStorage.setItem(UPDATE_DEFER_KEY, v);
+                  setDeferUpdate(true);
+                }}
+              >
+                Mais tarde
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  localStorage.removeItem(UPDATE_DEFER_KEY);
+                  applyUpdate();
+                }}
+              >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Atualizar versão
               </Button>

@@ -126,6 +126,51 @@ export default function CourseDetail() {
       ? "bg-rose-100 text-rose-900 border-rose-200"
       : "bg-slate-100 text-slate-900 border-slate-200";
 
+
+  // Sessões (ex.: abertura, antes de e‑fólios, antes de exame)
+  const sessions = (course.sessions ?? []);
+
+  const sessionsSorted = useMemo(() => {
+    return [...sessions].sort((a, b) => String(a.dateTime).localeCompare(String(b.dateTime)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(sessions)]);
+
+  function makeSessionId(): string {
+    return Math.random().toString(16).slice(2) + Date.now().toString(16);
+  }
+
+  function addSession() {
+    const ymd = new Date().toISOString().slice(0, 10);
+    const next = [
+      ...sessions,
+      { id: makeSessionId(), title: "sessão", dateTime: `${ymd}T21:00` },
+    ];
+    updateCourse(course.id, { sessions: next });
+  }
+
+  function updateSession(sessionId: string, patch: Partial<{ title: string; dateTime: string }>) {
+    const next = sessions.map((s) => (s.id === sessionId ? { ...s, ...patch } : s));
+    updateCourse(course.id, { sessions: next });
+  }
+
+  function removeSession(sessionId: string) {
+    const next = sessions.filter((s) => s.id !== sessionId);
+    updateCourse(course.id, { sessions: next.length ? next : undefined });
+  }
+
+  function formatSessionLine(dateTime: string, title: string) {
+    const d = new Date(dateTime);
+    const dateLabel = d.toLocaleDateString("pt-PT", { day: "numeric", month: "long" });
+    const hasTime = dateTime.includes("T");
+    let timeLabel = "";
+    if (hasTime && !Number.isNaN(d.getTime())) {
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      timeLabel = mm === "00" ? `${hh}h` : `${hh}h${mm}`;
+    }
+    return `${dateLabel}${timeLabel ? `, ${timeLabel}` : ""} - ${title}`;
+  }
+
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6 space-y-6">
       <div className="flex items-start justify-between gap-3">
@@ -269,6 +314,68 @@ export default function CourseDetail() {
               </div>
             </div>
           ))}
+        </CardContent>
+      
+</Card>
+
+      <Card className="bg-white/70 backdrop-blur">
+        <CardHeader>
+          <CardTitle>Sessões</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            Adiciona sessões típicas do Moodle (abertura, antes dos e‑fólios e antes do exame). Serão incluídas no Calendário e na exportação (.ics).
+          </p>
+
+          <div className="space-y-3">
+            {sessionsSorted.length === 0 ? (
+              <div className="text-sm text-muted-foreground">Sem sessões definidas.</div>
+            ) : (
+              sessionsSorted.map((s) => (
+                <div key={s.id} className="rounded-lg border p-3 md:p-4 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-[1fr_260px_auto] sm:items-end">
+                    <div className="grid gap-1">
+                      <Label className="text-xs text-muted-foreground">Descrição</Label>
+                      <Input
+                        value={s.title}
+                        placeholder="sessão de abertura"
+                        onChange={(e) => updateSession(s.id, { title: e.target.value })}
+                      />
+                    </div>
+
+                    <DateTimeField
+                      label="Data/hora"
+                      value={s.dateTime}
+                      onChange={(v) => updateSession(s.id, { dateTime: v })}
+                    />
+
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={() => removeSession(s.id)}
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={addSession}>Adicionar sessão</Button>
+          </div>
+
+          {sessionsSorted.length > 0 && (
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <div className="text-xs font-medium mb-2">Lista de sessões:</div>
+              <ul className="list-disc pl-5 text-xs text-muted-foreground space-y-1">
+                {sessionsSorted.map((s) => (
+                  <li key={s.id}>{formatSessionLine(s.dateTime, s.title)}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </CardContent>
       </Card>
 

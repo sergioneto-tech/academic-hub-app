@@ -36,6 +36,30 @@ export default function CalendarPage() {
     }
   }
 
+
+  // Sessões por cadeira (ex.: abertura, antes de e‑fólios, antes de exame)
+  for (const c of state.courses) {
+    if (!c.isActive) continue;
+    const courseLine = `${c.code} - ${c.name}`;
+    const sessions = (c as any).sessions;
+    if (!Array.isArray(sessions)) continue;
+
+    for (const s of sessions) {
+      const when = String((s as any).dateTime ?? "");
+      if (!when) continue;
+
+      const time = when.includes("T") ? when.slice(11, 16) : "";
+      const title = String((s as any).title ?? "Sessão").trim() || "Sessão";
+
+      events.push({
+        when,
+        title: `Sessão — ${title}`,
+        subtitle: courseLine,
+        tag: time ? `Sessão (${time})` : "Sessão",
+      });
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const future = events.filter(e => e.when >= today).sort((a, b) => a.when.localeCompare(b.when));
   const past = events.filter(e => e.when < today).sort((a, b) => b.when.localeCompare(a.when));

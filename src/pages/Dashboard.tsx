@@ -11,6 +11,7 @@ import { courseStatusLabel, exam, getAssessments, globalStats, resit, totalEctsC
 import { formatPtNumber } from "@/lib/utils";
 import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
 import { getExamDates } from "@/lib/uabExamDates";
+import { formatPtDate } from "@/lib/date";
 
 const UPDATE_DEFER_KEY = "academicHub:updateDeferred";
 
@@ -58,11 +59,6 @@ function fmtDaysLeft(daysLeft: number): string {
   return `${daysLeft} dias`;
 }
 
-function formatDatePt(ymd: string): string {
-  const d = parseYmd(ymd);
-  if (!d) return ymd;
-  return d.toLocaleDateString("pt-PT", { day: "numeric", month: "short" });
-}
 
 export default function Dashboard() {
   const { state, exportData } = useAppStore();
@@ -271,8 +267,8 @@ const timeLines = [examLine, resitLine, ...efolioLines]
                       <div className="font-semibold text-sm leading-tight truncate">{c.code} — {c.name}</div>
                       <div className="mt-0.5 text-[11px] text-muted-foreground">
                         E‑fólios: {formatPtNumber(ef)} / {formatPtNumber(efMax)}
-                        {effectiveExamDate ? ` • Exame: ${formatDatePt(datePart(effectiveExamDate))}` : ""}
-                        {effectiveResitDate && st.label === "Recurso" ? ` • Recurso: ${formatDatePt(datePart(effectiveResitDate))}` : ""}
+                        {effectiveExamDate ? ` • Exame: ${formatPtDate(datePart(effectiveExamDate))}` : ""}
+                        {effectiveResitDate && st.label === "Recurso" ? ` • Recurso: ${formatPtDate(datePart(effectiveResitDate))}` : ""}
                       </div>
                       {getCourseArea(planCourses, c.code) && (
                         <div className="mt-0.5 text-[10px] italic text-muted-foreground/70">
@@ -297,10 +293,10 @@ const timeLines = [examLine, resitLine, ...efolioLines]
                       {!examLine && !resitLine && examDates && (
                         <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground/80">
                           {examDates.examDate && (
-                            <span>📝 Normal: {formatDatePt(examDates.examDate)}{examDates.examPeriod ? ` (${examDates.examPeriod === "M" ? "10h" : "15h"})` : ""}</span>
+                            <span>📝 Normal: {formatPtDate(examDates.examDate)}{examDates.examPeriod ? ` (${examDates.examPeriod === "M" ? "10h" : "15h"})` : ""}</span>
                           )}
                           {examDates.resitDate && (
-                            <span>🔄 Recurso: {formatDatePt(examDates.resitDate)}{examDates.resitPeriod ? ` (${examDates.resitPeriod === "M" ? "10h" : "15h"})` : ""}</span>
+                            <span>🔄 Recurso: {formatPtDate(examDates.resitDate)}{examDates.resitPeriod ? ` (${examDates.resitPeriod === "M" ? "10h" : "15h"})` : ""}</span>
                           )}
                         </div>
                       )}

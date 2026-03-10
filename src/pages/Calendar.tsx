@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/AppStore";
 import { buildIcsForActiveCourses, downloadIcs, suggestIcsFilename } from "@/lib/ics";
+import { formatPtDate } from "@/lib/date";
 
 type EventItem = { when: string; title: string; subtitle: string; tag: string };
 
@@ -104,7 +105,7 @@ export default function CalendarPage() {
                   <div className="text-sm text-muted-foreground/80">{e.subtitle}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-medium text-muted-foreground">{new Date(e.when).toLocaleDateString("pt-PT")}</div>
+                  <div className="text-sm font-medium text-muted-foreground">{formatPtDate(e.when)}</div>
                   <div className="text-xs text-muted-foreground/70">{e.tag}</div>
                 </div>
               </div>
@@ -125,7 +126,7 @@ export default function CalendarPage() {
                 <div className="text-sm text-muted-foreground/80">{e.subtitle}</div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-medium text-muted-foreground">{new Date(e.when).toLocaleDateString("pt-PT")}</div>
+                <div className="text-sm font-medium text-muted-foreground">{formatPtDate(e.when)}</div>
                 <div className="text-xs text-muted-foreground/70">{e.tag}</div>
               </div>
             </div>

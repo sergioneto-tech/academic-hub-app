@@ -10,33 +10,24 @@ import { Separator } from "@/components/ui/separator";
 import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, exam as getExam, finalGradeRaw, finalGradeRounded, getAssessments, getRules, needsResit, resit as getResit, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { formatPtNumber, parsePtNumber } from "@/lib/utils";
+import { formatPtDate, formatPtDateTime } from "@/lib/date";
+import { PtDateInput } from "@/components/ui/pt-date-input";
+import { PtDateTimeInput } from "@/components/ui/pt-datetime-input";
 
 function DateField({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
   return (
     <div className="grid gap-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input type="date" value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+      <PtDateInput value={value} onChange={onChange} />
     </div>
   );
-}
-
-function normalizeDateTimeLocal(value?: string): string {
-  if (!value) return "";
-  // already datetime-local
-  if (value.includes("T")) return value.slice(0, 16);
-  // legacy: only date -> default time
-  return `${value}T09:00`;
 }
 
 function DateTimeField({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
   return (
     <div className="grid gap-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
-      <Input
-        type="datetime-local"
-        value={normalizeDateTimeLocal(value)}
-        onChange={(e) => onChange(e.target.value)}
-      />
+      <PtDateTimeInput value={value} onChange={onChange} />
     </div>
   );
 }
@@ -159,16 +150,8 @@ export default function CourseDetail() {
   }
 
   function formatSessionLine(dateTime: string, title: string) {
-    const d = new Date(dateTime);
-    const dateLabel = d.toLocaleDateString("pt-PT", { day: "numeric", month: "long" });
-    const hasTime = dateTime.includes("T");
-    let timeLabel = "";
-    if (hasTime && !Number.isNaN(d.getTime())) {
-      const hh = String(d.getHours()).padStart(2, "0");
-      const mm = String(d.getMinutes()).padStart(2, "0");
-      timeLabel = mm === "00" ? `${hh}h` : `${hh}h${mm}`;
-    }
-    return `${dateLabel}${timeLabel ? `, ${timeLabel}` : ""} - ${title}`;
+    const dateTimeLabel = formatPtDateTime(dateTime);
+    return `${dateTimeLabel} - ${title}`;
   }
 
   return (
@@ -272,7 +255,7 @@ export default function CourseDetail() {
                 <div>
                   <div className="font-medium">{a.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    {a.endDate ? `Até ${a.endDate}` : "Defina as datas para lembretes/planeamento."}
+                    {a.endDate ? `Até ${formatPtDate(a.endDate)}` : "Defina as datas para lembretes/planeamento."}
                   </div>
                 </div>
 

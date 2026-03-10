@@ -4,6 +4,7 @@ import { useAppStore } from "@/lib/AppStore";
 import { finalGrade, globalStats } from "@/lib/calculations";
 import type { AppState, Course } from "@/lib/types";
 import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
+import { formatPtDate } from "@/lib/date";
 
 function sortByCompletedAtDesc(a: Course, b: Course) {
   return (b.completedAt ?? "").localeCompare(a.completedAt ?? "");
@@ -62,7 +63,7 @@ function SemesterPanel({
                 {c.completedAt && (
                   <div className="mt-2 text-xs text-muted-foreground">
                     Concluída em{" "}
-                    {new Date(c.completedAt).toLocaleDateString("pt-PT")}
+                    {formatPtDate(c.completedAt?.slice(0, 10))}
                   </div>
                 )}
               </div>

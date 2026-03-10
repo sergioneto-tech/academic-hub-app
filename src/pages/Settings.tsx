@@ -187,7 +187,7 @@ function SemesterPanel({
 
                     {completed && (
                       <span className="text-[10px] text-muted-foreground">
-                        {c.completedAt ? new Date(c.completedAt).toLocaleDateString("pt-PT") : ""}
+                        {c.completedAt ? formatPtDate(c.completedAt.slice(0, 10)) : ""}
                       </span>
                     )}
 

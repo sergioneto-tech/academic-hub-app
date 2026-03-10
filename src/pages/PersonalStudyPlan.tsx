@@ -13,6 +13,8 @@ import { Download, Plus, Trash2, BookOpen, PenLine, RotateCcw, Target, MoreHoriz
 import { Link } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import { formatPtDate } from "@/lib/date";
+import { PtDateInput } from "@/components/ui/pt-date-input";
 
 const ACTIVITY_LABELS: Record<StudyBlock["activity"], { label: string; icon: typeof BookOpen }> = {
   reading: { label: "📖 Leitura", icon: BookOpen },
@@ -66,7 +68,7 @@ function BlockCard({ block, courseName, onStatusChange, onDelete, index }: {
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className="text-xs">{activity.label}</Badge>
             <span className="text-xs text-muted-foreground">
-              {block.startDate} → {block.endDate}
+              {formatPtDate(block.startDate)} → {formatPtDate(block.endDate)}
             </span>
           </div>
           {timeLabel && (
@@ -266,11 +268,11 @@ export default function PersonalStudyPlan() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Data início *</Label>
-                    <Input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
+                    <PtDateInput value={form.startDate} onChange={(value) => setForm((f) => ({ ...f, startDate: value }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>Data fim *</Label>
-                    <Input type="date" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} />
+                    <PtDateInput value={form.endDate} onChange={(value) => setForm((f) => ({ ...f, endDate: value }))} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">

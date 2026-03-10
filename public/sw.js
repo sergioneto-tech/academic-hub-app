@@ -1,4 +1,4 @@
-const SW_VERSION = "0.2.3";
+const SW_VERSION = "0.2.2";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 self.addEventListener("install", (event) => {
@@ -25,42 +25,60 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-function putInCache(req, res) {
-  const copy = res.clone();
-  caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-  return res;
-}
-
-// Network-first para navegação e assets críticos do build.
-// Isto evita servir JS/CSS antigos após novo deploy.
+// network-first for navigation; cache-first for everything else
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
+
+  // Only handle same-origin
   if (url.origin !== self.location.origin) return;
 
   const isNav = req.mode === "navigate";
-  const isBuildAsset = /\/assets\//.test(url.pathname) || /\.(js|css|mjs)$/.test(url.pathname);
-  const isVersionNotes = url.pathname.endsWith("release-notes.json");
-
-  if (isNav || isBuildAsset || isVersionNotes) {
+  // Forçar rede nas notas de versão (para mostrar sempre as alterações mais recentes)
+  if (url.pathname.endsWith("release-notes.json")) {
     event.respondWith(
       fetch(req)
-        .then((res) => putInCache(req, res))
-        .catch(() => caches.match(req).then((cached) => cached || caches.match("./")))
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+
+  if (isNav) {
+    // Cache-first para permitir que o utilizador escolha quando aplicar atualizações
+    // (o SW novo fica em waiting até clicar "Atualizar agora")
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached;
+        return fetch(req)
+          .then((res) => {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+            return res;
+          })
+          .catch(() => caches.match("./"));
+      })
     );
     return;
   }
 
   event.respondWith(
-    caches.match(req).then((cached) => {
-      if (cached) return cached;
-      return fetch(req).then((res) => putInCache(req, res));
-    })
+    caches.match(req).then((cached) => cached || fetch(req).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      return res;
+    }))
   );
 });
 
+// Permitir que o utilizador controle quando quer aplicar a atualização.
 self.addEventListener("message", (event) => {
   if (!event?.data) return;
   if (event.data.type === "SKIP_WAITING") {

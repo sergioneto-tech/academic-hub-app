@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 // Aplicar tema o mais cedo possível (evita "flash" ao abrir)
 const initialTheme = getStoredTheme() ?? getSystemTheme();
 applyTheme(initialTheme);
+document.documentElement.lang = "pt-PT";
 
 // ────────────────────────────────────────────────────────────────────────────
 // CORREÇÃO: Interceptar tokens de recuperação de password ANTES do HashRouter.

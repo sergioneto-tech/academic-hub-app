@@ -28,6 +28,9 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       .then((reg) => {
         regRef.current = reg;
 
+        // Forçar verificação de atualização logo após o registo.
+        reg.update().catch(() => {});
+
         // Se já há uma versão nova em "waiting", mostrar já o aviso.
         if (reg.waiting) setUpdateAvailable(true);
 

@@ -257,6 +257,8 @@ export const ACADEMIC_CALENDAR: AcademicEvent[] = [
   },
 ];
 
+import { formatPtDate } from "@/lib/date";
+
 /** Links úteis do portal UAb */
 export const UAB_LINKS = {
   calendarioLetivo: "https://portal.uab.pt/calendario-letivo/",
@@ -325,8 +327,8 @@ export function getAcademicAlerts(): CalendarAlert[] {
         id: event.id,
         label: event.label,
         description: isOngoing
-          ? `A decorrer até ${formatDate(event.endDate)}` + (daysToEnd <= 3 ? ` (${daysToEnd === 0 ? "último dia!" : `faltam ${daysToEnd} dias`})` : "")
-          : `Começa ${daysToStart === 1 ? "amanhã" : `daqui a ${daysToStart} dias`} (${formatDate(event.startDate)})`,
+          ? `A decorrer até ${formatPtDate(event.endDate)}` + (daysToEnd <= 3 ? ` (${daysToEnd === 0 ? "último dia!" : `faltam ${daysToEnd} dias`})` : "")
+          : `Começa ${daysToStart === 1 ? "amanhã" : `daqui a ${daysToStart} dias`} (${formatPtDate(event.startDate)})`,
         daysLeft: isOngoing ? daysToEnd : daysToStart,
         icon: event.icon,
         category: event.category,
@@ -344,8 +346,3 @@ export function getAcademicAlerts(): CalendarAlert[] {
   });
 }
 
-function formatDate(ymd: string): string {
-  const d = parseYmd(ymd);
-  if (!d) return ymd;
-  return d.toLocaleDateString("pt-PT", { day: "numeric", month: "short" });
-}

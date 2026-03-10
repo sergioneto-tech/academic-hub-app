@@ -89,6 +89,22 @@ function pluralCadeiras(n: number) {
   return n === 1 ? "cadeira" : "cadeiras";
 }
 
+function formatCompletedAtLabel(value?: string) {
+  if (!value) return "";
+
+  const ymd = String(value).slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(ymd)) {
+    const [year, month, day] = ymd.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    if (!Number.isNaN(date.getTime())) {
+      return date.toLocaleDateString("pt-PT");
+    }
+  }
+
+  const fallback = new Date(value);
+  return Number.isNaN(fallback.getTime()) ? ymd : fallback.toLocaleDateString("pt-PT");
+}
+
 function SemesterPanel({
   title,
   courses,
@@ -187,7 +203,7 @@ function SemesterPanel({
 
                     {completed && (
                       <span className="text-[10px] text-muted-foreground">
-                        {c.completedAt ? formatPtDate(c.completedAt.slice(0, 10)) : ""}
+                        {formatCompletedAtLabel(c.completedAt)}
                       </span>
                     )}
 

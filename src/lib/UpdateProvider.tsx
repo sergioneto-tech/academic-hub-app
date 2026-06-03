@@ -2,11 +2,33 @@ import React, { createContext, useContext, useEffect, useRef, useState } from "r
 
 type Ctx = {
   updateAvailable: boolean;
-  applyUpdate: () => void;
+  applyUpdate: () => Promise<void>;
   isSupported: boolean;
 };
 
 const UpdateCtx = createContext<Ctx | null>(null);
+
+async function clearAcademicHubCaches() {
+  if (typeof window === "undefined" || !("caches" in window)) return;
+
+  try {
+    const keys = await window.caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith("academic-hub"))
+        .map((key) => window.caches.delete(key))
+    );
+  } catch {
+    // ignore: a atualização não deve falhar só porque a limpeza de cache falhou
+  }
+}
+
+function hardReload() {
+  // Recarrega a app sem tocar no localStorage/IndexedDB onde estão cadeiras, notas e histórico.
+  const url = new URL(window.location.href);
+  url.searchParams.set("ah_update", Date.now().toString());
+  window.location.replace(url.toString());
+}
 
 export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -28,8 +50,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       .then((reg) => {
         regRef.current = reg;
 
+        const checkForUpdate = () => reg.update().catch(() => {});
+
         // Forçar verificação de atualização logo após o registo.
-        reg.update().catch(() => {});
+        checkForUpdate();
 
         // Se já há uma versão nova em "waiting", mostrar já o aviso.
         if (reg.waiting) setUpdateAvailable(true);
@@ -46,6 +70,19 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
             }
           });
         });
+
+        const onFocus = () => checkForUpdate();
+        const onVisibility = () => {
+          if (document.visibilityState === "visible") checkForUpdate();
+        };
+
+        window.addEventListener("focus", onFocus);
+        document.addEventListener("visibilitychange", onVisibility);
+
+        return () => {
+          window.removeEventListener("focus", onFocus);
+          document.removeEventListener("visibilitychange", onVisibility);
+        };
       })
       .catch(() => {
         // ignore
@@ -54,7 +91,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     const onControllerChange = () => {
       if (refreshingRef.current) return;
       refreshingRef.current = true;
-      window.location.reload();
+      hardReload();
     };
 
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
@@ -64,22 +101,32 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isSupported]);
 
-  const applyUpdate = () => {
+  const applyUpdate = async () => {
     const reg = regRef.current;
-    if (!reg) return;
 
-    // Se existir SW à espera, ativar e fazer reload quando mudar o controller.
-    if (reg.waiting) {
+    // Limpa apenas caches da PWA. Não apaga localStorage/IndexedDB/Supabase.
+    await clearAcademicHubCaches();
+
+    if (reg) {
       try {
-        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+        await reg.update();
       } catch {
-        window.location.reload();
+        // ignore
       }
-      return;
+
+      // Se existir SW à espera, ativar e fazer reload quando mudar o controller.
+      if (reg.waiting) {
+        try {
+          reg.waiting.postMessage({ type: "SKIP_WAITING" });
+          return;
+        } catch {
+          // fallback abaixo
+        }
+      }
     }
 
-    // Fallback: reload normal
-    window.location.reload();
+    // Fallback para casos em que o browser/PWA ficou preso na cache mas não reportou SW waiting.
+    hardReload();
   };
 
   return <UpdateCtx.Provider value={{ updateAvailable, applyUpdate, isSupported }}>{children}</UpdateCtx.Provider>;

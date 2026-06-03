@@ -39,6 +39,27 @@ const NAV = [
   { to: "/ajuda", label: "Ajuda" },
 ];
 
+function parseVersion(version: string): number[] {
+  return version
+    .split(".")
+    .map((part) => Number.parseInt(part.replace(/\D/g, ""), 10))
+    .map((n) => (Number.isFinite(n) ? n : 0));
+}
+
+function isNewerVersion(candidate: string | undefined, current: string): boolean {
+  if (!candidate || candidate === current) return false;
+  const a = parseVersion(candidate);
+  const b = parseVersion(current);
+  const size = Math.max(a.length, b.length);
+  for (let i = 0; i < size; i += 1) {
+    const av = a[i] ?? 0;
+    const bv = b[i] ?? 0;
+    if (av > bv) return true;
+    if (av < bv) return false;
+  }
+  return false;
+}
+
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -134,6 +155,11 @@ export default function Layout() {
     if (latest) return versions.find((v) => v.version === latest) ?? versions[0];
     return versions[0];
   }, [releaseNotes]);
+
+  const releaseNotesUpdateAvailable = useMemo(
+    () => isNewerVersion(latestEntry?.version, APP_VERSION),
+    [latestEntry?.version]
+  );
 
   
   const [deferUpdate, setDeferUpdate] = useState(() => {
@@ -301,13 +327,13 @@ const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme() ?? getSyste
             </div>
           </div>
         )}
-        {updateAvailable && !deferUpdate && (
+        {(updateAvailable || releaseNotesUpdateAvailable) && !deferUpdate && (
         <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
-              <div className="font-semibold">Nova versão disponível</div>
+              <div className="font-semibold">Nova versão disponível{latestEntry?.version ? ` — v${latestEntry.version}` : ""}</div>
               <div className="text-xs text-muted-foreground">
-                Os teus dados ficam guardados localmente. Por precaução, exporta um backup antes de atualizar.
+                A atualização limpa apenas a cache da app. Cadeiras, notas, histórico, plano pessoal, backups e sincronização ficam preservados.
               </div>
               {latestEntry && latestEntry.changes.length > 0 ? (
                 <details className="mt-2">
@@ -342,7 +368,7 @@ const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme() ?? getSyste
                 size="sm"
                 onClick={() => {
                   localStorage.removeItem(UPDATE_DEFER_KEY);
-                  applyUpdate();
+                  void applyUpdate();
                 }}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />

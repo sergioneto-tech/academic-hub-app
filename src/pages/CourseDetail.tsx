@@ -199,7 +199,7 @@ export default function CourseDetail() {
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Card className="bg-white/70 backdrop-blur">
+        <Card className="bg-card/80 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">E‑fólios</CardTitle>
           </CardHeader>
@@ -213,7 +213,7 @@ export default function CourseDetail() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/70 backdrop-blur">
+        <Card className="bg-card/80 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Exame</CardTitle>
           </CardHeader>
@@ -228,7 +228,7 @@ export default function CourseDetail() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/70 backdrop-blur">
+        <Card className="bg-card/80 backdrop-blur">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Nota final</CardTitle>
           </CardHeader>
@@ -244,7 +244,7 @@ export default function CourseDetail() {
         </Card>
       </div>
 
-      <Card className="bg-white/70 backdrop-blur">
+      <Card className="bg-card/80 backdrop-blur">
         <CardHeader>
           <CardTitle>E‑fólios</CardTitle>
         </CardHeader>
@@ -301,7 +301,7 @@ export default function CourseDetail() {
       
 </Card>
 
-      <Card className="bg-white/70 backdrop-blur">
+      <Card className="bg-card/80 backdrop-blur">
         <CardHeader>
           <CardTitle>Sessões</CardTitle>
         </CardHeader>
@@ -362,7 +362,7 @@ export default function CourseDetail() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white/70 backdrop-blur">
+      <Card className="bg-card/80 backdrop-blur">
         <CardHeader>
           <CardTitle>g‑Fólio (Exame)</CardTitle>
         </CardHeader>
@@ -398,7 +398,7 @@ export default function CourseDetail() {
         </CardContent>
       </Card>
 
-      <Card className="bg-white/70 backdrop-blur">
+      <Card className="bg-card/80 backdrop-blur">
         <CardHeader>
           <CardTitle>Recurso</CardTitle>
         </CardHeader>

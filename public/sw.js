@@ -1,4 +1,4 @@
-const SW_VERSION = "0.2.2";
+const SW_VERSION = "0.2.3";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 self.addEventListener("install", (event) => {

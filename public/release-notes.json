@@ -1,6 +1,17 @@
 {
-  "latest": "0.2.1",
+  "latest": "0.2.3",
   "versions": [
+    {
+      "version": "0.2.3",
+      "date": "2026-06-03",
+      "changes": [
+        "Calendário académico UAb atualizado para 2026/2027 — 1.º ciclo, com base no Despacho n.º 62/VR/JS/2026.",
+        "Matrículas e inscrições do 2.º semestre corrigidas para 17/11/2026 a 01/12/2026.",
+        "Alertas do calendário passam a escolher automaticamente o calendário letivo mais recente já publicado na app.",
+        "Melhorada a legibilidade dos cartões de detalhe da cadeira no modo escuro.",
+        "Atualização apenas de código/calendário: não altera notas, cadeiras, histórico, backups nem dados sincronizados."
+      ]
+    },
     {
       "version": "0.2.1",
       "date": "2026-03-04",

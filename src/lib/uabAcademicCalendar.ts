@@ -1,10 +1,13 @@
 /**
- * Calendário académico UAb 2025/2026 — Cursos de 1.º Ciclo.
- * Fonte: Despacho nº 54/VR/JS/2025
- * https://portal.uab.pt/wp-content/uploads/2025/10/Despacho_54VRJS_2025_CalendarioLetivo_202526_1Ciclo_V3.pdf
+ * Calendário académico UAb — Cursos de 1.º Ciclo.
+ * Fonte atual: Despacho n.º 62/VR/JS/2026 — Calendário Letivo 2026/2027.
+ * https://portal.uab.pt/wp-content/uploads/2026/03/Calendario-Letivo-202627_1-ciclo_V2.pdf
  *
- * NOTA: atualizar anualmente com os novos despachos.
+ * Mantém os dados do calendário separados do estado do utilizador: atualizar estes
+ * prazos não altera cadeiras, notas, histórico, backups ou dados sincronizados.
  */
+
+import { formatPtDate } from "@/lib/date";
 
 export type AcademicEvent = {
   id: string;
@@ -25,250 +28,15 @@ export type AcademicEvent = {
   icon: string;
 };
 
-export const ACADEMIC_YEAR = "2025/2026";
-
-export const ACADEMIC_CALENDAR: AcademicEvent[] = [
-  // ── 1ª Fase ──────────────────────────────────
-  {
-    id: "candidaturas-1fase-provas",
-    label: "Candidaturas 1ª fase (com provas)",
-    description: "Período de candidaturas com provas de acesso",
-    startDate: "2025-03-13",
-    endDate: "2025-05-06",
-    semester: 0,
-    category: "enrollment",
-    alertDaysBefore: 14,
-    icon: "📋",
-  },
-  {
-    id: "candidaturas-1fase-sem-provas",
-    label: "Candidaturas 1ª fase (sem provas)",
-    description: "Período de candidaturas sem provas de acesso",
-    startDate: "2025-05-13",
-    endDate: "2025-06-17",
-    semester: 0,
-    category: "enrollment",
-    alertDaysBefore: 14,
-    icon: "📋",
-  },
-
-  // ── 2ª Fase ──────────────────────────────────
-  {
-    id: "candidaturas-2fase-provas",
-    label: "Candidaturas 2ª fase (com provas)",
-    description: "Período de candidaturas com provas de acesso — 2ª fase",
-    startDate: "2025-09-16",
-    endDate: "2025-10-07",
-    semester: 0,
-    category: "enrollment",
-    alertDaysBefore: 14,
-    icon: "📋",
-  },
-  {
-    id: "candidaturas-2fase-sem-provas",
-    label: "Candidaturas 2ª fase (sem provas)",
-    description: "Período de candidaturas sem provas — 2ª fase",
-    startDate: "2025-10-21",
-    endDate: "2025-11-18",
-    semester: 0,
-    category: "enrollment",
-    alertDaysBefore: 14,
-    icon: "📋",
-  },
-
-  // ── 1º Semestre ──────────────────────────────
-  {
-    id: "matriculas-1sem",
-    label: "Matrículas e inscrições — 1º semestre",
-    description: "Período de matrículas do 1º semestre",
-    startDate: "2025-08-19",
-    endDate: "2025-09-02",
-    semester: 1,
-    category: "enrollment",
-    alertDaysBefore: 14,
-    icon: "🎓",
-  },
-  {
-    id: "anulacao-1sem",
-    label: "Anulação de inscrições — 1º semestre",
-    description: "Prazo limite para anular inscrições do 1º semestre",
-    startDate: "2025-11-30",
-    endDate: "2025-11-30",
-    semester: 1,
-    category: "deadline",
-    alertDaysBefore: 14,
-    icon: "⚠️",
-  },
-  {
-    id: "ambientacao",
-    label: "Módulo de Ambientação",
-    description: "Módulo de ambientação (1ª vez na UAb)",
-    startDate: "2025-09-15",
-    endDate: "2025-09-26",
-    semester: 1,
-    category: "info",
-    alertDaysBefore: 7,
-    icon: "🧭",
-  },
-  {
-    id: "inicio-1sem",
-    label: "Início das atividades letivas — 1º semestre",
-    description: "Início do 1º semestre letivo",
-    startDate: "2025-10-06",
-    endDate: "2026-02-27",
-    semester: 1,
-    category: "classes",
-    alertDaysBefore: 7,
-    icon: "📚",
-  },
-  {
-    id: "pausa-natal",
-    label: "Pausa letiva de Natal",
-    description: "Pausa letiva — férias de Natal",
-    startDate: "2025-12-22",
-    endDate: "2026-01-04",
-    semester: 1,
-    category: "break",
-    alertDaysBefore: 3,
-    icon: "🎄",
-  },
-  {
-    id: "provas-normais-1sem",
-    label: "Provas normais — 1º semestre",
-    description: "Época normal de exames do 1º semestre (janeiro e fevereiro)",
-    startDate: "2026-01-26",
-    endDate: "2026-02-19",
-    semester: 1,
-    category: "exams",
-    alertDaysBefore: 14,
-    icon: "📝",
-  },
-  {
-    id: "provas-recurso-1sem",
-    label: "Provas de recurso — 1º semestre",
-    description: "Época de recurso do 1º semestre (julho)",
-    startDate: "2026-07-06",
-    endDate: "2026-07-24",
-    semester: 1,
-    category: "exams",
-    alertDaysBefore: 14,
-    icon: "🔄",
-  },
-
-  // ── 2º Semestre ──────────────────────────────
-  {
-    id: "matriculas-2sem",
-    label: "Matrículas e inscrições — 2º semestre",
-    description: "Período de matrículas do 2º semestre — NÃO TE ESQUEÇAS!",
-    startDate: "2025-11-11",
-    endDate: "2025-11-23",
-    semester: 2,
-    category: "enrollment",
-    alertDaysBefore: 14,
-    icon: "🎓",
-  },
-  {
-    id: "matriculas-2sem-2fase",
-    label: "Matrículas 2º semestre — 2ª fase",
-    description: "Período de matrículas do 2º semestre (2ª fase)",
-    startDate: "2026-01-06",
-    endDate: "2026-01-20",
-    semester: 2,
-    category: "enrollment",
-    alertDaysBefore: 14,
-    icon: "🎓",
-  },
-  {
-    id: "anulacao-2sem",
-    label: "Anulação de inscrições — 2º semestre",
-    description: "Prazo limite para anular inscrições do 2º semestre",
-    startDate: "2026-04-30",
-    endDate: "2026-04-30",
-    semester: 2,
-    category: "deadline",
-    alertDaysBefore: 14,
-    icon: "⚠️",
-  },
-  {
-    id: "credenciacao",
-    label: "Pedidos de creditação de competências",
-    description: "Prazo para pedidos de creditação de competências",
-    startDate: "2026-02-01",
-    endDate: "2026-02-15",
-    semester: 2,
-    category: "deadline",
-    alertDaysBefore: 7,
-    icon: "📄",
-  },
-  {
-    id: "inicio-2sem",
-    label: "Início das atividades letivas — 2º semestre",
-    description: "Início do 2º semestre letivo",
-    startDate: "2026-03-02",
-    endDate: "2026-07-31",
-    semester: 2,
-    category: "classes",
-    alertDaysBefore: 7,
-    icon: "📚",
-  },
-  {
-    id: "pausa-pascoa",
-    label: "Pausa letiva da Páscoa",
-    description: "Pausa letiva — férias da Páscoa",
-    startDate: "2026-03-30",
-    endDate: "2026-04-05",
-    semester: 2,
-    category: "break",
-    alertDaysBefore: 3,
-    icon: "🐣",
-  },
-  {
-    id: "provas-normais-2sem",
-    label: "Provas normais — 2º semestre",
-    description: "Época normal de exames do 2º semestre (junho e julho)",
-    startDate: "2026-06-01",
-    endDate: "2026-07-24",
-    semester: 2,
-    category: "exams",
-    alertDaysBefore: 14,
-    icon: "📝",
-  },
-  {
-    id: "provas-recurso-2sem",
-    label: "Provas de recurso — 2º semestre",
-    description: "Época de recurso do 2º semestre (setembro)",
-    startDate: "2026-09-01",
-    endDate: "2026-09-30",
-    semester: 2,
-    category: "exams",
-    alertDaysBefore: 14,
-    icon: "🔄",
-  },
-  {
-    id: "epoca-especial",
-    label: "Época especial",
-    description: "Época especial de exames (novembro e dezembro)",
-    startDate: "2026-11-01",
-    endDate: "2026-12-31",
-    semester: 0,
-    category: "exams",
-    alertDaysBefore: 14,
-    icon: "📝",
-  },
-];
-
-import { formatPtDate } from "@/lib/date";
-
-/** Links úteis do portal UAb */
-export const UAB_LINKS = {
-  calendarioLetivo: "https://portal.uab.pt/calendario-letivo/",
-  avaliacao: "https://portal.uab.pt/avaliacao/",
-  calendarioProvas: "https://portal.uab.pt/avaliacao/",
-  candidaturas: "https://portal.uab.pt/candidaturas/",
-  despachoCalendario: "https://portal.uab.pt/wp-content/uploads/2025/10/Despacho_54VRJS_2025_CalendarioLetivo_202526_1Ciclo_V3.pdf",
+type AcademicCalendarYear = {
+  academicYear: string;
+  /** Data a partir da qual este calendário já deve ser considerado para alertas. */
+  activeFrom: string;
+  /** Data limite operacional do calendário académico. */
+  activeUntil: string;
+  officialSource: string;
+  events: AcademicEvent[];
 };
-
-// ── Helpers ────────────────────────────────────
 
 function parseYmd(ymd: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}/.test(ymd)) return null;
@@ -286,6 +54,237 @@ function daysUntil(ymd: string): number | null {
   const today = startOfDay(new Date());
   return Math.round((startOfDay(target).getTime() - today.getTime()) / 86400000);
 }
+
+const CALENDAR_2026_2027: AcademicCalendarYear = {
+  academicYear: "2026/2027",
+  // Começa nas primeiras candidaturas publicadas para este ano letivo.
+  activeFrom: "2026-03-10",
+  activeUntil: "2027-12-31",
+  officialSource: "https://portal.uab.pt/wp-content/uploads/2026/03/Calendario-Letivo-202627_1-ciclo_V2.pdf",
+  events: [
+    // ── Candidaturas ────────────────────────────
+    {
+      id: "candidaturas-com-provas",
+      label: "Candidaturas (com provas)",
+      description: "Período de candidaturas com provas de acesso",
+      startDate: "2026-03-10",
+      endDate: "2026-04-28",
+      semester: 0,
+      category: "enrollment",
+      alertDaysBefore: 14,
+      icon: "📋",
+    },
+    {
+      id: "candidaturas-sem-provas",
+      label: "Candidaturas (sem provas)",
+      description: "Acesso Direto, Reingresso, Mudança de Curso e UCI 1.º ciclo",
+      startDate: "2026-05-12",
+      endDate: "2026-06-16",
+      semester: 0,
+      category: "enrollment",
+      alertDaysBefore: 14,
+      icon: "📋",
+    },
+    {
+      id: "resultados-candidaturas",
+      label: "Publicitação de resultados",
+      description: "Publicitação dos resultados das candidaturas com provas",
+      startDate: "2026-07-22",
+      endDate: "2026-07-22",
+      semester: 0,
+      category: "info",
+      alertDaysBefore: 7,
+      icon: "📢",
+    },
+
+    // ── 1º Semestre ─────────────────────────────
+    {
+      id: "matriculas-1sem",
+      label: "Matrículas e inscrições — 1º semestre",
+      description: "Período de matrículas e inscrições do 1º semestre",
+      startDate: "2026-08-18",
+      endDate: "2026-09-01",
+      semester: 1,
+      category: "enrollment",
+      alertDaysBefore: 14,
+      icon: "🎓",
+    },
+    {
+      id: "creditacao-1sem",
+      label: "Creditação de competências — 1º semestre",
+      description: "Prazo para pedidos de creditação de competências",
+      startDate: "2026-09-01",
+      endDate: "2026-09-15",
+      semester: 1,
+      category: "deadline",
+      alertDaysBefore: 7,
+      icon: "📄",
+    },
+    {
+      id: "ambientacao",
+      label: "Módulo de Ambientação",
+      description: "Módulo de ambientação para estudantes matriculados pela 1.ª vez na UAb",
+      startDate: "2026-09-08",
+      endDate: "2026-09-18",
+      semester: 1,
+      category: "info",
+      alertDaysBefore: 7,
+      icon: "🧭",
+    },
+    {
+      id: "inicio-1sem",
+      label: "Atividades letivas — 1º semestre",
+      description: "Período de atividades letivas do 1º semestre",
+      startDate: "2026-09-14",
+      endDate: "2027-02-26",
+      semester: 1,
+      category: "classes",
+      alertDaysBefore: 7,
+      icon: "📚",
+    },
+    {
+      id: "anulacao-1sem",
+      label: "Anulação de inscrições — 1º semestre",
+      description: "Prazo limite para anular inscrições do 1º semestre",
+      startDate: "2026-10-30",
+      endDate: "2026-10-30",
+      semester: 1,
+      category: "deadline",
+      alertDaysBefore: 14,
+      icon: "⚠️",
+    },
+    {
+      id: "pausa-natal",
+      label: "Pausa letiva de Natal",
+      description: "Pausa letiva — Natal",
+      startDate: "2026-12-21",
+      endDate: "2027-01-03",
+      semester: 1,
+      category: "break",
+      alertDaysBefore: 3,
+      icon: "🎄",
+    },
+    {
+      id: "avaliacao-1sem",
+      label: "Avaliação — 1º semestre",
+      description: "Avaliação do 1º semestre — janeiro/fevereiro (consultar calendário de provas)",
+      startDate: "2027-01-01",
+      endDate: "2027-02-28",
+      semester: 1,
+      category: "exams",
+      alertDaysBefore: 14,
+      icon: "📝",
+    },
+
+    // ── 2º Semestre ─────────────────────────────
+    {
+      id: "matriculas-2sem",
+      label: "Matrículas e inscrições — 2º semestre",
+      description: "Período de matrículas e inscrições do 2º semestre",
+      startDate: "2026-11-17",
+      endDate: "2026-12-01",
+      semester: 2,
+      category: "enrollment",
+      alertDaysBefore: 14,
+      icon: "🎓",
+    },
+    {
+      id: "creditacao-2sem",
+      label: "Creditação de competências — 2º semestre",
+      description: "Prazo para pedidos de creditação de competências",
+      startDate: "2027-02-01",
+      endDate: "2027-02-15",
+      semester: 2,
+      category: "deadline",
+      alertDaysBefore: 7,
+      icon: "📄",
+    },
+    {
+      id: "inicio-2sem",
+      label: "Atividades letivas — 2º semestre",
+      description: "Período de atividades letivas do 2º semestre",
+      startDate: "2027-03-01",
+      endDate: "2027-07-31",
+      semester: 2,
+      category: "classes",
+      alertDaysBefore: 7,
+      icon: "📚",
+    },
+    {
+      id: "pausa-pascoa",
+      label: "Pausa letiva da Páscoa",
+      description: "Pausa letiva — Páscoa",
+      startDate: "2027-03-22",
+      endDate: "2027-03-28",
+      semester: 2,
+      category: "break",
+      alertDaysBefore: 3,
+      icon: "🐣",
+    },
+    {
+      id: "anulacao-2sem",
+      label: "Anulação de inscrições — 2º semestre",
+      description: "Prazo limite para anular inscrições do 2º semestre",
+      startDate: "2027-03-30",
+      endDate: "2027-03-30",
+      semester: 2,
+      category: "deadline",
+      alertDaysBefore: 14,
+      icon: "⚠️",
+    },
+    {
+      id: "avaliacao-2sem",
+      label: "Avaliação — 2º semestre",
+      description: "Avaliação do 2º semestre — junho/julho (consultar calendário de provas)",
+      startDate: "2027-06-01",
+      endDate: "2027-07-31",
+      semester: 2,
+      category: "exams",
+      alertDaysBefore: 14,
+      icon: "📝",
+    },
+    {
+      id: "epoca-especial",
+      label: "Época especial",
+      description: "Época especial de exames — novembro/dezembro",
+      startDate: "2027-11-01",
+      endDate: "2027-12-31",
+      semester: 0,
+      category: "exams",
+      alertDaysBefore: 14,
+      icon: "📝",
+    },
+  ],
+};
+
+const ACADEMIC_CALENDAR_YEARS: AcademicCalendarYear[] = [CALENDAR_2026_2027];
+
+function getCurrentAcademicCalendarYear(referenceDate = new Date()): AcademicCalendarYear {
+  const today = startOfDay(referenceDate).getTime();
+  const active = ACADEMIC_CALENDAR_YEARS
+    .filter((calendar) => {
+      const from = parseYmd(calendar.activeFrom)?.getTime() ?? Number.NEGATIVE_INFINITY;
+      return from <= today;
+    })
+    .sort((a, b) => a.academicYear.localeCompare(b.academicYear, "pt-PT"));
+
+  // Escolhe automaticamente o calendário mais recente já publicado/ativo.
+  return active[active.length - 1] ?? ACADEMIC_CALENDAR_YEARS[ACADEMIC_CALENDAR_YEARS.length - 1];
+}
+
+const CURRENT_CALENDAR = getCurrentAcademicCalendarYear();
+
+export const ACADEMIC_YEAR = CURRENT_CALENDAR.academicYear;
+export const ACADEMIC_CALENDAR: AcademicEvent[] = CURRENT_CALENDAR.events;
+
+/** Links úteis do portal UAb */
+export const UAB_LINKS = {
+  calendarioLetivo: "https://portal.uab.pt/calendario-letivo/",
+  avaliacao: "https://portal.uab.pt/avaliacao/",
+  calendarioProvas: "https://portal.uab.pt/avaliacao/",
+  candidaturas: "https://portal.uab.pt/candidaturas/",
+  despachoCalendario: CURRENT_CALENDAR.officialSource,
+};
 
 export type CalendarAlert = {
   id: string;
@@ -345,4 +344,3 @@ export function getAcademicAlerts(): CalendarAlert[] {
     return a.daysLeft - b.daysLeft;
   });
 }
-

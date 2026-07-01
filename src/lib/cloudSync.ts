@@ -145,7 +145,7 @@ export async function refreshSession(config: CloudConfig, session: AuthSession):
 
 export async function fetchRemoteState(config: CloudConfig, session: AuthSession): Promise<UserStateRow | null> {
   const url = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?user_id=eq.${session.user.id}&select=state,updated_at,user_id&limit=1`;
-  const res = await fetch(url, { headers: headers(config, session) });
+  const res = await fetch(url, { headers: headers(config, session), cache: "no-store" });
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(txt || res.statusText);
@@ -164,6 +164,7 @@ export async function upsertRemoteState(config: CloudConfig, session: AuthSessio
 
   const res = await fetch(url, {
     method: "POST",
+    cache: "no-store",
     headers: {
       ...headers(config, session),
       Prefer: "resolution=merge-duplicates,return=representation",

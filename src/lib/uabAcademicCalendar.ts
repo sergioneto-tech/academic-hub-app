@@ -299,6 +299,53 @@ export type CalendarAlert = {
   link?: string;
 };
 
+
+function buildCalendarAlert(event: AcademicEvent, isOngoing: boolean, daysLeft: number): CalendarAlert {
+  let link: string | undefined;
+  if (event.category === "enrollment") link = UAB_LINKS.calendarioLetivo;
+  else if (event.category === "exams") link = UAB_LINKS.avaliacao;
+  else link = UAB_LINKS.calendarioLetivo;
+
+  return {
+    id: event.id,
+    label: event.label,
+    description: isOngoing
+      ? `A decorrer até ${formatPtDate(event.endDate)}` + (daysLeft <= 3 ? ` (${daysLeft === 0 ? "último dia!" : `faltam ${daysLeft} dias`})` : "")
+      : `Começa ${daysLeft === 1 ? "amanhã" : `daqui a ${daysLeft} dias`} (${formatPtDate(event.startDate)})`,
+    daysLeft,
+    icon: event.icon,
+    category: event.category,
+    isOngoing,
+    link,
+  };
+}
+
+/** Cards permanentes para o Dashboard: mostra eventos académicos em curso ou os próximos eventos relevantes, mesmo fora da janela de alerta. */
+export function getAcademicDashboardCards(limit = 2): CalendarAlert[] {
+  const cards: CalendarAlert[] = [];
+
+  for (const event of ACADEMIC_CALENDAR) {
+    const daysToStart = daysUntil(event.startDate);
+    const daysToEnd = daysUntil(event.endDate);
+    if (daysToStart === null || daysToEnd === null) continue;
+    if (daysToEnd < 0) continue;
+
+    const isOngoing = daysToStart <= 0 && daysToEnd >= 0;
+    const isFuture = daysToStart > 0;
+    if (!isOngoing && !isFuture) continue;
+
+    cards.push(buildCalendarAlert(event, isOngoing, isOngoing ? daysToEnd : daysToStart));
+  }
+
+  return cards
+    .sort((a, b) => {
+      if (a.isOngoing && !b.isOngoing) return -1;
+      if (!a.isOngoing && b.isOngoing) return 1;
+      return a.daysLeft - b.daysLeft;
+    })
+    .slice(0, Math.max(1, limit));
+}
+
 /** Build alerts for upcoming academic events */
 export function getAcademicAlerts(): CalendarAlert[] {
   const alerts: CalendarAlert[] = [];
@@ -317,23 +364,7 @@ export function getAcademicAlerts(): CalendarAlert[] {
       event.category === "deadline" && daysToEnd >= 0 && daysToEnd <= alertWindow;
 
     if (isOngoing || isUpcoming || isDeadlineApproaching) {
-      let link: string | undefined;
-      if (event.category === "enrollment") link = UAB_LINKS.calendarioLetivo;
-      else if (event.category === "exams") link = UAB_LINKS.avaliacao;
-      else link = UAB_LINKS.calendarioLetivo;
-
-      alerts.push({
-        id: event.id,
-        label: event.label,
-        description: isOngoing
-          ? `A decorrer até ${formatPtDate(event.endDate)}` + (daysToEnd <= 3 ? ` (${daysToEnd === 0 ? "último dia!" : `faltam ${daysToEnd} dias`})` : "")
-          : `Começa ${daysToStart === 1 ? "amanhã" : `daqui a ${daysToStart} dias`} (${formatPtDate(event.startDate)})`,
-        daysLeft: isOngoing ? daysToEnd : daysToStart,
-        icon: event.icon,
-        category: event.category,
-        isOngoing,
-        link,
-      });
+      alerts.push(buildCalendarAlert(event, isOngoing, isOngoing ? daysToEnd : daysToStart));
     }
   }
 

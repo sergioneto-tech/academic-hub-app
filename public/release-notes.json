@@ -1,6 +1,26 @@
 {
-  "latest": "0.2.3",
+  "latest": "0.2.5",
   "versions": [
+    {
+      "version": "0.2.5",
+      "date": "2026-07-01",
+      "changes": [
+        "Corrigida a inconsistência entre APP_VERSION, Service Worker e release-notes que impedia a app de mostrar a versão nova.",
+        "Service Worker ajustado para usar rede primeiro em HTML, sw.js e release-notes.json, reduzindo o risco de a PWA ficar presa em cache antiga.",
+        "Mantida a atualização do calendário académico UAb 2026/2027 e a melhoria de legibilidade no modo escuro.",
+        "Atualização apenas de código/cache: não altera cadeiras, notas, histórico, plano pessoal, backups nem dados sincronizados."
+      ]
+    },
+    {
+      "version": "0.2.4",
+      "date": "2026-06-03",
+      "changes": [
+        "Corrigido o mecanismo de aviso de atualização para detetar novas versões mesmo quando o Service Worker/PWA fica preso em cache.",
+        "Botão Atualizar versão passa a limpar apenas a cache da app, preservando dados locais e sincronizados.",
+        "Mantida a correção do calendário UAb 2026/2027 e das inscrições do 2.º semestre.",
+        "Melhorada a legibilidade dos cartões de detalhe da cadeira no modo escuro."
+      ]
+    },
     {
       "version": "0.2.3",
       "date": "2026-06-03",

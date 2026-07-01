@@ -1,6 +1,16 @@
 {
-  "latest": "0.2.5",
+  "latest": "0.2.6",
   "versions": [
+    {
+      "version": "0.2.6",
+      "date": "2026-07-01",
+      "changes": [
+        "Ao marcar uma cadeira como concluída, a vista da cadeira fecha e regressa automaticamente ao Dashboard.",
+        "Sincronização cloud reforçada: upload usa sempre o estado local mais recente e download aplica os dados recebidos com timestamp visível.",
+        "Dashboard volta a mostrar sempre o Calendário Académico UAb 2026/2027, mesmo quando não existe alerta urgente.",
+        "Calendário UAb 2026/2027 mantém os prazos oficiais do Despacho n.º 62/VR/JS/2026, incluindo matrículas do 2.º semestre de 17/11/2026 a 01/12/2026."
+      ]
+    },
     {
       "version": "0.2.5",
       "date": "2026-07-01",

@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 import { useAppStore } from "@/lib/AppStore";
 import { DEGREE_OPTIONS, getDegreeOptionById, getPlanCoursesForDegree, getCourseEcts, getCourseArea, type PlanCourseSeed } from "@/lib/uabPlan";
-import type { Course } from "@/lib/types";
+import type { AppState, Course } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -502,6 +502,24 @@ export default function SettingsPage() {
     toast({ title: "Definições guardadas", description: "Sincronização atualizada." });
   };
 
+  const getLatestLocalStateForCloud = (syncedAt: string): AppState => {
+    // Usa exportData() em vez da variável state para evitar enviar uma fotografia antiga
+    // quando o utilizador acabou de alterar dados noutro painel ou acabou de ligar a sync.
+    const raw = JSON.parse(exportData()) as AppState;
+    return {
+      ...raw,
+      meta: {
+        ...(raw.meta ?? {}),
+        appVersion: APP_VERSION,
+      },
+      sync: {
+        ...(raw.sync ?? { enabled: true }),
+        enabled: true,
+        lastSyncAt: syncedAt,
+      },
+    };
+  };
+
   const ensureFreshSession = async () => {
     if (!cloudConfig || !session) throw new Error("Sem sessão.");
     // Refresh simples (útil quando o token expira).
@@ -618,9 +636,14 @@ export default function SettingsPage() {
     }
     try {
       const fresh = await ensureFreshSession();
-      await upsertRemoteState(cloudConfig, fresh, state);
-      setSync({ lastSyncAt: new Date().toISOString() });
-      toast({ title: "Upload concluído", description: "Dados locais guardados na cloud." });
+      const syncedAt = new Date().toISOString();
+      const stateForCloud = getLatestLocalStateForCloud(syncedAt);
+      await upsertRemoteState(cloudConfig, fresh, stateForCloud);
+      replaceState(stateForCloud);
+      toast({
+        title: "Upload concluído",
+        description: `Dados locais guardados na cloud (${new Date(syncedAt).toLocaleString("pt-PT")}).`,
+      });
     } catch (e) {
       toast({ title: "Falha no upload", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
     }
@@ -638,18 +661,27 @@ export default function SettingsPage() {
         toast({ title: "Sem dados na cloud", description: "Ainda não há dados guardados para esta conta." });
         return;
       }
-      // Merge sync timestamp into the cloud data before replacing state
-      // (avoids race condition between replaceState and setSync)
-      const rawWithSync = {
-        ...(remote.state as Record<string, unknown>),
+      // Normaliza os dados da cloud antes de substituir o estado local.
+      // Isto evita uma corrida entre replaceState e setSync e força a versão atual da app.
+      const downloadedAt = new Date().toISOString();
+      const remoteState = remote.state as AppState;
+      const rawWithSync: AppState = {
+        ...remoteState,
+        meta: {
+          ...(remoteState.meta ?? {}),
+          appVersion: APP_VERSION,
+        },
         sync: {
-          ...((remote.state as Record<string, unknown>)?.sync as Record<string, unknown> ?? {}),
+          ...(remoteState.sync ?? { enabled: true }),
           enabled: true,
-          lastSyncAt: new Date().toISOString(),
+          lastSyncAt: downloadedAt,
         },
       };
       replaceState(rawWithSync);
-      toast({ title: "Download concluído", description: "Dados da cloud aplicados neste dispositivo." });
+      toast({
+        title: "Download concluído",
+        description: `Dados da cloud aplicados neste dispositivo. Cloud: ${new Date(remote.updated_at).toLocaleString("pt-PT")}.`,
+      });
     } catch (e) {
       toast({ title: "Falha no download", description: e instanceof Error ? e.message : "Erro", variant: "destructive" });
     }

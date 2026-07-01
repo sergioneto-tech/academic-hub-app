@@ -452,7 +452,10 @@ export default function CourseDetail() {
             </div>
             <Button
               variant="secondary"
-              onClick={() => markCourseCompleted(course.id)}
+              onClick={() => {
+                markCourseCompleted(course.id);
+                navigate("/", { replace: true });
+              }}
             >
               Marcar como concluída
             </Button>

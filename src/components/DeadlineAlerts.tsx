@@ -4,7 +4,7 @@ import { AlertTriangle, CalendarClock, Bell, ExternalLink, GraduationCap } from 
 import { toast } from "sonner";
 import type { AppState } from "@/lib/types";
 import { getAssessments } from "@/lib/calculations";
-import { getAcademicAlerts, UAB_LINKS, ACADEMIC_YEAR, type CalendarAlert } from "@/lib/uabAcademicCalendar";
+import { getAcademicAlerts, getAcademicDashboardCards, UAB_LINKS, ACADEMIC_YEAR, type CalendarAlert } from "@/lib/uabAcademicCalendar";
 
 
 type AlertItem = {
@@ -176,20 +176,21 @@ export function useDeadlineToasts(state: AppState) {
 export default function DeadlineAlerts({ state }: { state: AppState }) {
   const alerts = useMemo(() => buildAlerts(state), [state]);
   const academicAlerts = useMemo(() => getAcademicAlerts(), []);
+  const academicCards = useMemo(() => getAcademicDashboardCards(2), []);
 
-  const hasAny = alerts.length > 0 || academicAlerts.length > 0;
+  const hasAny = alerts.length > 0 || academicCards.length > 0;
 
   return (
     <div className="space-y-3">
-      {/* Alertas do calendário académico UAb */}
-      {academicAlerts.length > 0 && (
+      {/* Calendário académico UAb — mostra sempre eventos em curso ou próximos eventos relevantes. */}
+      {academicCards.length > 0 && (
         <div className="space-y-1.5">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <GraduationCap className="h-4 w-4 text-primary" />
             Calendário Académico {ACADEMIC_YEAR}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-            {academicAlerts.map((a) => (
+            {academicCards.map((a) => (
               <a
                 key={a.id}
                 href={a.link}

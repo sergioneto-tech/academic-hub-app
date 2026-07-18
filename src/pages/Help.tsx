@@ -26,7 +26,7 @@ export default function HelpPage() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>Em <strong>Definições → Catálogo de cadeiras</strong>, ativa o toggle <strong>"Ativa"</strong> nas cadeiras que estás a frequentar este semestre.</p>
-          <p>Ao ativar, são criados automaticamente os campos de avaliação: e-fólio A, e-fólio B, g-fólio e recurso.</p>
+          <p>Ao ativar, são criados automaticamente os campos de avaliação: e-fólio A, e-fólio B, g-fólio e recurso. No detalhe da cadeira, podes adicionar outros e-fólios quando o PUC assim o exigir.</p>
         </CardContent>
       </Card>
 
@@ -36,7 +36,7 @@ export default function HelpPage() {
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
           <p>No separador <strong>Cadeiras</strong>, clica numa cadeira ativa para abrir o detalhe.</p>
-          <p>Introduz as notas dos e-fólios (0–4), g-fólio (0–12) e recurso (0–20). A nota final é calculada automaticamente.</p>
+          <p>Define o valor real de cada e-fólio e introduz as respetivas notas. A soma dos e-fólios e do g-fólio deve totalizar 20 pontos; a aplicação atualiza automaticamente os totais e a nota final.</p>
         </CardContent>
       </Card>
 

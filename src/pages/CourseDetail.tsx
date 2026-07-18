@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Plus, Trash2 } from "lucide-react";
 
 import { useAppStore } from "@/lib/AppStore";
 import { courseStatusLabel, exam as getExam, finalGradeRaw, finalGradeRounded, getAssessments, getRules, needsResit, resit as getResit, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
@@ -71,7 +72,7 @@ function PtNumberInput({
 export default function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { state, ensureAssessment, setAssessmentDate, setAssessmentGrade, setAssessmentMaxPoints, markCourseCompleted, updateCourse } = useAppStore();
+  const { state, addEFolio, ensureAssessment, removeAssessment, setAssessmentDate, setAssessmentGrade, setAssessmentMaxPoints, markCourseCompleted, updateCourse } = useAppStore();
 
   const course = useMemo(() => state.courses.find((c) => c.id === id), [state.courses, id]);
   const rules = useMemo(() => (id ? getRules(state, id) : null), [state, id]);
@@ -92,12 +93,21 @@ export default function CourseDetail() {
 
   const efTotal = useMemo(() => (id ? totalEFolios(state, id) : 0), [state, id]);
   const efMax = useMemo(() => (id ? totalEFoliosMax(state, id) : 0), [state, id]);
+  const configuredAssessmentMax = efMax + (exam?.maxPoints ?? 0);
+  const assessmentScaleIsValid = Math.abs(configuredAssessmentMax - 20) < 0.001;
 
   const finRaw = useMemo(() => (id ? finalGradeRaw(state, id) : null), [state, id]);
   const finRounded = useMemo(() => (id ? finalGradeRounded(state, id) : null), [state, id]);
 
   const status = useMemo(() => (id ? courseStatusLabel(state, id) : { label: "—", badge: "neutral" as const }), [state, id]);
   const showResit = useMemo(() => (id ? needsResit(state, id) : false), [state, id]);
+
+  // Sessões (ex.: abertura, antes de e‑fólios, antes de exame)
+  const sessions = useMemo(() => course?.sessions ?? [], [course?.sessions]);
+  const sessionsSorted = useMemo(
+    () => [...sessions].sort((a, b) => String(a.dateTime).localeCompare(String(b.dateTime))),
+    [sessions],
+  );
 
   if (!course || !id || !rules) {
     return (
@@ -117,14 +127,6 @@ export default function CourseDetail() {
       ? "bg-rose-100 text-rose-900 border-rose-200"
       : "bg-slate-100 text-slate-900 border-slate-200";
 
-
-  // Sessões (ex.: abertura, antes de e‑fólios, antes de exame)
-  const sessions = (course.sessions ?? []);
-
-  const sessionsSorted = useMemo(() => {
-    return [...sessions].sort((a, b) => String(a.dateTime).localeCompare(String(b.dateTime)));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(sessions)]);
 
   function makeSessionId(): string {
     return Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -245,18 +247,56 @@ export default function CourseDetail() {
       </div>
 
       <Card className="bg-card/80 backdrop-blur">
-        <CardHeader>
-          <CardTitle>E‑fólios</CardTitle>
+        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle>E‑fólios</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Podes adicionar os e‑fólios necessários para esta cadeira. Define sempre o valor real indicado no PUC.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => addEFolio(course.id)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Adicionar e‑fólio
+          </Button>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!assessmentScaleIsValid && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">
+              A avaliação configurada soma {formatPtNumber(configuredAssessmentMax)} pontos. Ajusta os valores dos e‑fólios e do g‑fólio para totalizarem 20 pontos.
+            </div>
+          )}
+
           {efolios.map((a) => (
             <div key={a.id} className="rounded-lg border p-3 md:p-4 space-y-3">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div>
-                  <div className="font-medium">{a.name}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {a.endDate ? `Até ${formatPtDate(a.endDate)}` : "Defina as datas para lembretes/planeamento."}
+                <div className="flex min-w-0 items-start justify-between gap-3 md:block">
+                  <div className="min-w-0">
+                    <div className="font-medium">{a.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {a.endDate ? `Até ${formatPtDate(a.endDate)}` : "Defina as datas para lembretes/planeamento."}
+                    </div>
                   </div>
+                  {!["e-fólio A", "e-fólio B"].includes(a.name) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-muted-foreground hover:text-destructive md:hidden"
+                      aria-label={`Remover ${a.name}`}
+                      onClick={() => {
+                        if (window.confirm(`Remover ${a.name}? As respetivas datas e nota serão eliminadas.`)) {
+                          removeAssessment(a.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 md:flex md:gap-3 md:items-end">
@@ -275,8 +315,30 @@ export default function CourseDetail() {
                     placeholder="0,00"
                     onCommit={(v) => setAssessmentGrade(a.id, v)}
                   />
+                  {!["e-fólio A", "e-fólio B"].includes(a.name) && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="hidden shrink-0 text-muted-foreground hover:text-destructive md:inline-flex"
+                      aria-label={`Remover ${a.name}`}
+                      onClick={() => {
+                        if (window.confirm(`Remover ${a.name}? As respetivas datas e nota serão eliminadas.`)) {
+                          removeAssessment(a.id);
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
+
+              {a.maxPoints <= 0 && (
+                <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
+                  Define o valor deste e‑fólio para que a nota seja incluída nos totais.
+                </div>
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <DateField

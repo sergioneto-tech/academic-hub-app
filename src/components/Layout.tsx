@@ -312,7 +312,7 @@ const [theme, setTheme] = useState<ThemeMode>(() => getStoredTheme() ?? getSyste
                   <div className="mt-2 text-xs text-muted-foreground space-y-2">
                     <p><strong>1. Escolher licenciatura:</strong> Vai a <em>Definições</em> e seleciona o teu curso. As cadeiras são carregadas automaticamente.</p>
                     <p><strong>2. Ativar cadeiras:</strong> Em <em>Definições</em>, ativa as cadeiras que estás a frequentar este semestre (toggle "Ativa").</p>
-                    <p><strong>3. Registar notas:</strong> Clica numa cadeira ativa para introduzir notas dos e-fólios, g-fólio e recurso.</p>
+                    <p><strong>3. Registar notas:</strong> Clica numa cadeira ativa para introduzir notas e adicionar os e-fólios necessários, além do g-fólio e recurso.</p>
                     <p><strong>4. Acompanhar progresso:</strong> O <em>Dashboard</em> mostra cadeiras ativas, média, eventos e ECTS concluídos.</p>
                     <p><strong>5. Plano de Estudos:</strong> Vê o progresso global do curso com ECTS e área científica de cada cadeira.</p>
                     <p><strong>6. Plano Pessoal:</strong> Organiza o teu estudo com um quadro Kanban (tarefas, datas, exportação .ics).</p>

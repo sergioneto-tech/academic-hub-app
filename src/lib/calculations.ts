@@ -1,5 +1,5 @@
 import type { AppState, Assessment, AssessmentType, Rules } from "./types";
-import { clamp, roundHalfUpInt } from "./utils";
+import { clamp, formatPtNumber, roundHalfUpInt } from "./utils";
 
 export function getRules(state: AppState, courseId: string): Rules {
   return (
@@ -72,13 +72,100 @@ export function finalGradeRounded(state: AppState, courseId: string): number | n
 }
 
 export function needsResit(state: AppState, courseId: string): boolean {
+  const resourceGrade = resitGrade(state, courseId);
+  if (resourceGrade !== null) {
+    const final = finalGradeRounded(state, courseId);
+    return final !== null && final < 10;
+  }
+
   const rules = getRules(state, courseId);
   const ef = totalEFolios(state, courseId);
   const ex = examGrade(state, courseId);
 
   if (ef < rules.minAptoExame) return true;
   if (ex === null) return false; // ainda não fez exame
-  return ex < rules.minExame;
+  if (ex < rules.minExame) return true;
+
+  const final = finalGradeRounded(state, courseId);
+  return final !== null && final < 10;
+}
+
+export type AssessmentOutcomeKind = "incomplete" | "passed" | "resit" | "failed";
+
+export type AssessmentOutcome = {
+  source: "exam" | "resit";
+  kind: AssessmentOutcomeKind;
+  raw: number;
+  rounded: number;
+  issues: string[];
+};
+
+/**
+ * Resultado imediato após registar a nota do exame.
+ * Só considera o percurso e-fólios + exame, mesmo que já exista uma nota de recurso.
+ */
+export function getExamOutcome(state: AppState, courseId: string): AssessmentOutcome | null {
+  const ex = exam(state, courseId);
+  if (!ex || ex.grade === null) return null;
+
+  const efolios = getAssessments(state, courseId, "efolio");
+  const missingGrades = efolios
+    .filter((item) => item.maxPoints > 0 && item.grade === null)
+    .map((item) => item.name);
+  const configuredMax = totalEFoliosMax(state, courseId) + (Number(ex.maxPoints) || 0);
+  const issues: string[] = [];
+
+  if (missingGrades.length > 0) {
+    issues.push(`Faltam as notas de: ${missingGrades.join(", ")}.`);
+  }
+  if (Math.abs(configuredMax - 20) >= 0.001) {
+    issues.push(`A avaliação configurada soma ${formatPtNumber(configuredMax)} pontos, em vez de 20.`);
+  }
+
+  const ef = totalEFolios(state, courseId);
+  const examValue = safeGrade(ex);
+  const raw = ef + examValue;
+  const rounded = roundHalfUpInt(raw);
+
+  if (issues.length > 0) {
+    return { source: "exam", kind: "incomplete", raw, rounded, issues };
+  }
+
+  const rules = getRules(state, courseId);
+  const passed = ef >= rules.minAptoExame && examValue >= rules.minExame && rounded >= 10;
+
+  return {
+    source: "exam",
+    kind: passed ? "passed" : "resit",
+    raw,
+    rounded,
+    issues: [],
+  };
+}
+
+/** Resultado imediato após registar a nota de recurso. */
+export function getResitOutcome(state: AppState, courseId: string): AssessmentOutcome | null {
+  const item = resit(state, courseId);
+  if (!item || item.grade === null) return null;
+
+  const configuredMax = Number(item.maxPoints) || 0;
+  const issues = Math.abs(configuredMax - 20) >= 0.001
+    ? [`O recurso está configurado para ${formatPtNumber(configuredMax)} pontos, em vez de 20.`]
+    : [];
+  const raw = safeGrade(item);
+  const rounded = roundHalfUpInt(raw);
+
+  if (issues.length > 0) {
+    return { source: "resit", kind: "incomplete", raw, rounded, issues };
+  }
+
+  return {
+    source: "resit",
+    kind: rounded >= 10 ? "passed" : "failed",
+    raw,
+    rounded,
+    issues: [],
+  };
 }
 
 export type CourseStatus = "success" | "warning" | "danger" | "neutral";
@@ -88,6 +175,14 @@ export function getCourseStatus(state: AppState, courseId: string): { label: str
   if (!course) return { label: "—", badge: "neutral" };
 
   if (course.isCompleted) return { label: "Concluída", badge: "success" };
+
+  const resourceGrade = resitGrade(state, courseId);
+  if (resourceGrade !== null) {
+    const final = finalGradeRounded(state, courseId);
+    return final !== null && final >= 10
+      ? { label: "Aprovado", badge: "success" }
+      : { label: "Recurso", badge: "danger" };
+  }
 
   const rules = getRules(state, courseId);
   const ef = totalEFolios(state, courseId);

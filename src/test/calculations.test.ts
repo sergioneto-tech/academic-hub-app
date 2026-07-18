@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   finalGradeRaw,
   finalGradeRounded,
+  getCourseStatus,
+  getExamOutcome,
+  getResitOutcome,
+  needsResit,
   totalEFolios,
   totalEFoliosMax,
 } from "@/lib/calculations";
@@ -48,5 +52,59 @@ describe("cálculos com número variável de e-fólios", () => {
 
     expect(finalGradeRaw(state, "course-1")).toBe(15.75);
     expect(finalGradeRounded(state, "course-1")).toBe(16);
+  });
+});
+
+
+describe("cartão de resultado da avaliação", () => {
+  it("indica aprovação após o exame quando todos os critérios são cumpridos", () => {
+    const state = stateWithThreeEFolios();
+
+    expect(getExamOutcome(state, "course-1")).toMatchObject({
+      kind: "passed",
+      raw: 15.75,
+      rounded: 16,
+    });
+    expect(needsResit(state, "course-1")).toBe(false);
+  });
+
+  it("encaminha para recurso quando a nota final fica abaixo de 10", () => {
+    const state = stateWithThreeEFolios();
+    state.assessments = state.assessments.map((item) =>
+      item.id === "exam" ? { ...item, grade: 2.5 } : item,
+    );
+
+    expect(getExamOutcome(state, "course-1")).toMatchObject({
+      kind: "resit",
+      rounded: 9,
+    });
+    expect(needsResit(state, "course-1")).toBe(true);
+  });
+
+  it("avisa quando faltam notas ou a escala não soma 20 pontos", () => {
+    const state = stateWithThreeEFolios();
+    state.assessments = state.assessments.map((item) => {
+      if (item.id === "ef-c") return { ...item, grade: null };
+      if (item.id === "exam") return { ...item, maxPoints: 10 };
+      return item;
+    });
+
+    const outcome = getExamOutcome(state, "course-1");
+    expect(outcome?.kind).toBe("incomplete");
+    expect(outcome?.issues).toHaveLength(2);
+  });
+
+  it("mostra o resultado do recurso e permite concluir quando aprovado", () => {
+    const state = stateWithThreeEFolios();
+    state.assessments = state.assessments.map((item) =>
+      item.id === "resit" ? { ...item, grade: 13.4 } : item,
+    );
+
+    expect(getResitOutcome(state, "course-1")).toMatchObject({
+      kind: "passed",
+      rounded: 13,
+    });
+    expect(needsResit(state, "course-1")).toBe(false);
+    expect(getCourseStatus(state, "course-1")).toEqual({ label: "Aprovado", badge: "success" });
   });
 });

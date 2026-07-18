@@ -1,15 +1,28 @@
-import { useEffect, useMemo, useState } from "react";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, GraduationCap, Plus, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 
 import { useAppStore } from "@/lib/AppStore";
-import { courseStatusLabel, exam as getExam, finalGradeRaw, finalGradeRounded, getAssessments, getRules, needsResit, resit as getResit, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
+import {
+  type AssessmentOutcome,
+  courseStatusLabel,
+  exam as getExam,
+  finalGradeRaw,
+  finalGradeRounded,
+  getAssessments,
+  getExamOutcome,
+  getResitOutcome,
+  getRules,
+  needsResit,
+  resit as getResit,
+  totalEFolios,
+  totalEFoliosMax,
+} from "@/lib/calculations";
 import { formatPtNumber, parsePtNumber } from "@/lib/utils";
 import { formatPtDate, formatPtDateTime } from "@/lib/date";
 import { PtDateInput } from "@/components/ui/pt-date-input";
@@ -29,6 +42,116 @@ function DateTimeField({ label, value, onChange }: { label: string; value?: stri
     <div className="grid gap-1">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <PtDateTimeInput value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+type ResultCardProps = {
+  outcome: AssessmentOutcome;
+  courseName: string;
+  breakdown: string;
+  onComplete: () => void;
+  onReview: () => void;
+  onGoToResit?: () => void;
+};
+
+function FinalResultCard({
+  outcome,
+  courseName,
+  breakdown,
+  onComplete,
+  onReview,
+  onGoToResit,
+}: ResultCardProps) {
+  const isPassed = outcome.kind === "passed";
+  const isIncomplete = outcome.kind === "incomplete";
+  const needsAnotherAttempt = outcome.kind === "resit";
+  const isFailed = outcome.kind === "failed";
+
+  const toneClass = isPassed
+    ? "border-emerald-300 bg-emerald-50/90 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-50"
+    : isIncomplete
+      ? "border-amber-300 bg-amber-50/90 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-50"
+      : needsAnotherAttempt
+        ? "border-sky-300 bg-sky-50/90 text-sky-950 dark:border-sky-800 dark:bg-sky-950/35 dark:text-sky-50"
+        : "border-rose-300 bg-rose-50/90 text-rose-950 dark:border-rose-800 dark:bg-rose-950/35 dark:text-rose-50";
+
+  const Icon = isPassed
+    ? CheckCircle2
+    : isIncomplete || isFailed
+      ? AlertTriangle
+      : needsAnotherAttempt
+        ? RotateCcw
+        : GraduationCap;
+
+  const title = isPassed
+    ? "Cadeira concluída com sucesso"
+    : isIncomplete
+      ? "Confirma os dados da avaliação"
+      : needsAnotherAttempt
+        ? "Ainda não foi desta — prepara o recurso"
+        : "O recurso não permitiu concluir a cadeira";
+
+  const description = isPassed
+    ? `Parabéns! Concluíste ${courseName}. Confirma agora a conclusão da cadeira.`
+    : isIncomplete
+      ? "O resultado ainda não pode ser considerado definitivo porque existem dados por preencher ou valores por corrigir."
+      : needsAnotherAttempt
+        ? "O resultado atual ainda não permite concluir a cadeira, mas o recurso dá-te uma nova oportunidade."
+        : "Este resultado ainda não permite concluir a cadeira. Revê as classificações e os critérios indicados no PUC.";
+
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`rounded-xl border p-4 shadow-sm md:p-5 ${toneClass}`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="rounded-full bg-background/70 p-2">
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="font-semibold leading-tight">{title}</h3>
+              {isPassed && <Sparkles className="h-4 w-4" aria-hidden="true" />}
+            </div>
+            <p className="mt-1 text-sm opacity-85">{description}</p>
+          </div>
+
+          <div className="rounded-lg border border-current/15 bg-background/60 p-3">
+            <div className="text-xs font-medium uppercase tracking-wide opacity-70">
+              {isIncomplete ? "Resultado atual" : "Nota final"}
+            </div>
+            <div className="mt-1 text-3xl font-bold">
+              {outcome.rounded} <span className="text-base font-medium opacity-70">/ 20 valores</span>
+            </div>
+            <p className="mt-1 text-xs opacity-75">{breakdown}</p>
+          </div>
+
+          {outcome.issues.length > 0 && (
+            <ul className="list-disc space-y-1 pl-5 text-sm">
+              {outcome.issues.map((issue) => <li key={issue}>{issue}</li>)}
+            </ul>
+          )}
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {isPassed && (
+              <Button type="button" onClick={onComplete}>
+                Concluir cadeira
+              </Button>
+            )}
+            {needsAnotherAttempt && onGoToResit && (
+              <Button type="button" onClick={onGoToResit}>
+                Registar nota de recurso
+              </Button>
+            )}
+            <Button type="button" variant="outline" onClick={onReview}>
+              Rever classificações
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -72,6 +195,8 @@ function PtNumberInput({
 export default function CourseDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const efoliosSectionRef = useRef<HTMLDivElement>(null);
+  const resitSectionRef = useRef<HTMLDivElement>(null);
   const { state, addEFolio, ensureAssessment, removeAssessment, setAssessmentDate, setAssessmentGrade, setAssessmentMaxPoints, markCourseCompleted, updateCourse } = useAppStore();
 
   const course = useMemo(() => state.courses.find((c) => c.id === id), [state.courses, id]);
@@ -101,6 +226,8 @@ export default function CourseDetail() {
 
   const status = useMemo(() => (id ? courseStatusLabel(state, id) : { label: "—", badge: "neutral" as const }), [state, id]);
   const showResit = useMemo(() => (id ? needsResit(state, id) : false), [state, id]);
+  const examOutcome = useMemo(() => (id ? getExamOutcome(state, id) : null), [state, id]);
+  const resitOutcome = useMemo(() => (id ? getResitOutcome(state, id) : null), [state, id]);
 
   // Sessões (ex.: abertura, antes de e‑fólios, antes de exame)
   const sessions = useMemo(() => course?.sessions ?? [], [course?.sessions]);
@@ -127,6 +254,15 @@ export default function CourseDetail() {
       ? "bg-rose-100 text-rose-900 border-rose-200"
       : "bg-slate-100 text-slate-900 border-slate-200";
 
+
+  function completeCourse() {
+    markCourseCompleted(course.id);
+    navigate("/", { replace: true });
+  }
+
+  function scrollTo(ref: RefObject<HTMLDivElement>) {
+    ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   function makeSessionId(): string {
     return Math.random().toString(16).slice(2) + Date.now().toString(16);
@@ -246,7 +382,7 @@ export default function CourseDetail() {
         </Card>
       </div>
 
-      <Card className="bg-card/80 backdrop-blur">
+      <Card ref={efoliosSectionRef} className="scroll-mt-4 bg-card/80 backdrop-blur">
         <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <CardTitle>E‑fólios</CardTitle>
@@ -457,16 +593,29 @@ export default function CourseDetail() {
               />
             </div>
           )}
+
+          {examOutcome && (
+            <FinalResultCard
+              outcome={examOutcome}
+              courseName={course.name}
+              breakdown={`E‑fólios: ${formatPtNumber(efTotal)} + exame: ${formatPtNumber(exam?.grade ?? 0)} = ${formatPtNumber(examOutcome.raw)}`}
+              onComplete={completeCourse}
+              onReview={() => scrollTo(efoliosSectionRef)}
+              onGoToResit={() => scrollTo(resitSectionRef)}
+            />
+          )}
         </CardContent>
       </Card>
 
-      <Card className="bg-card/80 backdrop-blur">
+      <Card ref={resitSectionRef} className="scroll-mt-4 bg-card/80 backdrop-blur">
         <CardHeader>
           <CardTitle>Recurso</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Disponível porque não tem aptidão para exame ou não atingiu a nota mínima no exame.
+            {showResit
+              ? "Disponível porque a avaliação atual ainda não permite concluir a cadeira."
+              : "Preenche apenas se precisares de realizar recurso ou de substituir a classificação anterior."}
           </p>
 
           {!resit ? (
@@ -498,30 +647,24 @@ export default function CourseDetail() {
                 />
               </div>
 
-              {!showResit && (
-                <div className="rounded-md border bg-slate-50 p-3 text-sm text-slate-700">
+              {resitOutcome && (
+                <FinalResultCard
+                  outcome={resitOutcome}
+                  courseName={course.name}
+                  breakdown={`Recurso: ${formatPtNumber(resitOutcome.raw)} → arredonda para ${resitOutcome.rounded}`}
+                  onComplete={completeCourse}
+                  onReview={() => scrollTo(efoliosSectionRef)}
+                />
+              )}
+
+              {!showResit && !resitOutcome && (
+                <div className="rounded-md border bg-slate-50 p-3 text-sm text-slate-700 dark:bg-slate-950/30 dark:text-slate-200">
                   Neste momento, o recurso não é necessário. Podes deixar estes campos vazios.
                 </div>
               )}
             </>
           )}
 
-          <Separator />
-
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-            <div className="text-xs text-muted-foreground">
-              Dica: podes marcar a cadeira como concluída quando estiveres satisfeito com a nota final.
-            </div>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                markCourseCompleted(course.id);
-                navigate("/", { replace: true });
-              }}
-            >
-              Marcar como concluída
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

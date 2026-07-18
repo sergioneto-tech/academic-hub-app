@@ -1,6 +1,17 @@
 {
-  "latest": "0.2.6",
+  "latest": "0.2.7",
   "versions": [
+    {
+      "version": "0.2.7",
+      "date": "2026-07-18",
+      "changes": [
+        "Cada cadeira ativa permite agora adicionar e-fólios adicionais, com designação automática a partir do e-fólio C.",
+        "Os totais, alertas, calendário e nota final passam a considerar todos os e-fólios existentes na cadeira.",
+        "Os e-fólios adicionais podem ser removidos e começam com valor zero, evitando alterar silenciosamente a escala de avaliação.",
+        "Novo aviso quando a soma máxima dos e-fólios e do g-fólio não totaliza 20 pontos.",
+        "Corrigida a atualização sequencial do estado ao criar avaliações, evitando que um novo registo substitua outro criado imediatamente antes."
+      ]
+    },
     {
       "version": "0.2.6",
       "date": "2026-07-01",

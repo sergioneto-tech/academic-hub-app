@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { AppState, AssessmentType, Course, Degree, StudyBlock, SyncSettings } from "@/lib/types";
+import type { AppState, Assessment, AssessmentType, Course, Degree, StudyBlock, SyncSettings } from "@/lib/types";
 import { defaultState, loadState, migrate, saveState, storage as storageApi } from "@/lib/storage";
 import { clamp } from "@/lib/utils";
 import type { PlanCourseSeed } from "@/lib/uabPlan";
@@ -23,6 +23,8 @@ type Store = {
   setAssessmentGrade: (assessmentId: string, grade: number | null) => void;
   setAssessmentMaxPoints: (assessmentId: string, maxPoints: number) => void;
   setAssessmentDate: (assessmentId: string, fields: { startDate?: string; endDate?: string; gradeReleaseDate?: string; date?: string }) => void;
+  addEFolio: (courseId: string) => string;
+  removeAssessment: (assessmentId: string) => void;
   ensureAssessment: (courseId: string, type: AssessmentType, name: string) => string;
 
   // Conclusão
@@ -60,6 +62,23 @@ function defaultMaxPoints(type: AssessmentType) {
   return 4;
 }
 
+function nextEFolioName(assessments: Assessment[], courseId: string): string {
+  const used = new Set(
+    assessments
+      .filter((a) => a.courseId === courseId && a.type === "efolio")
+      .map((a) => a.name.trim().toLocaleLowerCase("pt-PT")),
+  );
+
+  for (let index = 0; index < 26; index += 1) {
+    const candidate = `e-fólio ${String.fromCharCode(65 + index)}`;
+    if (!used.has(candidate.toLocaleLowerCase("pt-PT"))) return candidate;
+  }
+
+  let number = 27;
+  while (used.has(`e-fólio ${number}`.toLocaleLowerCase("pt-PT"))) number += 1;
+  return `e-fólio ${number}`;
+}
+
 function normCode(code: string): string {
   return (code ?? "").trim();
 }
@@ -67,14 +86,16 @@ function normCode(code: string): string {
 export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => loadState());
 
+  // Mantém a referência atualizada também entre várias alterações síncronas
+  // (por exemplo, ao criar os quatro itens de avaliação padrão em sequência).
+  const stateRef = React.useRef(state);
+  stateRef.current = state;
+
   const commitFn = (next: AppState) => {
+    stateRef.current = next;
     setState(next);
     saveState(next);
   };
-
-  // Use a ref to always have access to current state inside callbacks
-  const stateRef = React.useRef(state);
-  stateRef.current = state;
 
   const api: Store = useMemo(() => {
     const commit = commitFn;
@@ -230,6 +251,38 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit(next);
       },
 
+      addEFolio(courseId) {
+        const s = getState();
+        const id = uuid();
+        const next: AppState = {
+          ...s,
+          assessments: [
+            ...s.assessments,
+            {
+              id,
+              courseId,
+              type: "efolio",
+              name: nextEFolioName(s.assessments, courseId),
+              // Começa a zero para não alterar silenciosamente a escala de 20 valores.
+              // O aluno define depois o peso real indicado no PUC da cadeira.
+              maxPoints: 0,
+              grade: null,
+            },
+          ],
+        };
+        commit(next);
+        return id;
+      },
+
+      removeAssessment(assessmentId) {
+        const s = getState();
+        const next: AppState = {
+          ...s,
+          assessments: s.assessments.filter((a) => a.id !== assessmentId),
+        };
+        commit(next);
+      },
+
       ensureAssessment(courseId, type, name) {
         const s = getState();
         const existing = s.assessments.find((a) => a.courseId === courseId && a.type === type && a.name === name);
@@ -239,7 +292,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         const next: AppState = {
           ...s,
           assessments: [
-            ...state.assessments,
+            ...s.assessments,
             {
               id,
               courseId,
@@ -332,7 +385,6 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit(next);
       },
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;

@@ -1,6 +1,18 @@
 {
-  "latest": "0.2.7",
+  "latest": "0.2.8",
   "versions": [
+    {
+      "version": "0.2.8",
+      "date": "2026-07-18",
+      "changes": [
+        "Ao registar a nota do g-fólio, a cadeira mostra imediatamente um cartão com a nota final e o resultado da avaliação.",
+        "Em caso de aprovação, o cartão apresenta uma mensagem de parabéns e o botão para concluir a cadeira sem voltar ao topo da página.",
+        "Quando a classificação exige recurso, o cartão apresenta uma mensagem de incentivo e permite avançar diretamente para a área de recurso.",
+        "O recurso passa também a mostrar o respetivo resultado e permite concluir a cadeira quando a classificação final é positiva.",
+        "A aplicação avisa quando faltam classificações ou quando a escala configurada não totaliza 20 valores, evitando apresentar uma nota definitiva incorreta.",
+        "Corrigida a regra que não recomendava recurso quando o exame atingia o mínimo, mas a nota final permanecia abaixo de 10 valores."
+      ]
+    },
     {
       "version": "0.2.7",
       "date": "2026-07-18",

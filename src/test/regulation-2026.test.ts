@@ -74,8 +74,8 @@ describe("motor de avaliação de 2026", () => {
   it("aplica a regra N−1 nos modelos por atividades", () => {
     const state = baseState("type2", [
       item({ id: "a1", name: "Atividade 1", maxPoints: 5, grade: 3 }),
-      item({ id: "a2", name: "Atividade 2", maxPoints: 5, grade: 2 }),
-      item({ id: "a3", name: "Atividade 3", maxPoints: 5, grade: 1 }),
+      item({ id: "a2", name: "Atividade 2", maxPoints: 5, grade: 1.5 }),
+      item({ id: "a3", name: "Atividade 3", maxPoints: 5, grade: 1.5 }),
       item({ id: "a4", name: "Atividade 4", maxPoints: 5, grade: 5 }),
     ]);
 

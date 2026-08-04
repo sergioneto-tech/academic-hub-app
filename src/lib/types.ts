@@ -22,7 +22,7 @@ export type Course = {
 
   /** Regime aplicável à UC. O valor legacy preserva todos os dados antigos. */
   evaluationRegime?: EvaluationRegime;
-  /** Tipologia prevista no Despacho n.º 9792/2026. */
+  /** Modelo flexível configurado pelo aluno de acordo com o PUC da cadeira. */
   evaluationModel?: EvaluationModel;
 
   /** Sessões (ex.: abertura, antes de atividades ou antes de exame). */
@@ -53,7 +53,7 @@ export type Assessment = {
   // Nota obtida neste item (pode ter decimais)
   grade: number | null;
 
-  /** Metadados do novo modelo de avaliação. */
+  /** Metadados do modelo flexível de avaliação. */
   mode?: AssessmentMode;
   required?: boolean;
   minimumPercent?: number;
@@ -73,7 +73,7 @@ export type Rules = {
   minAptoExame: number; // default legado 3.5
   minExame: number;     // default legado 5.5
 
-  /** Regras configuráveis para o modelo 2026. */
+  /** Regras configuráveis para o modelo flexível. */
   minimumFinalGrade?: number;
   asyncMinimumPercent?: number;
   syncMinimumPercent?: number;
@@ -82,7 +82,8 @@ export type Rules = {
 
 export type AppMeta = {
   appVersion: string;
-  schemaVersion: number;
+  /** Pode faltar em backups antigos; a migração preenche sempre a versão atual. */
+  schemaVersion?: number;
 };
 
 export type SyncSettings = {

@@ -1,8 +1,10 @@
-const SW_VERSION = "0.2.8";
+const SW_VERSION = "0.3.0-rc.1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest",
+  "./favicon-32.png",
+  "./apple-touch-icon.png",
   "./pwa-192.png",
   "./pwa-512.png",
   "./release-notes.json",
@@ -38,33 +40,27 @@ self.addEventListener("fetch", (event) => {
 
   const isNavigation = req.mode === "navigate";
   const isFreshFile =
-    url.pathname.endsWith("/index.html") ||
     url.pathname.endsWith("/sw.js") ||
-    url.pathname.endsWith("/release-notes.json");
+    url.pathname.endsWith("/release-notes.json") ||
+    url.pathname.endsWith("/manifest.webmanifest") ||
+    url.pathname.endsWith(".html") ||
+    isNavigation;
 
-  // HTML, SW e notas de versão devem tentar sempre rede primeiro.
-  // Isto evita a app ficar presa no bundle antigo depois de uma atualização.
-  if (isNavigation || isFreshFile) {
+  if (isFreshFile) {
     event.respondWith(
-      fetch(req)
-        .then((res) => putInCache(req, res))
-        .catch(() => caches.match(req).then((cached) => cached || caches.match("./index.html") || caches.match("./")))
+      fetch(req, { cache: "no-store" })
+        .then((res) => (res && res.ok ? putInCache(req, res) : res))
+        .catch(() => caches.match(req).then((cached) => cached || caches.match("./")))
     );
     return;
   }
 
-  // Assets estáticos continuam cache-first para manter a PWA utilizável offline.
   event.respondWith(
-    caches.match(req).then((cached) =>
-      cached || fetch(req).then((res) => putInCache(req, res))
-    )
+    caches.match(req).then((cached) => {
+      const network = fetch(req)
+        .then((res) => (res && res.ok ? putInCache(req, res) : res))
+        .catch(() => undefined);
+      return cached || network;
+    })
   );
-});
-
-// Aplicar a atualização apenas quando a app mandar esta mensagem.
-self.addEventListener("message", (event) => {
-  if (!event?.data) return;
-  if (event.data.type === "SKIP_WAITING") {
-    self.skipWaiting();
-  }
 });

@@ -1,4 +1,8 @@
 import { useMemo } from "react";
+import { Printer } from "lucide-react";
+import { Link } from "react-router-dom";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
 import { finalGrade, globalStats } from "@/lib/calculations";
@@ -62,8 +66,7 @@ function SemesterPanel({
 
                 {c.completedAt && (
                   <div className="mt-2 text-xs text-muted-foreground">
-                    Concluída em{" "}
-                    {formatPtDate(c.completedAt?.slice(0, 10))}
+                    Concluída em {formatPtDate(c.completedAt.slice(0, 10))}
                   </div>
                 )}
               </div>
@@ -84,7 +87,7 @@ export default function HistoryPage() {
 
   const grouped = completed.reduce((acc, c) => {
     const y = Number(c.year) || 0;
-    const s = c.semester === 2 ? 2 : 1; // fallback seguro
+    const s = c.semester === 2 ? 2 : 1;
 
     if (!acc[y]) acc[y] = { 1: [], 2: [] };
     acc[y][s].push(c);
@@ -99,13 +102,28 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="text-2xl font-semibold">Histórico</div>
+      <section className="premium-surface p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Histórico académico</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Consulta as cadeiras concluídas e gera um relatório pessoal organizado por ano e semestre.
+            </p>
+          </div>
+          <Button asChild disabled={completed.length === 0}>
+            <Link to="/historico/relatorio">
+              <Printer className="mr-2 h-4 w-4" />
+              Imprimir percurso
+            </Link>
+          </Button>
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
+        <Card className="premium-card">
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">
-              Cadeiras Concluídas
+              Cadeiras concluídas
             </CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
@@ -113,19 +131,19 @@ export default function HistoryPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="premium-card">
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">
-              Média Global
+              Média global
             </CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">{stats.avg}</CardContent>
         </Card>
 
-        <Card>
+        <Card className="premium-card">
           <CardHeader>
             <CardTitle className="text-sm text-muted-foreground">
-              Melhor Nota
+              Melhor nota
             </CardTitle>
           </CardHeader>
           <CardContent className="text-2xl font-semibold">
@@ -134,18 +152,18 @@ export default function HistoryPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="premium-card">
         <CardHeader>
-          <CardTitle>Cadeiras Concluídas</CardTitle>
+          <CardTitle>Cadeiras concluídas</CardTitle>
           <div className="text-sm text-muted-foreground">
-            Histórico das suas cadeiras finalizadas
+            Histórico das cadeiras finalizadas
           </div>
         </CardHeader>
 
         <CardContent className="space-y-6">
           {completed.length === 0 ? (
             <div className="rounded-lg border p-10 text-center text-sm text-muted-foreground">
-              Ainda não tem cadeiras concluídas.
+              Ainda não existem cadeiras concluídas.
             </div>
           ) : (
             years.map((year) => {
@@ -156,16 +174,15 @@ export default function HistoryPage() {
               return (
                 <div key={year} className="rounded-xl border p-4 md:p-6">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-lg font-semibold">{year}º Ano</div>
+                    <div className="text-lg font-semibold">{year}º ano</div>
                     <div className="text-sm text-muted-foreground">
                       {totalYear} {pluralCadeiras(totalYear)}
                     </div>
                   </div>
 
-                  {/* Em mobile fica 1 coluna (melhor legibilidade); em desktop vira 2 colunas como na grelha do plano */}
                   <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <SemesterPanel title="1º Semestre" courses={sem1} state={state} planCourses={planCourses} />
-                    <SemesterPanel title="2º Semestre" courses={sem2} state={state} planCourses={planCourses} />
+                    <SemesterPanel title="1º semestre" courses={sem1} state={state} planCourses={planCourses} />
+                    <SemesterPanel title="2º semestre" courses={sem2} state={state} planCourses={planCourses} />
                   </div>
                 </div>
               );

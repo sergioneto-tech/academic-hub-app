@@ -1,12 +1,12 @@
-const SW_VERSION = "1.0.0-icon2";
+const SW_VERSION = "1.0.0-icon3";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
-  "./manifest.webmanifest",
-  "./favicon-32.png",
-  "./apple-touch-icon.png",
-  "./pwa-192.png",
-  "./pwa-512.png",
+  "./manifest.webmanifest?v=3",
+  "./academic-hub-icon-v3-32.png",
+  "./academic-hub-icon-v3-180.png",
+  "./academic-hub-icon-v3-192.png",
+  "./academic-hub-icon-v3-512.png",
   "./release-notes.json",
 ];
 
@@ -45,8 +45,7 @@ self.addEventListener("fetch", (event) => {
   const isNavigation = req.mode === "navigate";
   const isFreshFile =
     url.pathname.endsWith("/sw.js") ||
-    url.pathname.endsWith("/release-notes.json") ||
-    url.pathname.endsWith("/manifest.webmanifest") ||
+    url.pathname.includes("manifest.webmanifest") ||
     url.pathname.endsWith(".html") ||
     isNavigation;
 

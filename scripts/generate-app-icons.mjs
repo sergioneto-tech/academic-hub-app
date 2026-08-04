@@ -37,9 +37,6 @@ function encodePng(width, height, pixels) {
   header.writeUInt32BE(height, 4);
   header[8] = 8;
   header[9] = 6;
-  header[10] = 0;
-  header[11] = 0;
-  header[12] = 0;
 
   const rowSize = width * 4 + 1;
   const raw = Buffer.alloc(rowSize * height);
@@ -87,42 +84,31 @@ function blend(base, overlay, alpha) {
 }
 
 function sampleIcon(x, y) {
-  const background = [236, 241, 248, 255];
-  const white = [255, 255, 255, 255];
-  const navyShadow = [12, 31, 60, 255];
-  const blue = [35, 104, 225, 255];
-  const blueLight = [65, 144, 255, 255];
+  const transparent = [0, 0, 0, 0];
+  const navy = [8, 35, 82, 255];
+  const navyLight = [18, 65, 145, 255];
+  const white = [250, 251, 253, 255];
   const gold = [203, 157, 72, 255];
-  const goldLight = [208, 166, 88, 255];
+  const goldLight = [222, 181, 91, 255];
 
-  let colour = background;
+  const tileDistance = roundedRectDistance(x, y, 0.5, 0.5, 0.455, 0.455, 0.13);
+  if (tileDistance > 0) return transparent;
 
-  const shadowDistance = roundedRectDistance(x, y - 0.018, 0.5, 0.52, 0.34, 0.34, 0.105);
-  if (shadowDistance < 0.025) {
-    const shadowAlpha = Math.max(0, 0.16 * (1 - Math.max(0, shadowDistance) / 0.025));
-    colour = blend(colour, navyShadow, shadowAlpha);
-  }
+  const radial = Math.max(0, 1 - Math.hypot(x - 0.35, y - 0.25) / 0.8);
+  let colour = blend(navy, navyLight, radial * 0.32);
 
-  const tileDistance = roundedRectDistance(x, y, 0.5, 0.49, 0.34, 0.34, 0.105);
-  if (tileDistance <= 0) colour = white;
+  const aLeft = distanceToSegment(x, y, 0.245, 0.72, 0.41, 0.28) <= 0.046;
+  const aRight = distanceToSegment(x, y, 0.41, 0.28, 0.565, 0.72) <= 0.046;
+  const aCross = distanceToSegment(x, y, 0.31, 0.555, 0.50, 0.555) <= 0.028;
+  if (aLeft || aRight || aCross) colour = white;
 
-  if (tileDistance <= 0) {
-    const aLeft = distanceToSegment(x, y, 0.265, 0.685, 0.405, 0.285) <= 0.036;
-    const aRight = distanceToSegment(x, y, 0.405, 0.285, 0.53, 0.685) <= 0.036;
-    const aCross = distanceToSegment(x, y, 0.32, 0.53, 0.475, 0.53) <= 0.023;
-    const aHighlight = distanceToSegment(x, y, 0.292, 0.65, 0.405, 0.32) <= 0.012;
+  const hLeft = Math.abs(x - 0.535) <= 0.041 && y >= 0.285 && y <= 0.72;
+  const hRight = Math.abs(x - 0.735) <= 0.041 && y >= 0.285 && y <= 0.72;
+  const hCross = Math.abs(y - 0.525) <= 0.034 && x >= 0.535 && x <= 0.735;
+  if (hLeft || hRight || hCross) colour = gold;
 
-    if (aLeft || aRight || aCross) colour = blue;
-    if (aHighlight) colour = blueLight;
-
-    const hLeft = Math.abs(x - 0.535) <= 0.034 && y >= 0.32 && y <= 0.69;
-    const hRight = Math.abs(x - 0.715) <= 0.034 && y >= 0.32 && y <= 0.69;
-    const hCross = Math.abs(y - 0.515) <= 0.027 && x >= 0.535 && x <= 0.715;
-    const hHighlight = Math.abs(x - 0.696) <= 0.011 && y >= 0.34 && y <= 0.67;
-
-    if (hLeft || hRight || hCross) colour = gold;
-    if (hHighlight) colour = goldLight;
-  }
+  const hHighlight = Math.abs(x - 0.715) <= 0.012 && y >= 0.31 && y <= 0.69;
+  if (hHighlight) colour = goldLight;
 
   return colour;
 }

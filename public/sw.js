@@ -1,4 +1,4 @@
-const SW_VERSION = "0.3.0-rc.1";
+const SW_VERSION = "1.0.0-rc.1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -23,6 +23,10 @@ self.addEventListener("activate", (event) => {
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (event?.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 function putInCache(req, res) {

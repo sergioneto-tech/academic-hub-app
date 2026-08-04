@@ -3,7 +3,7 @@ import { BookOpen, Cloud, ExternalLink, FileText, GraduationCap, HelpCircle, Lay
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const DISPATCH_URL = "https://diariodarepublica.pt/dr/detalhe/despacho/9792-2026-1154234350";
+const REGULATION_URL = "https://portal.uab.pt/avaliacao/";
 
 const guides = [
   {
@@ -18,7 +18,7 @@ const guides = [
   },
   {
     title: "Como funciona a avaliação",
-    description: "Regime anterior, novo modelo de 2026, tipologias, mínimos e recurso.",
+    description: "Regime oficial em vigor, configuração por cadeira, mínimos, exame e recurso.",
     icon: BookOpen,
   },
   {
@@ -82,21 +82,31 @@ export default function HelpPage() {
                   <FileText className="h-5 w-5" />
                 </div>
                 <div>
-                  <h2 className="font-semibold">Ler o Despacho n.º 9792/2026</h2>
+                  <h2 className="font-semibold">Regulamento de avaliação atualmente publicado</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Consulta o texto oficial que aprova o novo Regulamento de Avaliação dos Estudantes da Universidade Aberta.
+                    A UAb identifica o Despacho n.º 10317/2025 como regulamento em vigor e mantém, para 2025/26, avaliação contínua ou avaliação final, conforme a unidade curricular.
                   </p>
                 </div>
               </div>
             </div>
             <div className="flex items-center border-t bg-[hsl(var(--gold-soft)/0.55)] p-4 md:border-l md:border-t-0">
               <Button asChild className="w-full md:w-auto">
-                <a href={DISPATCH_URL} target="_blank" rel="noopener noreferrer">
-                  Ler no Diário da República <ExternalLink className="ml-2 h-4 w-4" />
+                <a href={REGULATION_URL} target="_blank" rel="noopener noreferrer">
+                  Consultar na UAb <ExternalLink className="ml-2 h-4 w-4" />
                 </a>
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="premium-card border-warning/35 bg-warning/10">
+        <CardHeader>
+          <CardTitle className="text-base">Configuração flexível de avaliação</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>Os modelos adicionais disponíveis na aplicação servem para preparar e testar diferentes estruturas indicadas no PUC de cada cadeira.</p>
+          <p>Até existir uma publicação oficial definitiva com novas regras, devem ser tratados como configuração experimental e confirmados sempre com o PUC e o portal da UAb.</p>
         </CardContent>
       </Card>
 

@@ -1,0 +1,40 @@
+name: Quality checks
+
+on:
+  push:
+    branches:
+      - agent/academic-hub-2026-premium
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript and production build
+        run: npm run build
+
+      - name: Tests
+        run: npm test
+
+      - name: Lint
+        run: npm run lint

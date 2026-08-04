@@ -1,156 +1,30 @@
 {
-  "latest": "0.2.8",
+  "latest": "1.0.0-rc.1",
   "versions": [
+    {
+      "version": "1.0.0-rc.1",
+      "date": "2026-08-04",
+      "changes": [
+        "Renovação visual premium completa para computador e telemóvel, com navegação mais clara e temas claro, escuro e automático.",
+        "Novo perfil com nome de apresentação, fotografia ajustável e cor de assinatura associada à licenciatura.",
+        "Dashboard reorganizado com progresso em ECTS, métricas académicas, prazos e cartões de cadeiras ativas.",
+        "Novo configurador flexível de avaliação por cadeira, mantendo integralmente o regime anterior de e-fólios e g-fólio.",
+        "Vista própria para modelos flexíveis, com atividades, componentes síncronas e assíncronas, recurso e conclusão da cadeira.",
+        "Novo relatório académico pessoal imprimível, organizado por ano e semestre, com avaliações, exame, recurso, nota final e ECTS.",
+        "Nova área Legal, Privacidade e Utilização, incluindo responsabilidades do criador e do utilizador e regras para fotografias.",
+        "Novos ícones da aplicação e do navegador, identidade PWA atualizada e mecanismo de atualização reforçado.",
+        "Definições, Ajuda e Guia reorganizados sem remover backups, sincronização, recuperação de conta ou dados existentes.",
+        "Compatibilidade com dados antigos validada através de migração automática, TypeScript, build, 19 testes e lint."
+      ]
+    },
     {
       "version": "0.2.8",
       "date": "2026-07-18",
       "changes": [
         "Ao registar a nota do g-fólio, a cadeira mostra imediatamente um cartão com a nota final e o resultado da avaliação.",
-        "Em caso de aprovação, o cartão apresenta uma mensagem de parabéns e o botão para concluir a cadeira sem voltar ao topo da página.",
-        "Quando a classificação exige recurso, o cartão apresenta uma mensagem de incentivo e permite avançar diretamente para a área de recurso.",
-        "O recurso passa também a mostrar o respetivo resultado e permite concluir a cadeira quando a classificação final é positiva.",
-        "A aplicação avisa quando faltam classificações ou quando a escala configurada não totaliza 20 valores, evitando apresentar uma nota definitiva incorreta.",
-        "Corrigida a regra que não recomendava recurso quando o exame atingia o mínimo, mas a nota final permanecia abaixo de 10 valores."
-      ]
-    },
-    {
-      "version": "0.2.7",
-      "date": "2026-07-18",
-      "changes": [
-        "Cada cadeira ativa permite agora adicionar e-fólios adicionais, com designação automática a partir do e-fólio C.",
-        "Os totais, alertas, calendário e nota final passam a considerar todos os e-fólios existentes na cadeira.",
-        "Os e-fólios adicionais podem ser removidos e começam com valor zero, evitando alterar silenciosamente a escala de avaliação.",
-        "Novo aviso quando a soma máxima dos e-fólios e do g-fólio não totaliza 20 pontos.",
-        "Corrigida a atualização sequencial do estado ao criar avaliações, evitando que um novo registo substitua outro criado imediatamente antes."
-      ]
-    },
-    {
-      "version": "0.2.6",
-      "date": "2026-07-01",
-      "changes": [
-        "Ao marcar uma cadeira como concluída, a vista da cadeira fecha e regressa automaticamente ao Dashboard.",
-        "Sincronização cloud reforçada: upload usa sempre o estado local mais recente e download aplica os dados recebidos com timestamp visível.",
-        "Dashboard volta a mostrar sempre o Calendário Académico UAb 2026/2027, mesmo quando não existe alerta urgente.",
-        "Calendário UAb 2026/2027 mantém os prazos oficiais do Despacho n.º 62/VR/JS/2026, incluindo matrículas do 2.º semestre de 17/11/2026 a 01/12/2026."
-      ]
-    },
-    {
-      "version": "0.2.5",
-      "date": "2026-07-01",
-      "changes": [
-        "Corrigida a inconsistência entre APP_VERSION, Service Worker e release-notes que impedia a app de mostrar a versão nova.",
-        "Service Worker ajustado para usar rede primeiro em HTML, sw.js e release-notes.json, reduzindo o risco de a PWA ficar presa em cache antiga.",
-        "Mantida a atualização do calendário académico UAb 2026/2027 e a melhoria de legibilidade no modo escuro.",
-        "Atualização apenas de código/cache: não altera cadeiras, notas, histórico, plano pessoal, backups nem dados sincronizados."
-      ]
-    },
-    {
-      "version": "0.2.4",
-      "date": "2026-06-03",
-      "changes": [
-        "Corrigido o mecanismo de aviso de atualização para detetar novas versões mesmo quando o Service Worker/PWA fica preso em cache.",
-        "Botão Atualizar versão passa a limpar apenas a cache da app, preservando dados locais e sincronizados.",
-        "Mantida a correção do calendário UAb 2026/2027 e das inscrições do 2.º semestre.",
-        "Melhorada a legibilidade dos cartões de detalhe da cadeira no modo escuro."
-      ]
-    },
-    {
-      "version": "0.2.3",
-      "date": "2026-06-03",
-      "changes": [
-        "Calendário académico UAb atualizado para 2026/2027 — 1.º ciclo, com base no Despacho n.º 62/VR/JS/2026.",
-        "Matrículas e inscrições do 2.º semestre corrigidas para 17/11/2026 a 01/12/2026.",
-        "Alertas do calendário passam a escolher automaticamente o calendário letivo mais recente já publicado na app.",
-        "Melhorada a legibilidade dos cartões de detalhe da cadeira no modo escuro.",
-        "Atualização apenas de código/calendário: não altera notas, cadeiras, histórico, backups nem dados sincronizados."
-      ]
-    },
-    {
-      "version": "0.2.1",
-      "date": "2026-03-04",
-      "changes": [
-        "Exportação .ics melhorada: podes escolher semestre e (por defeito) não exporta eventos passados.",
-        "e-fólios: novo campo opcional para 'publicação da nota'.",
-        "Dashboard: mostra contagem para início do e-fólio, entrega e (se indicado) publicação da nota.",
-        "Atualizações: cartão de 'Nova versão disponível' com opção 'Mais tarde' (fica aviso no Dashboard)."
-      ]
-    },
-    {
-      "version": "0.2.0",
-      "date": "2026-02-16",
-      "changes": [
-        "Calendário de Provas UAb 2025/2026 integrado: cada cadeira ativa mostra automaticamente a data do exame normal e recurso.",
-        "Alertas automáticos do calendário académico (matrículas, exames, pausas letivas) com links diretos para o portal UAb.",
-        "Dashboard compacto: cartões de KPIs e painel do utilizador otimizados para telemóvel.",
-        "Links rápidos para o Calendário Letivo, Calendário de Provas e Candidaturas da UAb."
-      ]
-    },
-    {
-      "version": "0.1.9",
-      "date": "2026-02-15",
-      "changes": [
-        "ECTS e Área Científica reais para todas as 12 licenciaturas da UAb (dados do guiadoscursos.uab.pt).",
-        "Sincronização automática: ao ativar sync e fazer login, os dados são enviados para a cloud automaticamente (sem clicar no botão).",
-        "Cartões de cadeira nas Definições mais compactos e interativos no telemóvel.",
-        "Nova página 'Ajuda' sempre acessível na navegação com manual completo de utilização.",
-        "Navegação inferior no telemóvel agora inclui separador 'Ajuda'."
-      ]
-    },
-    {
-      "version": "0.1.8",
-      "date": "2026-02-15",
-      "changes": [
-        "ECTS e Área Científica visíveis no Plano de Estudos para cada cadeira.",
-        "Novo separador 'ECTS concluídos' no dashboard com contagem total.",
-        "Plano de Estudos agora mostra apenas cadeiras ativas e por fazer; concluídas ficam numa secção recolhível no final.",
-        "Separadores do dashboard agora aparecem 2 por linha no telemóvel para melhor visualização.",
-        "Secção 'Sobre a app' com manual de utilização integrado para novos utilizadores.",
-        "Corrigida sincronização cloud entre dispositivos."
-      ]
-    },
-    {
-      "version": "0.1.7",
-      "date": "2026-02-14",
-      "changes": [
-        "Novo Plano de Estudos: visão geral do curso por ano/semestre com barra de progresso.",
-        "Novo Plano de Estudo Pessoal: organiza semanas de estudo com kanban (Por fazer, Em progresso, Feito).",
-        "Exportação .ics do plano pessoal para Google Calendar, Outlook, Apple Calendar.",
-        "Nova entrada 'Plano' na barra de navegação."
-      ]
-    },
-    {
-      "version": "0.1.6",
-      "date": "2026-02-14",
-      "changes": [
-        "Corrigido carregamento de cadeiras: agora carrega apenas as cadeiras do curso selecionado (antes acumulava de vários cursos).",
-        "LEI unificada numa só opção (sem plano 3/5 anos separado).",
-        "Notificação de novidades agora aparece corretamente ao abrir a app."
-      ]
-    },
-    {
-      "version": "0.1.5",
-      "date": "2026-02-14",
-      "changes": [
-        "Corrigido botão 'Carregar cadeiras' que não funcionava corretamente.",
-        "E-fólios e g-fólio são agora criados automaticamente ao ativar uma cadeira.",
-        "Exame renomeado de 'p-fólio' para 'g-fólio' (nomenclatura atual da UAb).",
-        "Fonte dos dados corrigida: Guia dos Cursos UAb (não wiki)."
-      ]
-    },
-    {
-      "version": "0.1.4",
-      "date": "2026-02-14",
-      "changes": [
-        "Base de dados completa com todas as 12 licenciaturas da UAb e respetivas cadeiras.",
-        "Todas as licenciaturas suportam carregamento automático do plano de estudos."
-      ]
-    },
-    {
-      "version": "0.1.3",
-      "date": "2026-02-13",
-      "changes": [
-        "Corrigida a sincronização cloud.",
-        "Criação de conta e login operacionais."
+        "Em caso de aprovação, o cartão apresenta uma mensagem de parabéns e o botão para concluir a cadeira.",
+        "Quando a classificação exige recurso, o cartão apresenta uma mensagem de incentivo e permite avançar diretamente para essa área.",
+        "A aplicação avisa quando faltam classificações ou quando a escala configurada não totaliza 20 valores."
       ]
     }
   ]

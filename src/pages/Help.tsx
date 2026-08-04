@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Printer,
+  RefreshCw,
   Scale,
   Settings,
   Sparkles,
@@ -142,6 +143,27 @@ export default function HelpPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="premium-card border-warning/35 bg-warning/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <RefreshCw className="h-5 w-5 text-warning" />
+            Ícone da aplicação instalada
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            O computador ou telemóvel pode manter o ícone anterior em cache mesmo depois da atualização da aplicação.
+          </p>
+          <p>
+            Se o novo monograma AH não aparecer, confirma primeiro que tens backup atualizado ou sincronização cloud ativa,
+            desinstala a aplicação instalada e volta a instalá-la através do botão “Instalar aplicação”.
+          </p>
+          <p className="text-xs">
+            Desinstalar a PWA pode remover dados guardados apenas nesse dispositivo; por isso, não avances sem confirmar o backup ou a sincronização.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card className="premium-card overflow-hidden border-[hsl(var(--gold)/0.45)]">
         <CardContent className="p-0">

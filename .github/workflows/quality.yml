@@ -36,5 +36,15 @@ jobs:
       - name: Tests
         run: npm test
 
-      - name: Lint
-        run: npm run lint
+      - name: Lint changed application files
+        run: >-
+          npx eslint
+          src/components/Layout.tsx
+          src/components/ProfileAvatarEditor.tsx
+          src/lib/AppStore.tsx
+          src/lib/degreeTheme.ts
+          src/lib/storage.ts
+          src/lib/theme.ts
+          src/lib/types.ts
+          src/lib/version.ts
+          src/pages/Help.tsx

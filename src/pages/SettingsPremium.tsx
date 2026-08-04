@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
 import SettingsPage from "@/pages/Settings";
 
-const REGULATION_URL = "https://diariodarepublica.pt/dr/detalhe/despacho/9792-2026-925963049";
+const REGULATION_URL = "https://portal.uab.pt/avaliacao/";
 
 const THEMES: Array<{ value: ThemeMode; label: string; description: string; icon: typeof Sun }> = [
   { value: "light", label: "Claro", description: "Cinza suave e cartões claros", icon: Sun },
@@ -238,11 +238,13 @@ export default function SettingsPremium() {
               <BookOpenCheck className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold">Novo regulamento de avaliação</div>
-              <div className="mt-0.5 text-xs text-muted-foreground">Consulta o Despacho n.º 9792/2026 no Diário da República.</div>
+              <div className="text-sm font-semibold">Regulamento de avaliação em vigor</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">
+                Consulta a informação oficial da UAb, incluindo o Despacho n.º 10317/2025 e as regras aplicáveis em 2025/26.
+              </div>
             </div>
             <Button asChild variant="ghost" size="icon">
-              <a href={REGULATION_URL} target="_blank" rel="noopener noreferrer" aria-label="Abrir Despacho n.º 9792/2026">
+              <a href={REGULATION_URL} target="_blank" rel="noopener noreferrer" aria-label="Abrir informação oficial de avaliação da UAb">
                 <ExternalLink className="h-4 w-4" />
               </a>
             </Button>

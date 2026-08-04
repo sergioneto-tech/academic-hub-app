@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main
+      - validation/academic-hub-2026
 
 permissions:
   contents: read
@@ -39,6 +40,7 @@ jobs:
       - name: Lint changed application files
         run: >-
           npx eslint
+          src/App.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
           src/lib/AppStore.tsx
@@ -47,4 +49,6 @@ jobs:
           src/lib/theme.ts
           src/lib/types.ts
           src/lib/version.ts
+          src/pages/Dashboard.tsx
           src/pages/Help.tsx
+          src/pages/SettingsPremium.tsx

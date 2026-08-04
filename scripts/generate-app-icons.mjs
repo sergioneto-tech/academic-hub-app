@@ -92,8 +92,8 @@ function sampleIcon(x, y) {
   const navyShadow = [12, 31, 60, 255];
   const blue = [35, 104, 225, 255];
   const blueLight = [65, 144, 255, 255];
-  const gold = [205, 158, 61, 255];
-  const goldLight = [226, 188, 94, 255];
+  const gold = [203, 157, 72, 255];
+  const goldLight = [208, 166, 88, 255];
 
   let colour = background;
 

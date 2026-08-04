@@ -1,9 +1,13 @@
-const SW_VERSION = "1.0.0-premium5";
+const SW_VERSION = "1.0.0-install6";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
-  "./manifest.webmanifest?v=5",
-  "./academic-hub-premium.svg?v=5",
+  "./manifest.webmanifest?v=6",
+  "./academic-hub-icon-v6-32.png?v=6",
+  "./academic-hub-icon-v6-180.png?v=6",
+  "./academic-hub-icon-v6-192.png?v=6",
+  "./academic-hub-icon-v6-512.png?v=6",
+  "./academic-hub-icon-v6-512-maskable.png?v=6",
   "./release-notes.json",
 ];
 

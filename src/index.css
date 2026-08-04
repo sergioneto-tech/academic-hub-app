@@ -141,6 +141,19 @@
   .gold-detail {
     color: hsl(var(--gold));
   }
+
+  /* Identidade final AH usada no cabeçalho desktop e mobile. */
+  aside > div:first-child > div:first-child,
+  header > div > div:first-child > div:first-child {
+    color: transparent !important;
+    background-color: transparent !important;
+    background-image: url('/academic-hub-icon-v3-192.png') !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: contain !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
 }
 
 @layer utilities {

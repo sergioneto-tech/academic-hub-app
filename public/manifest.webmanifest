@@ -1,25 +1,33 @@
 {
+  "id": "./",
   "name": "Academic Hub",
   "short_name": "Academic Hub",
   "description": "Gestor académico pessoal — cadeiras, elementos de avaliação, calendário, progresso e alertas.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
   "background_color": "#E9EDF2",
   "theme_color": "#0B1D3A",
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "./academic-hub-premium.svg?v=5",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./academic-hub-icon-v6-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./academic-hub-premium.svg?v=5",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./academic-hub-icon-v6-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./academic-hub-icon-v6-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ]

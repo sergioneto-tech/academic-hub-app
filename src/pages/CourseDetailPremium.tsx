@@ -1,19 +1,21 @@
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 
-import CourseEvaluationSettings from "@/components/CourseEvaluationSettings";
+import { useAppStore } from "@/lib/AppStore";
 import CourseDetail from "@/pages/CourseDetail";
+import FlexibleCourseDetail from "@/pages/FlexibleCourseDetail";
 
 export default function CourseDetailPremium() {
   const { id } = useParams();
-
-  return (
-    <div className="space-y-5">
-      {id && (
-        <div className="mx-auto max-w-5xl px-4 pt-4 md:px-6 md:pt-6">
-          <CourseEvaluationSettings courseId={id} />
-        </div>
-      )}
-      <CourseDetail />
-    </div>
+  const { state } = useAppStore();
+  const course = useMemo(
+    () => state.courses.find((item) => item.id === id),
+    [state.courses, id],
   );
+
+  if (!id || !course) return <CourseDetail />;
+
+  return course.evaluationRegime === "regulation-2026"
+    ? <FlexibleCourseDetail courseId={id} />
+    : <CourseDetail />;
 }

@@ -1,7 +1,7 @@
 import { ArrowRight, Clock3, ShieldCheck, Sparkles } from "lucide-react";
 
 const CHANGE_ITEMS = [
-  "Novo modelo de avaliação conforme o Despacho n.º 9792/2026",
+  "Novo configurador flexível de avaliação, preparado para futuras regras da UAb",
   "Renovação visual completa nos modos claro e escuro",
   "Novo centro Ajuda & Guia e manutenção dos links úteis",
   "Melhorias nos alertas, perfil e fotografia do aluno",

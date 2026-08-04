@@ -12,6 +12,7 @@ import {
   Scale,
   Settings,
   Sparkles,
+  UserRound,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,23 @@ export default function HelpPage() {
           </Card>
         ))}
       </div>
+
+      <Card className="premium-card border-[hsl(var(--gold)/0.35)]">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserRound className="h-5 w-5 text-[hsl(var(--gold))]" />
+            Sobre o projeto
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">
+            Criado e desenvolvido por Sérgio Neto, aluno da Licenciatura em Engenharia Informática da Universidade Aberta.
+          </p>
+          <p>
+            O Academic Hub nasceu como uma ferramenta pessoal para organizar cadeiras, avaliações, calendário e progresso académico.
+          </p>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="premium-card border-primary/25">

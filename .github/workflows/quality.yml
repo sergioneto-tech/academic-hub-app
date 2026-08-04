@@ -45,8 +45,10 @@ jobs:
           npx eslint
           src/App.tsx
           src/components/CourseEvaluationSettings.tsx
+          src/components/EvaluationFrameworkNotice.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
+          src/components/ui/pt-datetime-input.tsx
           src/lib/AppStore.tsx
           src/lib/calculations.ts
           src/lib/degreeTheme.ts

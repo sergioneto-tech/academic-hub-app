@@ -57,17 +57,19 @@ export function ProfileAvatar({ className, editable = false }: { className?: str
   const displayName = state.profile?.displayName || "Aluno";
 
   const content = (
-    <div
-      className={cn("relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-card font-semibold", className)}
-      style={{ border: `3px solid ${accent.color}`, boxShadow: `0 0 0 4px ${accent.soft}` }}
-    >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt={`Fotografia de ${displayName}`} className="h-full w-full object-cover" />
-      ) : (
-        <span style={{ color: accent.color }}>{initials(displayName)}</span>
-      )}
+    <div className={cn("relative shrink-0", className)}>
+      <div
+        className="grid h-full w-full place-items-center overflow-hidden rounded-full bg-card font-semibold"
+        style={{ border: `3px solid ${accent.color}`, boxShadow: `0 0 0 4px ${accent.soft}` }}
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={`Fotografia de ${displayName}`} className="h-full w-full object-cover" />
+        ) : (
+          <span style={{ color: accent.color }}>{initials(displayName)}</span>
+        )}
+      </div>
       {editable && (
-        <span className="absolute bottom-0 right-0 grid h-6 w-6 place-items-center rounded-full bg-card shadow ring-1 ring-border">
+        <span className="absolute bottom-0 right-0 grid h-6 w-6 translate-x-0.5 translate-y-0.5 place-items-center rounded-full bg-card text-foreground shadow ring-1 ring-border">
           <Camera className="h-3.5 w-3.5" />
         </span>
       )}

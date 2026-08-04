@@ -201,10 +201,13 @@ export default function LegalPage() {
 
         <Card className="premium-card">
           <CardHeader>
-            <CardTitle className="text-base">Contacto e exercício de direitos</CardTitle>
+            <CardTitle className="text-base">Sobre o projeto e contacto</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm leading-6 text-muted-foreground">
-            <p>Responsável pelo projeto: Sérgio Neto.</p>
+            <p className="font-medium text-foreground">
+              Criado e desenvolvido por Sérgio Neto, aluno da Licenciatura em Engenharia Informática da Universidade Aberta.
+            </p>
+            <p>Responsável pelo projeto e pelo tratamento de dados associado à aplicação: Sérgio Neto.</p>
             <p>
               Contacto: <a className="font-medium text-primary hover:underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
             </p>

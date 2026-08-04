@@ -55,6 +55,7 @@ jobs:
           src/lib/types.ts
           src/lib/version.ts
           src/pages/CourseDetailPremium.tsx
+          src/pages/FlexibleCourseDetail.tsx
           src/pages/Dashboard.tsx
           src/pages/Help.tsx
           src/pages/SettingsPremium.tsx

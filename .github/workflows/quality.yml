@@ -41,6 +41,7 @@ jobs:
         run: >-
           npx eslint
           src/App.tsx
+          src/components/CourseEvaluationSettings.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
           src/lib/AppStore.tsx
@@ -50,6 +51,7 @@ jobs:
           src/lib/theme.ts
           src/lib/types.ts
           src/lib/version.ts
+          src/pages/CourseDetailPremium.tsx
           src/pages/Dashboard.tsx
           src/pages/Help.tsx
           src/pages/SettingsPremium.tsx

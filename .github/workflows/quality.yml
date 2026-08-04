@@ -44,6 +44,7 @@ jobs:
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
           src/lib/AppStore.tsx
+          src/lib/calculations.ts
           src/lib/degreeTheme.ts
           src/lib/storage.ts
           src/lib/theme.ts
@@ -52,3 +53,4 @@ jobs:
           src/pages/Dashboard.tsx
           src/pages/Help.tsx
           src/pages/SettingsPremium.tsx
+          src/test/regulation-2026.test.ts

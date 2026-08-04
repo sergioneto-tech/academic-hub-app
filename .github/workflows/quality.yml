@@ -54,9 +54,12 @@ jobs:
           src/lib/theme.ts
           src/lib/types.ts
           src/lib/version.ts
+          src/pages/AcademicReport.tsx
           src/pages/CourseDetailPremium.tsx
           src/pages/FlexibleCourseDetail.tsx
           src/pages/Dashboard.tsx
           src/pages/Help.tsx
+          src/pages/History.tsx
+          src/pages/Legal.tsx
           src/pages/SettingsPremium.tsx
           src/test/regulation-2026.test.ts

@@ -1,18 +1,23 @@
 {
-  "latest": "1.0.0-rc.1",
+  "latest": "1.0.0",
   "versions": [
     {
-      "version": "1.0.0-rc.1",
+      "version": "1.0.0",
       "date": "2026-08-04",
       "changes": [
-        "Renovação visual premium completa para computador e telemóvel, com navegação mais clara e temas claro, escuro e automático.",
+        "Primeira versão estável do Academic Hub, com renovação visual premium completa para computador e telemóvel.",
+        "Nova navegação lateral no computador e barra inferior no telemóvel, com temas claro, escuro e automático.",
         "Novo perfil com nome de apresentação, fotografia ajustável e cor de assinatura associada à licenciatura.",
         "Dashboard reorganizado com progresso em ECTS, métricas académicas, prazos e cartões de cadeiras ativas.",
         "Novo configurador flexível de avaliação por cadeira, mantendo integralmente o regime anterior de e-fólios e g-fólio.",
+        "Aviso claro entre o regime atualmente publicado pela UAb e a configuração flexível ou experimental, com confirmação obrigatória no PUC.",
         "Vista própria para modelos flexíveis, com atividades, componentes síncronas e assíncronas, recurso e conclusão da cadeira.",
+        "Campos de data e hora corrigidos para janelas normais do computador, evitando cortes e sobreposições.",
         "Novo relatório académico pessoal imprimível, organizado por ano e semestre, com avaliações, exame, recurso, nota final e ECTS.",
         "Nova área Legal, Privacidade e Utilização, incluindo responsabilidades do criador e do utilizador e regras para fotografias.",
-        "Novos ícones da aplicação e do navegador, identidade PWA atualizada e mecanismo de atualização reforçado.",
+        "Identificação do projeto: criado e desenvolvido por Sérgio Neto, aluno da Licenciatura em Engenharia Informática da Universidade Aberta.",
+        "Novo monograma AH, com A azul e H dourado, aplicado ao favicon, Android, Apple e aplicação instalada.",
+        "Cartões antigos e novos harmonizados com a mesma superfície, contorno e sombra premium.",
         "Definições, Ajuda e Guia reorganizados sem remover backups, sincronização, recuperação de conta ou dados existentes.",
         "Compatibilidade com dados antigos validada através de migração automática, TypeScript, build, 19 testes e lint."
       ]

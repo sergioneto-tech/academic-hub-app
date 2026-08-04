@@ -48,6 +48,7 @@ jobs:
           src/components/EvaluationFrameworkNotice.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
+          src/components/ui/card.tsx
           src/components/ui/pt-datetime-input.tsx
           src/lib/AppStore.tsx
           src/lib/calculations.ts

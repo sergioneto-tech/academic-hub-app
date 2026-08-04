@@ -31,7 +31,10 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
-      - name: TypeScript and production build
+      - name: TypeScript project check
+        run: npx tsc -b --pretty false
+
+      - name: Production build
         run: npm run build
 
       - name: Tests

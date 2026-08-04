@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useMemo, useState } from "react";
-import type { AppState, Assessment, AssessmentType, Course, Degree, StudyBlock, SyncSettings } from "@/lib/types";
+import type {
+  AppState,
+  AppearanceSettings,
+  Assessment,
+  AssessmentType,
+  Course,
+  Degree,
+  NotificationSettings,
+  ProfileSettings,
+  StudyBlock,
+  SyncSettings,
+} from "@/lib/types";
 import { defaultState, loadState, migrate, saveState, storage as storageApi } from "@/lib/storage";
 import { clamp } from "@/lib/utils";
 import type { PlanCourseSeed } from "@/lib/uabPlan";
@@ -7,38 +18,35 @@ import type { PlanCourseSeed } from "@/lib/uabPlan";
 type Store = {
   state: AppState;
 
-  // Licenciatura
   setDegree: (degree: Degree | null) => void;
   setDegreeName: (name: string) => void;
+  setProfile: (patch: Partial<ProfileSettings>) => void;
+  setAppearance: (patch: Partial<AppearanceSettings>) => void;
+  setNotifications: (patch: Partial<NotificationSettings>) => void;
+  setLastSeenRelease: (version: string) => void;
 
-  // Cadeiras (catálogo)
   addCourse: (seed: { code: string; name: string; year: number; semester: number }) => string;
-  updateCourse: (courseId: string, patch: Partial<Pick<Course, "code" | "name" | "year" | "semester" | "isActive" | "isCompleted" | "completedAt" | "sessions">>) => void;
+  updateCourse: (courseId: string, patch: Partial<Course>) => void;
   removeCourse: (courseId: string) => void;
-
-  // Importação “seed” do plano de estudos
   mergePlanCourses: (seeds: PlanCourseSeed[]) => void;
 
-  // Avaliação
   setAssessmentGrade: (assessmentId: string, grade: number | null) => void;
   setAssessmentMaxPoints: (assessmentId: string, maxPoints: number) => void;
   setAssessmentDate: (assessmentId: string, fields: { startDate?: string; endDate?: string; gradeReleaseDate?: string; date?: string }) => void;
+  updateAssessment: (assessmentId: string, patch: Partial<Assessment>) => void;
+  addAssessment: (courseId: string, seed?: Partial<Omit<Assessment, "id" | "courseId">>) => string;
   addEFolio: (courseId: string) => string;
   removeAssessment: (assessmentId: string) => void;
   ensureAssessment: (courseId: string, type: AssessmentType, name: string) => string;
 
-  // Conclusão
   markCourseCompleted: (courseId: string) => void;
 
-  // Blocos de estudo
   addStudyBlock: (block: Omit<StudyBlock, "id">) => string;
   updateStudyBlock: (blockId: string, patch: Partial<StudyBlock>) => void;
   removeStudyBlock: (blockId: string) => void;
 
-  // Sincronização (opcional)
   setSync: (patch: Partial<SyncSettings>) => void;
 
-  // Backup/restore
   exportData: () => string;
   importData: (jsonText: string) => { ok: true } | { ok: false; error: string };
   replaceState: (raw: unknown) => void;
@@ -48,8 +56,6 @@ type Store = {
 const Ctx = createContext<Store | null>(null);
 
 function uuid(): string {
-  // Preferir UUID real quando disponível.
-  // (Em alguns browsers antigos, crypto.randomUUID pode não existir.)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const anyCrypto: any = typeof crypto !== "undefined" ? crypto : null;
   if (anyCrypto?.randomUUID) return anyCrypto.randomUUID();
@@ -79,15 +85,17 @@ function nextEFolioName(assessments: Assessment[], courseId: string): string {
   return `e-fólio ${number}`;
 }
 
+function nextActivityName(assessments: Assessment[], courseId: string): string {
+  const count = assessments.filter((item) => item.courseId === courseId && item.type !== "exam" && item.type !== "resit").length;
+  return `Atividade ${count + 1}`;
+}
+
 function normCode(code: string): string {
   return (code ?? "").trim();
 }
 
 export function AppStoreProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(() => loadState());
-
-  // Mantém a referência atualizada também entre várias alterações síncronas
-  // (por exemplo, ao criar os quatro itens de avaliação padrão em sequência).
   const stateRef = React.useRef(state);
   stateRef.current = state;
 
@@ -105,17 +113,37 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
       state,
 
       setDegree(degree) {
-        const next: AppState = { ...getState(), degree };
-        commit(next);
+        commit({ ...getState(), degree });
       },
 
       setDegreeName(name) {
         const s = getState();
-        const next: AppState = {
+        commit({ ...s, degree: s.degree ? { ...s.degree, name } : { id: uuid(), name } });
+      },
+
+      setProfile(patch) {
+        const s = getState();
+        commit({ ...s, profile: { ...(s.profile ?? {}), ...patch } });
+      },
+
+      setAppearance(patch) {
+        const s = getState();
+        commit({ ...s, appearance: { ...(s.appearance ?? { theme: "system" }), ...patch } });
+      },
+
+      setNotifications(patch) {
+        const s = getState();
+        commit({
           ...s,
-          degree: s.degree ? { ...s.degree, name } : { id: uuid(), name },
-        };
-        commit(next);
+          notifications: {
+            ...(s.notifications ?? { deadlines: true, exams: true, grades: true }),
+            ...patch,
+          },
+        });
+      },
+
+      setLastSeenRelease(version) {
+        commit({ ...getState(), lastSeenRelease: version });
       },
 
       addCourse(seed) {
@@ -129,10 +157,10 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           semester: Number(seed.semester) || 1,
           isActive: false,
           isCompleted: false,
+          evaluationRegime: "legacy",
+          evaluationModel: "custom",
         };
-
-        const next: AppState = { ...s, courses: [...s.courses, nextCourse] };
-        commit(next);
+        commit({ ...s, courses: [...s.courses, nextCourse] });
         return id;
       },
 
@@ -143,54 +171,42 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           courses: s.courses.map((c) => (c.id === courseId ? { ...c, ...patch } : c)),
         };
 
-        // Auto-create assessments when course is activated
         if (patch.isActive === true) {
           const hasAssessments = next.assessments.some((a) => a.courseId === courseId);
           if (!hasAssessments) {
-            const newAssessments = [
-              { id: uuid(), courseId, type: "efolio" as const, name: "e-fólio A", maxPoints: 4, grade: null },
-              { id: uuid(), courseId, type: "efolio" as const, name: "e-fólio B", maxPoints: 4, grade: null },
-              { id: uuid(), courseId, type: "exam" as const, name: "g-fólio", maxPoints: 12, grade: null },
-              { id: uuid(), courseId, type: "resit" as const, name: "recurso", maxPoints: 20, grade: null },
+            const newAssessments: Assessment[] = [
+              { id: uuid(), courseId, type: "efolio", name: "e-fólio A", maxPoints: 4, grade: null, mode: "asynchronous", required: true, order: 1 },
+              { id: uuid(), courseId, type: "efolio", name: "e-fólio B", maxPoints: 4, grade: null, mode: "asynchronous", required: true, order: 2 },
+              { id: uuid(), courseId, type: "exam", name: "g-fólio", maxPoints: 12, grade: null, mode: "synchronous", required: true, order: 3 },
+              { id: uuid(), courseId, type: "resit", name: "recurso", maxPoints: 20, grade: null, mode: "synchronous", required: false, order: 4 },
             ];
             next.assessments = [...next.assessments, ...newAssessments];
           }
         }
-
         commit(next);
       },
 
       removeCourse(courseId) {
         const s = getState();
-        const next: AppState = {
+        commit({
           ...s,
           courses: s.courses.filter((c) => c.id !== courseId),
           assessments: s.assessments.filter((a) => a.courseId !== courseId),
           rules: s.rules.filter((r) => r.courseId !== courseId),
-        };
-        commit(next);
+        });
       },
 
       mergePlanCourses(seeds) {
-        if (!seeds || seeds.length === 0) return;
-
+        if (!seeds?.length) return;
         const s = getState();
         const seedCodes = new Set(seeds.map((seed) => normCode(seed.code)));
-
-        // Remove inactive/uncompleted courses that are NOT in the new plan
-        // (keeps active and completed courses from any degree)
-        const keepCourses = s.courses.filter(
-          (c) => c.isActive || c.isCompleted || seedCodes.has(normCode(c.code))
-        );
-
+        const keepCourses = s.courses.filter((c) => c.isActive || c.isCompleted || seedCodes.has(normCode(c.code)));
         const byCode = new Map(keepCourses.map((c) => [normCode(c.code), c]));
         const toAdd: Course[] = [];
 
         for (const seed of seeds) {
           const code = normCode(seed.code);
-          if (!code) continue;
-          if (byCode.has(code)) continue;
-
+          if (!code || byCode.has(code)) continue;
           toAdd.push({
             id: uuid(),
             code,
@@ -199,158 +215,165 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             semester: Number(seed.semester) || 1,
             isActive: false,
             isCompleted: false,
+            evaluationRegime: "legacy",
+            evaluationModel: "custom",
           });
         }
 
         const newCourses = [...keepCourses, ...toAdd];
-        // Also clean up orphaned assessments/rules
         const courseIds = new Set(newCourses.map((c) => c.id));
-        const next: AppState = {
+        commit({
           ...s,
           courses: newCourses,
           assessments: s.assessments.filter((a) => courseIds.has(a.courseId)),
           rules: s.rules.filter((r) => courseIds.has(r.courseId)),
-        };
-        commit(next);
+        });
       },
 
       setAssessmentGrade(assessmentId, grade) {
         const s = getState();
-        const next: AppState = {
+        commit({
           ...s,
           assessments: s.assessments.map((a) => {
             if (a.id !== assessmentId) return a;
             const max = Number(a.maxPoints) || 0;
-            const v = grade === null ? null : clamp(grade, 0, max);
-            return { ...a, grade: v };
+            const value = grade === null ? null : clamp(grade, 0, max);
+            return { ...a, grade: value, status: value === null ? a.status : "graded" };
           }),
-        };
-        commit(next);
+        });
       },
 
       setAssessmentMaxPoints(assessmentId, maxPoints) {
         const s = getState();
         const mp = Math.max(0, Number(maxPoints) || 0);
-        const next: AppState = {
+        commit({
           ...s,
           assessments: s.assessments.map((a) => {
             if (a.id !== assessmentId) return a;
-            const g = a.grade === null ? null : clamp(a.grade, 0, mp);
-            return { ...a, maxPoints: mp, grade: g };
+            const grade = a.grade === null ? null : clamp(a.grade, 0, mp);
+            return { ...a, maxPoints: mp, grade };
           }),
-        };
-        commit(next);
+        });
       },
 
       setAssessmentDate(assessmentId, fields) {
         const s = getState();
-        const next: AppState = {
+        commit({ ...s, assessments: s.assessments.map((a) => (a.id === assessmentId ? { ...a, ...fields } : a)) });
+      },
+
+      updateAssessment(assessmentId, patch) {
+        const s = getState();
+        commit({
           ...s,
-          assessments: s.assessments.map((a) => (a.id === assessmentId ? { ...a, ...fields } : a)),
+          assessments: s.assessments.map((a) => {
+            if (a.id !== assessmentId) return a;
+            const next = { ...a, ...patch };
+            const max = Math.max(0, Number(next.maxPoints) || 0);
+            return { ...next, maxPoints: max, grade: next.grade === null ? null : clamp(next.grade, 0, max) };
+          }),
+        });
+      },
+
+      addAssessment(courseId, seed = {}) {
+        const s = getState();
+        const id = uuid();
+        const type = seed.type ?? "activity";
+        const assessment: Assessment = {
+          id,
+          courseId,
+          type,
+          name: seed.name?.trim() || nextActivityName(s.assessments, courseId),
+          maxPoints: Math.max(0, Number(seed.maxPoints ?? defaultMaxPoints(type))),
+          grade: seed.grade ?? null,
+          mode: seed.mode ?? (type === "exam" || type === "resit" || type === "discussion" || type === "presentation" ? "synchronous" : "asynchronous"),
+          required: seed.required ?? true,
+          minimumPercent: seed.minimumPercent,
+          status: seed.status ?? "todo",
+          order: seed.order ?? s.assessments.filter((item) => item.courseId === courseId).length + 1,
+          description: seed.description,
+          startDate: seed.startDate,
+          endDate: seed.endDate,
+          gradeReleaseDate: seed.gradeReleaseDate,
+          date: seed.date,
         };
-        commit(next);
+        commit({ ...s, assessments: [...s.assessments, assessment] });
+        return id;
       },
 
       addEFolio(courseId) {
         const s = getState();
         const id = uuid();
-        const next: AppState = {
-          ...s,
-          assessments: [
-            ...s.assessments,
-            {
-              id,
-              courseId,
-              type: "efolio",
-              name: nextEFolioName(s.assessments, courseId),
-              // Começa a zero para não alterar silenciosamente a escala de 20 valores.
-              // O aluno define depois o peso real indicado no PUC da cadeira.
-              maxPoints: 0,
-              grade: null,
-            },
-          ],
+        const item: Assessment = {
+          id,
+          courseId,
+          type: "efolio",
+          name: nextEFolioName(s.assessments, courseId),
+          maxPoints: 0,
+          grade: null,
+          mode: "asynchronous",
+          required: true,
+          status: "todo",
+          order: s.assessments.filter((a) => a.courseId === courseId).length + 1,
         };
-        commit(next);
+        commit({ ...s, assessments: [...s.assessments, item] });
         return id;
       },
 
       removeAssessment(assessmentId) {
         const s = getState();
-        const next: AppState = {
-          ...s,
-          assessments: s.assessments.filter((a) => a.id !== assessmentId),
-        };
-        commit(next);
+        commit({ ...s, assessments: s.assessments.filter((a) => a.id !== assessmentId) });
       },
 
       ensureAssessment(courseId, type, name) {
         const s = getState();
         const existing = s.assessments.find((a) => a.courseId === courseId && a.type === type && a.name === name);
         if (existing) return existing.id;
-
         const id = uuid();
-        const next: AppState = {
-          ...s,
-          assessments: [
-            ...s.assessments,
-            {
-              id,
-              courseId,
-              type,
-              name,
-              maxPoints: defaultMaxPoints(type),
-              grade: null,
-            },
-          ],
+        const item: Assessment = {
+          id,
+          courseId,
+          type,
+          name,
+          maxPoints: defaultMaxPoints(type),
+          grade: null,
+          mode: type === "exam" || type === "resit" ? "synchronous" : "asynchronous",
+          required: type !== "resit",
+          status: "todo",
+          order: s.assessments.filter((a) => a.courseId === courseId).length + 1,
         };
-        commit(next);
+        commit({ ...s, assessments: [...s.assessments, item] });
         return id;
       },
 
       markCourseCompleted(courseId) {
         const s = getState();
         const now = new Date().toISOString();
-        const next: AppState = {
+        commit({
           ...s,
-          courses: s.courses.map((c) =>
-            c.id === courseId ? { ...c, isCompleted: true, isActive: false, completedAt: now } : c,
-          ),
-        };
-        commit(next);
+          courses: s.courses.map((c) => c.id === courseId ? { ...c, isCompleted: true, isActive: false, completedAt: now } : c),
+        });
       },
 
       addStudyBlock(block) {
         const s = getState();
         const id = uuid();
-        const newBlock: StudyBlock = { ...block, id };
-        const next: AppState = { ...s, studyBlocks: [...(s.studyBlocks ?? []), newBlock] };
-        commit(next);
+        commit({ ...s, studyBlocks: [...(s.studyBlocks ?? []), { ...block, id }] });
         return id;
       },
 
       updateStudyBlock(blockId, patch) {
         const s = getState();
-        const next: AppState = {
-          ...s,
-          studyBlocks: (s.studyBlocks ?? []).map((b) => (b.id === blockId ? { ...b, ...patch } : b)),
-        };
-        commit(next);
+        commit({ ...s, studyBlocks: (s.studyBlocks ?? []).map((b) => b.id === blockId ? { ...b, ...patch } : b) });
       },
 
       removeStudyBlock(blockId) {
         const s = getState();
-        const next: AppState = {
-          ...s,
-          studyBlocks: (s.studyBlocks ?? []).filter((b) => b.id !== blockId),
-        };
-        commit(next);
+        commit({ ...s, studyBlocks: (s.studyBlocks ?? []).filter((b) => b.id !== blockId) });
       },
 
       setSync(patch) {
         const s = getState();
-        const prev = s.sync ?? { enabled: false };
-        const next: AppState = { ...s, sync: { ...prev, ...patch } };
-        commit(next);
+        commit({ ...s, sync: { ...(s.sync ?? { enabled: false }), ...patch } });
       },
 
       exportData() {
@@ -364,25 +387,18 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           const next = loadState();
           commit(next);
           return { ok: true } as const;
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : "Falha ao importar.";
-          return { ok: false, error: msg } as const;
+        } catch (error) {
+          return { ok: false, error: error instanceof Error ? error.message : "Falha ao importar." } as const;
         }
       },
 
-      replaceState(raw: unknown) {
-        try {
-          const migrated = migrate(raw);
-          commit(migrated);
-        } catch (e) {
-          console.error("[AppStore] replaceState failed:", e);
-          throw e;
-        }
+      replaceState(raw) {
+        const migrated = migrate(raw);
+        commit(migrated);
       },
 
       resetData() {
-        const next = defaultState();
-        commit(next);
+        commit(defaultState());
       },
     };
   }, [state]);

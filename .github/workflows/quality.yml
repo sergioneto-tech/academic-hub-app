@@ -46,6 +46,7 @@ jobs:
           src/App.tsx
           src/components/CourseEvaluationSettings.tsx
           src/components/EvaluationFrameworkNotice.tsx
+          src/components/EvaluationModeSelector.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
           src/components/ui/card.tsx

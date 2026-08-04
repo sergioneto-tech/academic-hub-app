@@ -10,9 +10,7 @@ const SAMPLE_SCALE = 4;
 const crcTable = new Uint32Array(256);
 for (let value = 0; value < 256; value += 1) {
   let current = value;
-  for (let bit = 0; bit < 8; bit += 1) {
-    current = (current & 1) ? (0xedb88320 ^ (current >>> 1)) : (current >>> 1);
-  }
+  for (let bit = 0; bit < 8; bit += 1) current = (current & 1) ? (0xedb88320 ^ (current >>> 1)) : (current >>> 1);
   crcTable[value] = current >>> 0;
 }
 
@@ -37,7 +35,6 @@ function encodePng(width, height, pixels) {
   header.writeUInt32BE(height, 4);
   header[8] = 8;
   header[9] = 6;
-
   const rowSize = width * 4 + 1;
   const raw = Buffer.alloc(rowSize * height);
   for (let y = 0; y < height; y += 1) {
@@ -45,7 +42,6 @@ function encodePng(width, height, pixels) {
     raw[rowOffset] = 0;
     pixels.copy(raw, rowOffset + 1, y * width * 4, (y + 1) * width * 4);
   }
-
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
     pngChunk("IHDR", header),
@@ -75,12 +71,7 @@ function mix(a, b, amount) {
 }
 
 function blend(base, overlay, alpha) {
-  return [
-    mix(base[0], overlay[0], alpha),
-    mix(base[1], overlay[1], alpha),
-    mix(base[2], overlay[2], alpha),
-    255,
-  ];
+  return [mix(base[0], overlay[0], alpha), mix(base[1], overlay[1], alpha), mix(base[2], overlay[2], alpha), 255];
 }
 
 function sampleIcon(x, y) {
@@ -109,42 +100,34 @@ function sampleIcon(x, y) {
 
   const hHighlight = Math.abs(x - 0.715) <= 0.012 && y >= 0.31 && y <= 0.69;
   if (hHighlight) colour = goldLight;
-
   return colour;
 }
 
 function renderIcon(size) {
   const pixels = Buffer.alloc(size * size * 4);
   const samples = SAMPLE_SCALE * SAMPLE_SCALE;
-
   for (let py = 0; py < size; py += 1) {
     for (let px = 0; px < size; px += 1) {
       const totals = [0, 0, 0, 0];
       for (let sy = 0; sy < SAMPLE_SCALE; sy += 1) {
         for (let sx = 0; sx < SAMPLE_SCALE; sx += 1) {
-          const x = (px + (sx + 0.5) / SAMPLE_SCALE) / size;
-          const y = (py + (sy + 0.5) / SAMPLE_SCALE) / size;
-          const sample = sampleIcon(x, y);
+          const sample = sampleIcon((px + (sx + 0.5) / SAMPLE_SCALE) / size, (py + (sy + 0.5) / SAMPLE_SCALE) / size);
           for (let channel = 0; channel < 4; channel += 1) totals[channel] += sample[channel];
         }
       }
-
       const offset = (py * size + px) * 4;
-      for (let channel = 0; channel < 4; channel += 1) {
-        pixels[offset + channel] = Math.round(totals[channel] / samples);
-      }
+      for (let channel = 0; channel < 4; channel += 1) pixels[offset + channel] = Math.round(totals[channel] / samples);
     }
   }
-
   return encodePng(size, size, pixels);
 }
 
 mkdirSync(outputDirectory, { recursive: true });
 for (const [fileName, size] of [
-  ["favicon-32.png", 32],
-  ["apple-touch-icon.png", 180],
-  ["pwa-192.png", 192],
-  ["pwa-512.png", 512],
+  ["academic-hub-icon-v3-32.png", 32],
+  ["academic-hub-icon-v3-180.png", 180],
+  ["academic-hub-icon-v3-192.png", 192],
+  ["academic-hub-icon-v3-512.png", 512],
 ]) {
   writeFileSync(resolve(outputDirectory, fileName), renderIcon(size));
   console.log(`Generated ${fileName} (${size}x${size})`);

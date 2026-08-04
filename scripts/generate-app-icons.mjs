@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputDirectory = resolve(root, "public");
-const SAMPLE_SCALE = 3;
+const SAMPLE_SCALE = 4;
 
 const crcTable = new Uint32Array(256);
 for (let value = 0; value < 256; value += 1) {
@@ -66,38 +66,65 @@ function distanceToSegment(x, y, x1, y1, x2, y2) {
   return Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
 }
 
+function roundedRectDistance(x, y, centreX, centreY, halfWidth, halfHeight, radius) {
+  const dx = Math.abs(x - centreX) - (halfWidth - radius);
+  const dy = Math.abs(y - centreY) - (halfHeight - radius);
+  const outside = Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
+  return outside + Math.min(Math.max(dx, dy), 0) - radius;
+}
+
 function mix(a, b, amount) {
   return Math.round(a + (b - a) * amount);
 }
 
+function blend(base, overlay, alpha) {
+  return [
+    mix(base[0], overlay[0], alpha),
+    mix(base[1], overlay[1], alpha),
+    mix(base[2], overlay[2], alpha),
+    255,
+  ];
+}
+
 function sampleIcon(x, y) {
-  const distanceFromCentre = Math.min(1, Math.hypot(x - 0.5, y - 0.5) / 0.72);
-  let red = mix(14, 4, distanceFromCentre);
-  let green = mix(39, 17, distanceFromCentre);
-  let blue = mix(74, 39, distanceFromCentre);
+  const background = [236, 241, 248, 255];
+  const white = [255, 255, 255, 255];
+  const navyShadow = [12, 31, 60, 255];
+  const blue = [35, 104, 225, 255];
+  const blueLight = [65, 144, 255, 255];
+  const gold = [205, 158, 61, 255];
+  const goldLight = [226, 188, 94, 255];
 
-  const gold = [216, 180, 90];
-  const white = [247, 249, 252];
-  const radius = Math.hypot(x - 0.5, y - 0.5);
+  let colour = background;
 
-  if (radius >= 0.365 && radius <= 0.388) [red, green, blue] = gold;
+  const shadowDistance = roundedRectDistance(x, y - 0.018, 0.5, 0.52, 0.34, 0.34, 0.105);
+  if (shadowDistance < 0.025) {
+    const shadowAlpha = Math.max(0, 0.16 * (1 - Math.max(0, shadowDistance) / 0.025));
+    colour = blend(colour, navyShadow, shadowAlpha);
+  }
 
-  const aLeft = distanceToSegment(x, y, 0.365, 0.68, 0.445, 0.31) <= 0.027;
-  const aRight = distanceToSegment(x, y, 0.445, 0.31, 0.535, 0.68) <= 0.027;
-  const aCross = distanceToSegment(x, y, 0.395, 0.535, 0.495, 0.535) <= 0.018;
-  if (aLeft || aRight || aCross) [red, green, blue] = gold;
+  const tileDistance = roundedRectDistance(x, y, 0.5, 0.49, 0.34, 0.34, 0.105);
+  if (tileDistance <= 0) colour = white;
 
-  const hLeft = Math.abs(x - 0.61) <= 0.027 && y >= 0.34 && y <= 0.68;
-  const hRight = Math.abs(x - 0.755) <= 0.027 && y >= 0.34 && y <= 0.68;
-  const hCross = Math.abs(y - 0.515) <= 0.022 && x >= 0.61 && x <= 0.755;
-  if (hLeft || hRight || hCross) [red, green, blue] = white;
+  if (tileDistance <= 0) {
+    const aLeft = distanceToSegment(x, y, 0.265, 0.685, 0.405, 0.285) <= 0.036;
+    const aRight = distanceToSegment(x, y, 0.405, 0.285, 0.53, 0.685) <= 0.036;
+    const aCross = distanceToSegment(x, y, 0.32, 0.53, 0.475, 0.53) <= 0.023;
+    const aHighlight = distanceToSegment(x, y, 0.292, 0.65, 0.405, 0.32) <= 0.012;
 
-  const highlight = Math.max(0, 1 - Math.hypot(x - 0.35, y - 0.27) / 0.46) * 0.08;
-  red = mix(red, 255, highlight);
-  green = mix(green, 255, highlight);
-  blue = mix(blue, 255, highlight);
+    if (aLeft || aRight || aCross) colour = blue;
+    if (aHighlight) colour = blueLight;
 
-  return [red, green, blue, 255];
+    const hLeft = Math.abs(x - 0.535) <= 0.034 && y >= 0.32 && y <= 0.69;
+    const hRight = Math.abs(x - 0.715) <= 0.034 && y >= 0.32 && y <= 0.69;
+    const hCross = Math.abs(y - 0.515) <= 0.027 && x >= 0.535 && x <= 0.715;
+    const hHighlight = Math.abs(x - 0.696) <= 0.011 && y >= 0.34 && y <= 0.67;
+
+    if (hLeft || hRight || hCross) colour = gold;
+    if (hHighlight) colour = goldLight;
+  }
+
+  return colour;
 }
 
 function renderIcon(size) {

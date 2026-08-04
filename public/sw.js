@@ -1,4 +1,4 @@
-const SW_VERSION = "1.0.0";
+const SW_VERSION = "1.0.0-icon2";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [

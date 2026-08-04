@@ -1,0 +1,69 @@
+name: Quality checks
+
+on:
+  push:
+    branches:
+      - agent/academic-hub-2026-premium
+  pull_request:
+    branches:
+      - main
+      - validation/academic-hub-2026
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript project check
+        run: npx tsc -b --pretty false
+
+      - name: Production build
+        run: npm run build
+
+      - name: Tests
+        run: npm test
+
+      - name: Lint changed application files
+        run: >-
+          npx eslint
+          src/App.tsx
+          src/components/CourseEvaluationSettings.tsx
+          src/components/EvaluationFrameworkNotice.tsx
+          src/components/EvaluationModeSelector.tsx
+          src/components/Layout.tsx
+          src/components/ProfileAvatarEditor.tsx
+          src/components/ui/card.tsx
+          src/components/ui/pt-datetime-input.tsx
+          src/lib/AppStore.tsx
+          src/lib/calculations.ts
+          src/lib/degreeTheme.ts
+          src/lib/storage.ts
+          src/lib/theme.ts
+          src/lib/types.ts
+          src/lib/version.ts
+          src/pages/AcademicReport.tsx
+          src/pages/CourseDetailPremium.tsx
+          src/pages/FlexibleCourseDetail.tsx
+          src/pages/Dashboard.tsx
+          src/pages/Help.tsx
+          src/pages/History.tsx
+          src/pages/Legal.tsx
+          src/pages/SettingsPremium.tsx
+          src/test/regulation-2026.test.ts

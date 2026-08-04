@@ -1,115 +1,230 @@
+import { Link } from "react-router-dom";
+import {
+  BookOpen,
+  Cloud,
+  ExternalLink,
+  FileText,
+  GraduationCap,
+  HelpCircle,
+  LayoutDashboard,
+  LifeBuoy,
+  Printer,
+  RefreshCw,
+  Scale,
+  Settings,
+  Sparkles,
+  UserRound,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+const REGULATION_URL = "https://portal.uab.pt/avaliacao/";
+
+const guides = [
+  {
+    title: "Primeiros passos",
+    description: "Escolher a licenciatura, carregar o plano e ativar as cadeiras do semestre.",
+    icon: GraduationCap,
+  },
+  {
+    title: "Como usar o Academic Hub",
+    description: "Visão geral do painel, calendário, plano de estudos, histórico e alertas.",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Como funciona a avaliação",
+    description: "Regime oficial em vigor, configuração por cadeira, mínimos, exame e recurso.",
+    icon: BookOpen,
+  },
+  {
+    title: "Backup e sincronização",
+    description: "Guardar, recuperar e sincronizar os dados com segurança entre dispositivos.",
+    icon: Cloud,
+  },
+  {
+    title: "Personalização",
+    description: "Fotografia, licenciatura, modo claro, escuro ou automático e notificações.",
+    icon: Settings,
+  },
+  {
+    title: "Perguntas frequentes",
+    description: "Respostas rápidas sobre notas, cadeiras, dados, instalação e atualizações.",
+    icon: HelpCircle,
+  },
+];
 
 export default function HelpPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Como usar a aplicação</h1>
-        <p className="text-xs text-muted-foreground">
-          Manual de utilização do Academic Hub
-        </p>
+    <div className="space-y-5">
+      <section className="premium-surface overflow-hidden p-5 sm:p-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
+              <LifeBuoy className="h-3.5 w-3.5 text-primary" />
+              Centro de apoio
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Ajuda & Guia</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Procedimentos, explicações e ligações úteis para utilizar o Academic Hub com segurança.
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link to="/definicoes">Abrir Definições</Link>
+          </Button>
+        </div>
+      </section>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {guides.map(({ title, description, icon: Icon }) => (
+          <Card key={title} className="premium-card h-full">
+            <CardHeader className="pb-2">
+              <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-xl border bg-primary/5 text-primary dark:bg-primary/10">
+                <Icon className="h-5 w-5" />
+              </div>
+              <CardTitle className="text-base">{title}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">{description}</CardContent>
+          </Card>
+        ))}
       </div>
 
-      <Card>
+      <Card className="premium-card border-[hsl(var(--gold)/0.35)]">
         <CardHeader>
-          <CardTitle className="text-lg">🎓 1. Escolher licenciatura</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <UserRound className="h-5 w-5 text-[hsl(var(--gold))]" />
+            Sobre o projeto
+          </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Vai a <strong>Definições</strong> e seleciona o teu curso na lista de licenciaturas da UAb.</p>
-          <p>Clica em <strong>"Guardar"</strong> e depois em <strong>"Carregar cadeiras (plano automático)"</strong> — as cadeiras do plano de estudos oficial são importadas automaticamente com ECTS e Área Científica.</p>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">
+            Criado e desenvolvido por Sérgio Neto, aluno da Licenciatura em Engenharia Informática da Universidade Aberta.
+          </p>
+          <p>
+            O Academic Hub nasceu como uma ferramenta pessoal para organizar cadeiras, avaliações, calendário e progresso académico.
+          </p>
         </CardContent>
       </Card>
 
-      <Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="premium-card border-primary/25">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Scale className="h-5 w-5 text-primary" />
+              Legal, privacidade e utilização
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p>
+              Consulta os compromissos do criador, as responsabilidades do utilizador, a política de privacidade,
+              as regras para fotografias e os limites dos relatórios gerados pela aplicação.
+            </p>
+            <Button asChild variant="outline">
+              <Link to="/legal">Consultar informação legal</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-card border-primary/25">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Printer className="h-5 w-5 text-primary" />
+              Relatório académico pessoal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p>
+              Imprime ou guarda em PDF as cadeiras concluídas por ano e semestre, incluindo avaliações intercalares,
+              exame, recurso, nota final e ECTS.
+            </p>
+            <Button asChild variant="outline">
+              <Link to="/historico/relatorio">Abrir relatório</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="premium-card border-warning/35 bg-warning/10">
         <CardHeader>
-          <CardTitle className="text-lg">✅ 2. Ativar cadeiras do semestre</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <RefreshCw className="h-5 w-5 text-warning" />
+            Ícone da aplicação instalada
+          </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Em <strong>Definições → Catálogo de cadeiras</strong>, ativa o toggle <strong>"Ativa"</strong> nas cadeiras que estás a frequentar este semestre.</p>
-          <p>Ao ativar, são criados automaticamente os campos de avaliação: e-fólio A, e-fólio B, g-fólio e recurso. No detalhe da cadeira, podes adicionar outros e-fólios quando o PUC assim o exigir.</p>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            O computador ou telemóvel pode manter o ícone anterior em cache mesmo depois da atualização da aplicação.
+          </p>
+          <p>
+            Se o novo monograma AH não aparecer, confirma primeiro que tens backup atualizado ou sincronização cloud ativa,
+            desinstala a aplicação instalada e volta a instalá-la através do botão “Instalar aplicação”.
+          </p>
+          <p className="text-xs">
+            Desinstalar a PWA pode remover dados guardados apenas nesse dispositivo; por isso, não avances sem confirmar o backup ou a sincronização.
+          </p>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">📝 3. Registar notas</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>No separador <strong>Cadeiras</strong>, clica numa cadeira ativa para abrir o detalhe.</p>
-          <p>Define o valor real de cada e-fólio e introduz as respetivas notas. A soma dos e-fólios e do g-fólio deve totalizar 20 pontos; a aplicação atualiza automaticamente os totais e a nota final.</p>
+      <Card className="premium-card overflow-hidden border-[hsl(var(--gold)/0.45)]">
+        <CardContent className="p-0">
+          <div className="grid md:grid-cols-[1fr_auto]">
+            <div className="p-5 sm:p-6">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[hsl(var(--gold-soft))] text-[hsl(var(--gold))]">
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="font-semibold">Regulamento de avaliação atualmente publicado</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    A UAb identifica o Despacho n.º 10317/2025 como regulamento em vigor e mantém, para 2025/26,
+                    avaliação contínua ou avaliação final, conforme a unidade curricular.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center border-t bg-[hsl(var(--gold-soft)/0.55)] p-4 md:border-l md:border-t-0">
+              <Button asChild className="w-full md:w-auto">
+                <a href={REGULATION_URL} target="_blank" rel="noopener noreferrer">
+                  Consultar na UAb <ExternalLink className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="premium-card border-warning/35 bg-warning/10">
         <CardHeader>
-          <CardTitle className="text-lg">📊 4. Dashboard</CardTitle>
+          <CardTitle className="text-base">Configuração flexível de avaliação</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>O <strong>Dashboard</strong> mostra um resumo com:</p>
-          <ul className="list-disc pl-5 space-y-1">
-            <li><strong>Cadeiras ativas</strong> — quantas estás a frequentar</li>
-            <li><strong>Concluídas</strong> — quantas já terminaste</li>
-            <li><strong>Média</strong> — média ponderada das cadeiras concluídas</li>
-            <li><strong>ECTS concluídos</strong> — total de créditos obtidos</li>
-            <li><strong>Eventos</strong> — próximas datas de avaliação</li>
-          </ul>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>Os modelos adicionais disponíveis na aplicação servem para preparar e testar diferentes estruturas indicadas no PUC de cada cadeira.</p>
+          <p>Até existir uma publicação oficial definitiva com novas regras, devem ser tratados como configuração experimental e confirmados sempre com o PUC e o portal da UAb.</p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="premium-card">
         <CardHeader>
-          <CardTitle className="text-lg">📋 5. Plano de Estudos</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="h-4 w-4 text-[hsl(var(--gold))]" />
+            Novidades da versão
+          </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>O separador <strong>Plano</strong> mostra o progresso global do curso por ano/semestre.</p>
-          <p>Cada cadeira mostra os ECTS e a Área Científica. As cadeiras concluídas ficam numa secção recolhível no final.</p>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>Após cada atualização importante, a aplicação apresenta um cartão com as alterações funcionais e visuais.</p>
+          <p>O cartão pode ser fechado e as novidades continuam disponíveis nesta área de ajuda.</p>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="premium-card">
         <CardHeader>
-          <CardTitle className="text-lg">📅 6. Plano de Estudo Pessoal</CardTitle>
+          <CardTitle className="text-base">Ligações úteis mantidas</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Em <strong>Plano → Plano de Estudo Pessoal</strong>, organiza as tuas semanas de estudo com um quadro Kanban.</p>
-          <p>Cria blocos de estudo com data, cadeira e estado (Por fazer, Em progresso, Feito).</p>
-          <p>Exporta para o teu calendário (Google, Outlook, Apple) via ficheiro <strong>.ics</strong>.</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">☁️ 7. Sincronização</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Em <strong>Definições → Conta e sincronização</strong>:</p>
-          <ol className="list-decimal pl-5 space-y-1">
-            <li>Cria uma conta com email e password</li>
-            <li>Confirma o email clicando no link recebido</li>
-            <li>Faz login na app</li>
-            <li>Ativa a sincronização — os dados são enviados automaticamente para a cloud sempre que fazes alterações</li>
-            <li>Noutro dispositivo, faz login e clica em "Carregar da cloud"</li>
-          </ol>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">💾 8. Backups</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Em <strong>Definições → Backups</strong>, podes exportar todos os teus dados num ficheiro JSON.</p>
-          <p>Útil antes de atualizar a app ou trocar de dispositivo. Podes importar o ficheiro a qualquer momento para restaurar os dados.</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">🌙 9. Tema e instalação</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Usa o botão no cabeçalho para alternar entre <strong>modo claro</strong> e <strong>modo escuro</strong>.</p>
-          <p>Se o browser suportar, podes <strong>instalar a app</strong> como PWA para acesso rápido sem precisar de abrir o browser.</p>
+        <CardContent className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <a className="rounded-lg border p-3 hover:bg-accent" href="https://portal.uab.pt/" target="_blank" rel="noopener noreferrer">Portal UAb</a>
+          <a className="rounded-lg border p-3 hover:bg-accent" href="https://guiadoscursos.uab.pt/" target="_blank" rel="noopener noreferrer">Guia dos Cursos</a>
+          <a className="rounded-lg border p-3 hover:bg-accent" href="https://portal.uab.pt/calendario-letivo/" target="_blank" rel="noopener noreferrer">Calendário letivo</a>
+          <a className="rounded-lg border p-3 hover:bg-accent" href="https://www.dges.gov.pt/" target="_blank" rel="noopener noreferrer">DGES</a>
         </CardContent>
       </Card>
     </div>

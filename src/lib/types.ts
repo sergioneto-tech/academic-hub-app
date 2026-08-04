@@ -3,7 +3,12 @@ export type UUID = string;
 export type Degree = {
   id: UUID;
   name: string;
+  /** Cor de assinatura visual da licenciatura. */
+  accentColor?: string;
 };
+
+export type EvaluationRegime = "legacy" | "regulation-2026";
+export type EvaluationModel = "type1" | "type2" | "type3" | "type4" | "exam-only" | "custom";
 
 export type Course = {
   id: UUID;
@@ -15,7 +20,12 @@ export type Course = {
   isCompleted: boolean;
   completedAt?: string; // ISO
 
-  /** Sessões (ex.: abertura, antes de e‑fólios, antes de exame). */
+  /** Regime aplicável à UC. O valor legacy preserva todos os dados antigos. */
+  evaluationRegime?: EvaluationRegime;
+  /** Modelo flexível configurado pelo aluno de acordo com o PUC da cadeira. */
+  evaluationModel?: EvaluationModel;
+
+  /** Sessões (ex.: abertura, antes de atividades ou antes de exame). */
   sessions?: CourseSession[];
 };
 
@@ -27,8 +37,9 @@ export type CourseSession = {
   dateTime: string;
 };
 
-
-export type AssessmentType = "efolio" | "exam" | "resit";
+export type AssessmentType = "efolio" | "exam" | "resit" | "activity" | "project" | "presentation" | "discussion" | "other";
+export type AssessmentMode = "asynchronous" | "synchronous";
+export type AssessmentStatus = "todo" | "submitted" | "graded" | "not-completed";
 
 export type Assessment = {
   id: UUID;
@@ -42,22 +53,37 @@ export type Assessment = {
   // Nota obtida neste item (pode ter decimais)
   grade: number | null;
 
+  /** Metadados do modelo flexível de avaliação. */
+  mode?: AssessmentMode;
+  required?: boolean;
+  minimumPercent?: number;
+  status?: AssessmentStatus;
+  order?: number;
+  description?: string;
+
   // Datas
-  startDate?: string; // e-fólio
-  endDate?: string;   // e-fólio
-  gradeReleaseDate?: string; // publicação da nota (opcional)
-  date?: string;      // exame / recurso
+  startDate?: string;
+  endDate?: string;
+  gradeReleaseDate?: string;
+  date?: string;
 };
 
 export type Rules = {
   courseId: UUID;
-  minAptoExame: number; // default 3.5
-  minExame: number;     // default 5.5
+  minAptoExame: number; // default legado 3.5
+  minExame: number;     // default legado 5.5
+
+  /** Regras configuráveis para o modelo flexível. */
+  minimumFinalGrade?: number;
+  asyncMinimumPercent?: number;
+  syncMinimumPercent?: number;
+  nMinusOneMinimumPercent?: number;
 };
 
 export type AppMeta = {
   appVersion: string;
-  schemaVersion: number;
+  /** Pode faltar em backups antigos; a migração preenche sempre a versão atual. */
+  schemaVersion?: number;
 };
 
 export type SyncSettings = {
@@ -72,6 +98,24 @@ export type SyncSettings = {
 
   /** Data/hora do último upload/download realizado (informativo). */
   lastSyncAt?: string; // ISO
+};
+
+export type ProfileSettings = {
+  displayName?: string;
+  /** URL pública/assinada ou data URL para compatibilidade local. */
+  avatarUrl?: string;
+  /** Caminho no bucket privado quando existir sincronização Supabase. */
+  avatarPath?: string;
+};
+
+export type AppearanceSettings = {
+  theme: "light" | "dark" | "system";
+};
+
+export type NotificationSettings = {
+  deadlines: boolean;
+  exams: boolean;
+  grades: boolean;
 };
 
 export type StudyBlockStatus = "todo" | "in_progress" | "done";
@@ -101,6 +145,12 @@ export type AppState = {
   assessments: Assessment[];
   rules: Rules[];
   studyBlocks?: StudyBlock[];
+
+  /** Preferências novas, opcionais para manter compatibilidade total. */
+  profile?: ProfileSettings;
+  appearance?: AppearanceSettings;
+  notifications?: NotificationSettings;
+  lastSeenRelease?: string;
 
   /** Definições opcionais (compatível com versões antigas). */
   sync?: SyncSettings;

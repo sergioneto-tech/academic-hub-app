@@ -12,18 +12,21 @@ export function PtDateTimeInput({ value, onChange }: PtDateTimeInputProps) {
   const [datePart = "", timePart = "09:00"] = normalized.split("T");
 
   return (
-    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px]">
-      <PtDateInput
-        value={datePart}
-        onChange={(nextDate) => {
-          if (!nextDate) {
-            onChange("");
-            return;
-          }
-          onChange(`${nextDate}T${timePart || "09:00"}`);
-        }}
-      />
+    <div className="grid min-w-0 gap-2 xl:grid-cols-[minmax(0,1fr)_112px]">
+      <div className="min-w-0">
+        <PtDateInput
+          value={datePart}
+          onChange={(nextDate) => {
+            if (!nextDate) {
+              onChange("");
+              return;
+            }
+            onChange(`${nextDate}T${timePart || "09:00"}`);
+          }}
+        />
+      </div>
       <Input
+        className="min-w-0"
         type="time"
         value={timePart || "09:00"}
         onChange={(event) => {

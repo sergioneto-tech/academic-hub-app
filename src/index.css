@@ -142,17 +142,42 @@
     color: hsl(var(--gold));
   }
 
-  /* Identidade final AH usada no cabeçalho desktop e mobile. */
+  /* Identidade premium AH usada no cabeçalho desktop e mobile. */
   aside > div:first-child > div:first-child,
   header > div > div:first-child > div:first-child {
     color: transparent !important;
     background-color: transparent !important;
-    background-image: url('/academic-hub-icon-v3-192.png') !important;
+    background-image: url('/academic-hub-premium.svg') !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
     background-size: contain !important;
     box-shadow: none !important;
     border-radius: 0 !important;
+  }
+
+  /* Métricas: mais respiração superior e conteúdo centrado no cartão. */
+  .premium-card > div:has(.lucide-book-open),
+  .premium-card > div:has(.lucide-circle-check-big) {
+    min-height: 8.75rem;
+    align-items: center !important;
+    padding-top: 1.35rem !important;
+    padding-bottom: 1.35rem !important;
+  }
+
+  /* Substitui os dois pictogramas antigos pelo novo símbolo AH. */
+  .premium-card div:has(> .lucide-book-open),
+  .premium-card div:has(> .lucide-circle-check-big) {
+    background-color: transparent !important;
+    background-image: url('/academic-hub-premium.svg') !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+    background-size: contain !important;
+    border-radius: 0.8rem !important;
+  }
+
+  .premium-card .lucide-book-open,
+  .premium-card .lucide-circle-check-big {
+    opacity: 0 !important;
   }
 }
 

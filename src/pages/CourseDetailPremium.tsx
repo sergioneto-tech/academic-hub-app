@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 
 import EvaluationFrameworkNotice from "@/components/EvaluationFrameworkNotice";
+import EvaluationModeSelector from "@/components/EvaluationModeSelector";
 import { useAppStore } from "@/lib/AppStore";
 import CourseDetail from "@/pages/CourseDetail";
 import FlexibleCourseDetail from "@/pages/FlexibleCourseDetail";
@@ -21,6 +22,7 @@ export default function CourseDetailPremium() {
   return (
     <>
       <EvaluationFrameworkNotice regime={regime} />
+      {regime === "legacy" && <EvaluationModeSelector courseId={id} />}
       {regime === "regulation-2026"
         ? <FlexibleCourseDetail courseId={id} />
         : <CourseDetail />}

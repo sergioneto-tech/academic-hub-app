@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
+import "./report-print.css";
 
 import Dashboard from "./pages/Dashboard";
 import CalendarPage from "./pages/Calendar";

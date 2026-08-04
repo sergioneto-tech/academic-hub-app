@@ -47,9 +47,54 @@ type UserStateRow = {
 };
 
 const AUTH_KEY = "academic_hub_cloud_auth";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normUrl(u: string) {
   return (u || "").trim().replace(/\/$/, "");
+}
+
+function validateCredentials(email: string, password: string, options?: { creatingAccount?: boolean }) {
+  const normalizedEmail = email.trim();
+
+  if (!normalizedEmail) {
+    throw new Error("Indica o email antes de continuar.");
+  }
+  if (!EMAIL_PATTERN.test(normalizedEmail)) {
+    throw new Error("Indica um endereço de email válido.");
+  }
+  if (!password) {
+    throw new Error("Indica a password antes de continuar.");
+  }
+  if (options?.creatingAccount && password.length < 8) {
+    throw new Error("A password deve ter pelo menos 8 caracteres.");
+  }
+
+  return { email: normalizedEmail, password };
+}
+
+function friendlyAuthError(json: any, fallback: string): string {
+  const code = String(json?.code || json?.error_code || "");
+
+  if (code === "anonymous_provider_disabled") {
+    return "Indica um email e uma password válidos. A aplicação não cria contas anónimas.";
+  }
+  if (code === "email_provider_disabled") {
+    return "A criação de contas por email está desativada no Supabase.";
+  }
+  if (code === "signup_disabled") {
+    return "A criação de novas contas está desativada no Supabase.";
+  }
+  if (code === "email_exists" || code === "user_already_exists") {
+    return "Já existe uma conta associada a este email.";
+  }
+  if (code === "email_not_confirmed") {
+    return "O email ainda não foi confirmado. Abre o link enviado pelo Supabase.";
+  }
+  if (code === "invalid_credentials") {
+    return "Email ou password incorretos.";
+  }
+
+  return String(json?.msg || json?.message || json?.error_description || json?.error || fallback || "Erro");
 }
 
 export function getStoredSession(config: CloudConfig): AuthSession | null {
@@ -98,8 +143,7 @@ async function postJson<T>(url: string, init: RequestInit): Promise<T> {
     // ignore
   }
   if (!res.ok) {
-    const msg = json?.msg || json?.message || json?.error_description || json?.error || res.statusText || "Erro";
-    throw new Error(String(msg));
+    throw new Error(friendlyAuthError(json, res.statusText));
   }
   return json as T;
 }
@@ -110,11 +154,12 @@ export type SignUpResult = {
 };
 
 export async function signUp(config: CloudConfig, email: string, password: string): Promise<SignUpResult> {
+  const credentials = validateCredentials(email, password, { creatingAccount: true });
   const url = `${normUrl(config.supabaseUrl)}/auth/v1/signup`;
   const data = await postJson<any>(url, {
     method: "POST",
     headers: headers(config),
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(credentials),
   });
 
   // When email confirmation is required, Supabase returns the user object
@@ -126,11 +171,12 @@ export async function signUp(config: CloudConfig, email: string, password: strin
 }
 
 export async function signIn(config: CloudConfig, email: string, password: string): Promise<AuthSession> {
+  const credentials = validateCredentials(email, password);
   const url = `${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=password`;
   return postJson<AuthSession>(url, {
     method: "POST",
     headers: headers(config),
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify(credentials),
   });
 }
 

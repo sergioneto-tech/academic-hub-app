@@ -39,13 +39,18 @@ export function useAutoSync() {
     const session = getStoredSession(cloudConfig);
     if (!session) return;
 
-    // Create a fingerprint to avoid re-uploading the same state
+    // Inclui também perfil/fotografia e preferências. Antes, uma alteração apenas
+    // na fotografia não mudava a impressão digital e podia nunca chegar à cloud.
     const fingerprint = JSON.stringify({
       courses: state.courses,
       assessments: state.assessments,
       degree: state.degree,
       studyBlocks: state.studyBlocks,
       rules: state.rules,
+      profile: state.profile,
+      appearance: state.appearance,
+      notifications: state.notifications,
+      lastSeenRelease: state.lastSeenRelease,
     });
 
     if (fingerprint === lastUploadedRef.current) return;
@@ -70,7 +75,7 @@ export function useAutoSync() {
     }
   }, [cloudConfig, state, setSync]);
 
-  // Debounced auto-upload whenever relevant state changes
+  // Debounced auto-upload whenever synchronized state changes
   useEffect(() => {
     if (!state.sync?.enabled) return;
     if (!cloudConfig) return;
@@ -90,6 +95,10 @@ export function useAutoSync() {
     state.degree,
     state.studyBlocks,
     state.rules,
+    state.profile,
+    state.appearance,
+    state.notifications,
+    state.lastSeenRelease,
     state.sync?.enabled,
     cloudConfig,
     doUpload,

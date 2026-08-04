@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 
+import EvaluationFrameworkNotice from "@/components/EvaluationFrameworkNotice";
 import { useAppStore } from "@/lib/AppStore";
 import CourseDetail from "@/pages/CourseDetail";
 import FlexibleCourseDetail from "@/pages/FlexibleCourseDetail";
@@ -15,7 +16,14 @@ export default function CourseDetailPremium() {
 
   if (!id || !course) return <CourseDetail />;
 
-  return course.evaluationRegime === "regulation-2026"
-    ? <FlexibleCourseDetail courseId={id} />
-    : <CourseDetail />;
+  const regime = course.evaluationRegime ?? "legacy";
+
+  return (
+    <>
+      <EvaluationFrameworkNotice regime={regime} />
+      {regime === "regulation-2026"
+        ? <FlexibleCourseDetail courseId={id} />
+        : <CourseDetail />}
+    </>
+  );
 }

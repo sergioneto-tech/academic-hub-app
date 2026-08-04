@@ -1,7 +1,21 @@
 import { Link } from "react-router-dom";
-import { BookOpen, Cloud, ExternalLink, FileText, GraduationCap, HelpCircle, LayoutDashboard, LifeBuoy, Settings, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  BookOpen,
+  Cloud,
+  ExternalLink,
+  FileText,
+  GraduationCap,
+  HelpCircle,
+  LayoutDashboard,
+  LifeBuoy,
+  Printer,
+  Scale,
+  Settings,
+  Sparkles,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const REGULATION_URL = "https://portal.uab.pt/avaliacao/";
 
@@ -73,6 +87,44 @@ export default function HelpPage() {
         ))}
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="premium-card border-primary/25">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Scale className="h-5 w-5 text-primary" />
+              Legal, privacidade e utilização
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p>
+              Consulta os compromissos do criador, as responsabilidades do utilizador, a política de privacidade,
+              as regras para fotografias e os limites dos relatórios gerados pela aplicação.
+            </p>
+            <Button asChild variant="outline">
+              <Link to="/legal">Consultar informação legal</Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="premium-card border-primary/25">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Printer className="h-5 w-5 text-primary" />
+              Relatório académico pessoal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-muted-foreground">
+            <p>
+              Imprime ou guarda em PDF as cadeiras concluídas por ano e semestre, incluindo avaliações intercalares,
+              exame, recurso, nota final e ECTS.
+            </p>
+            <Button asChild variant="outline">
+              <Link to="/historico/relatorio">Abrir relatório</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="premium-card overflow-hidden border-[hsl(var(--gold)/0.45)]">
         <CardContent className="p-0">
           <div className="grid md:grid-cols-[1fr_auto]">
@@ -84,7 +136,8 @@ export default function HelpPage() {
                 <div>
                   <h2 className="font-semibold">Regulamento de avaliação atualmente publicado</h2>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    A UAb identifica o Despacho n.º 10317/2025 como regulamento em vigor e mantém, para 2025/26, avaliação contínua ou avaliação final, conforme a unidade curricular.
+                    A UAb identifica o Despacho n.º 10317/2025 como regulamento em vigor e mantém, para 2025/26,
+                    avaliação contínua ou avaliação final, conforme a unidade curricular.
                   </p>
                 </div>
               </div>

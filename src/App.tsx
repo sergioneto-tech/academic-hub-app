@@ -14,10 +14,17 @@ import PersonalStudyPlan from "./pages/PersonalStudyPlan";
 import HelpPage from "./pages/Help";
 import LegalPage from "./pages/Legal";
 import AcademicReportPage from "./pages/AcademicReport";
+import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
+
+const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE !== "false";
 
 export default function App() {
   useAutoSync();
+
+  if (maintenanceMode) {
+    return <MaintenancePage />;
+  }
 
   return (
     <Routes>

@@ -19,12 +19,8 @@ import { useAutoSync } from "./hooks/useAutoSync";
 
 const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE !== "false";
 
-export default function App() {
+function AcademicHubApp() {
   useAutoSync();
-
-  if (maintenanceMode) {
-    return <MaintenancePage />;
-  }
 
   return (
     <Routes>
@@ -45,4 +41,12 @@ export default function App() {
       </Route>
     </Routes>
   );
+}
+
+export default function App() {
+  if (maintenanceMode) {
+    return <MaintenancePage />;
+  }
+
+  return <AcademicHubApp />;
 }

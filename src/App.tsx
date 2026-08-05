@@ -18,7 +18,9 @@ const HelpPage = lazy(() => import("./pages/Help"));
 const LegalPage = lazy(() => import("./pages/Legal"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 
-const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE !== "false";
+// A manutenção só fica ativa quando a variável é explicitamente definida como "true".
+// Se a variável estiver ausente ou mal configurada, a aplicação permanece disponível.
+const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
 function RouteFallback() {
   return (

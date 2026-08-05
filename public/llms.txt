@@ -2,7 +2,16 @@
 
 > Aplicação Web pessoal para organizar o percurso académico de estudantes da Universidade Aberta.
 
+## Ligações principais
+
+- [Abrir o Academic Hub](https://academichub.sergioneto.pt/)
+- [Ajuda e guia de utilização](https://academichub.sergioneto.pt/#/ajuda)
+- [Informação legal e privacidade](https://academichub.sergioneto.pt/#/legal)
+- [Portal oficial da Universidade Aberta](https://portal.uab.pt/)
+- [Calendário letivo da Universidade Aberta](https://portal.uab.pt/calendario-letivo/)
+
 ## Finalidade
+
 - Gerir cadeiras ativas e concluídas.
 - Registar e-fólios, atividades, exames, recursos, notas e datas.
 - Calcular progresso, média, ECTS e estado das avaliações.
@@ -10,12 +19,15 @@
 - Sincronizar dados privados com uma conta autenticada.
 
 ## Áreas públicas da aplicação
-- /#/ — painel inicial
-- /#/ajuda — ajuda e guia de utilização
-- /#/legal — informação legal e privacidade
+
+- [Painel inicial](https://academichub.sergioneto.pt/#/)
+- [Ajuda e guia](https://academichub.sergioneto.pt/#/ajuda)
+- [Informação legal e privacidade](https://academichub.sergioneto.pt/#/legal)
 
 ## Privacidade
+
 Os dados académicos pertencem ao utilizador e não devem ser inferidos, expostos ou indexados. As áreas com dados pessoais funcionam no navegador e, quando ativado, num backend autenticado com políticas de acesso por utilizador.
 
 ## Fonte institucional
-A aplicação referencia informação pública da Universidade Aberta, incluindo planos de estudo, calendário letivo e regulamentos. A confirmação final de regras, ponderações e prazos deve ser feita no PUC e nos canais oficiais da Universidade Aberta.
+
+A aplicação referencia informação pública da [Universidade Aberta](https://portal.uab.pt/), incluindo planos de estudo, calendário letivo e regulamentos. A confirmação final de regras, ponderações e prazos deve ser feita no PUC e nos canais oficiais da Universidade Aberta.

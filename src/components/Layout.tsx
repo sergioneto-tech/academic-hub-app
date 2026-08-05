@@ -65,6 +65,11 @@ type ReleaseNotesData = {
   versions?: ReleaseNotesEntry[];
 };
 
+type IdleCapableWindow = Window & typeof globalThis & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+  cancelIdleCallback?: (handle: number) => void;
+};
+
 type NavItem = {
   to: string;
   label: string;
@@ -191,16 +196,50 @@ export default function Layout() {
 
   useEffect(() => {
     let cancelled = false;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+    let idleId: number | null = null;
+    const idleWindow = window as IdleCapableWindow;
+    const cacheKey = `academic_hub_release_notes_${APP_VERSION}`;
 
-    fetch(notesUrl, { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data) => {
-        if (!cancelled && data) setReleaseNotes(data as ReleaseNotesData);
-      })
-      .catch(() => undefined);
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) setReleaseNotes(JSON.parse(cached) as ReleaseNotesData);
+    } catch {
+      // O carregamento remoto continua disponível quando a cache não pode ser lida.
+    }
+
+    const loadReleaseNotes = () => {
+      fetch(notesUrl, { cache: "force-cache" })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+          if (cancelled || !data) return;
+          const parsed = data as ReleaseNotesData;
+          setReleaseNotes(parsed);
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
+          } catch {
+            // Sem impacto funcional.
+          }
+        })
+        .catch(() => undefined);
+    };
+
+    const scheduleLoad = () => {
+      if (idleWindow.requestIdleCallback) {
+        idleId = idleWindow.requestIdleCallback(loadReleaseNotes, { timeout: 2500 });
+      } else {
+        timerId = setTimeout(loadReleaseNotes, 1200);
+      }
+    };
+
+    if (document.readyState === "complete") scheduleLoad();
+    else window.addEventListener("load", scheduleLoad, { once: true });
 
     return () => {
       cancelled = true;
+      window.removeEventListener("load", scheduleLoad);
+      if (timerId !== null) clearTimeout(timerId);
+      if (idleId !== null) idleWindow.cancelIdleCallback?.(idleId);
     };
   }, [notesUrl, updateAvailable]);
 
@@ -465,7 +504,7 @@ export default function Layout() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h2 id="whats-new-title" className="font-semibold">O que mudou nesta versão</h2>
-                        <span className="rounded-full border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold-soft))] px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--gold))]">
+                        <span className="rounded-full border border-amber-700/40 bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-950 dark:border-[hsl(var(--gold)/0.45)] dark:bg-[hsl(var(--gold-soft))] dark:text-amber-200">
                           v{whatsNew.version}
                         </span>
                       </div>

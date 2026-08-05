@@ -155,8 +155,15 @@ export type SignUpResult = {
 
 export async function signUp(config: CloudConfig, email: string, password: string): Promise<SignUpResult> {
   const credentials = validateCredentials(email, password, { creatingAccount: true });
-  const url = `${normUrl(config.supabaseUrl)}/auth/v1/signup`;
-  const data = await postJson<any>(url, {
+  const signupUrl = new URL(`${normUrl(config.supabaseUrl)}/auth/v1/signup`);
+
+  // Garante que o link de confirmação regressa ao ambiente onde a conta foi criada.
+  // Em Preview volta ao pages.dev; em produção volta ao domínio oficial.
+  if (typeof window !== "undefined" && window.location?.origin) {
+    signupUrl.searchParams.set("redirect_to", window.location.origin);
+  }
+
+  const data = await postJson<any>(signupUrl.toString(), {
     method: "POST",
     headers: headers(config),
     body: JSON.stringify(credentials),

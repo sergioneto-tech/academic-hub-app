@@ -4,47 +4,34 @@
 
 @layer base {
   :root {
-    /* Academic Focus — modo claro com fundo cinza suave. */
     --background: 216 20% 95%;
     --foreground: 222 55% 18%;
-
     --card: 0 0% 99%;
     --card-foreground: 222 55% 18%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 222 55% 18%;
-
     --primary: 220 78% 34%;
     --primary-foreground: 0 0% 100%;
-
     --secondary: 216 25% 91%;
     --secondary-foreground: 222 55% 18%;
-
     --muted: 216 22% 92%;
     --muted-foreground: 217 17% 43%;
-
     --accent: 216 36% 89%;
     --accent-foreground: 220 78% 30%;
-
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 216 22% 84%;
     --input: 216 22% 84%;
     --ring: 220 78% 34%;
-
     --radius: 0.85rem;
-
     --success: 151 62% 38%;
     --success-foreground: 0 0% 100%;
     --warning: 38 65% 48%;
     --warning-foreground: 222 55% 14%;
     --info: 220 78% 48%;
     --info-foreground: 0 0% 100%;
-
     --gold: 39 56% 54%;
     --gold-soft: 41 48% 91%;
-
     --sidebar-background: 216 18% 97%;
     --sidebar-foreground: 222 55% 18%;
     --sidebar-primary: 220 78% 34%;
@@ -56,45 +43,33 @@
   }
 
   .dark {
-    /* Azul-noite e dourado, sem azul elétrico dominante. */
     --background: 216 58% 7%;
     --foreground: 40 20% 94%;
-
     --card: 216 46% 10%;
     --card-foreground: 40 20% 94%;
-
     --popover: 216 46% 10%;
     --popover-foreground: 40 20% 94%;
-
     --primary: 39 56% 58%;
     --primary-foreground: 216 58% 7%;
-
     --secondary: 216 32% 15%;
     --secondary-foreground: 40 20% 94%;
-
     --muted: 216 30% 14%;
     --muted-foreground: 218 14% 66%;
-
     --accent: 39 34% 17%;
     --accent-foreground: 39 66% 70%;
-
     --destructive: 0 58% 58%;
     --destructive-foreground: 0 0% 100%;
-
     --border: 39 24% 25%;
     --input: 216 28% 20%;
     --ring: 39 56% 58%;
-
     --success: 151 51% 50%;
     --success-foreground: 216 58% 7%;
     --warning: 39 56% 58%;
     --warning-foreground: 216 58% 7%;
     --info: 39 56% 58%;
     --info-foreground: 216 58% 7%;
-
     --gold: 39 56% 58%;
     --gold-soft: 39 34% 17%;
-
     --sidebar-background: 216 54% 8%;
     --sidebar-foreground: 40 20% 94%;
     --sidebar-primary: 39 56% 58%;
@@ -106,9 +81,7 @@
   }
 
   * { @apply border-border; }
-
   html { background: hsl(var(--background)); }
-
   body {
     @apply bg-background text-foreground antialiased;
     min-width: 320px;
@@ -117,7 +90,6 @@
       radial-gradient(circle at 100% 100%, hsl(var(--gold) / 0.08), transparent 28rem);
     background-attachment: fixed;
   }
-
   .dark body {
     background-image:
       radial-gradient(circle at 14% 0%, hsl(var(--gold) / 0.065), transparent 30rem),
@@ -129,25 +101,20 @@
   .premium-surface {
     @apply rounded-2xl border bg-card/95 shadow-[0_16px_45px_-30px_rgba(15,23,42,0.45)] backdrop-blur-sm;
   }
-
   .premium-card {
     @apply rounded-xl border bg-card/90 shadow-[0_10px_28px_-24px_rgba(15,23,42,0.55)] transition-[border-color,box-shadow,transform] duration-200;
   }
-
   .premium-card:hover {
     @apply shadow-[0_16px_34px_-25px_rgba(15,23,42,0.58)];
   }
+  .gold-detail { color: hsl(var(--gold)); }
 
-  .gold-detail {
-    color: hsl(var(--gold));
-  }
-
-  /* Identidade premium AH usada no cabeçalho desktop e mobile. */
+  /* Usa exatamente a mesma identidade visual no cabeçalho desktop e mobile. */
   aside > div:first-child > div:first-child,
   header > div > div:first-child > div:first-child {
     color: transparent !important;
     background-color: transparent !important;
-    background-image: url('/academic-hub-premium.svg') !important;
+    background-image: url('/academic-hub-premium.svg?v=7') !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
     background-size: contain !important;
@@ -155,29 +122,34 @@
     border-radius: 0 !important;
   }
 
-  /* Métricas: mais respiração superior e conteúdo centrado no cartão. */
+  /* Cartões de métricas do painel: conteúdo centrado nos dois eixos. */
   .premium-card > div:has(.lucide-book-open),
-  .premium-card > div:has(.lucide-circle-check-big) {
+  .premium-card > div:has(.lucide-circle-check-big),
+  .premium-card > div:has(.lucide-trending-up),
+  .premium-card > div:has(.lucide-calendar-days) {
     min-height: 8.75rem;
     align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
     padding-top: 1.35rem !important;
     padding-bottom: 1.35rem !important;
   }
 
-  /* Substitui os dois pictogramas antigos pelo novo símbolo AH. */
-  .premium-card div:has(> .lucide-book-open),
-  .premium-card div:has(> .lucide-circle-check-big) {
-    background-color: transparent !important;
-    background-image: url('/academic-hub-premium.svg') !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
-    background-size: contain !important;
-    border-radius: 0.8rem !important;
+  .premium-card > div:has(.lucide-book-open) > div:last-child,
+  .premium-card > div:has(.lucide-circle-check-big) > div:last-child,
+  .premium-card > div:has(.lucide-trending-up) > div:last-child,
+  .premium-card > div:has(.lucide-calendar-days) > div:last-child {
+    display: flex;
+    min-height: 5.5rem;
+    flex-direction: column;
+    justify-content: center;
+    text-align: center;
   }
 
-  .premium-card .lucide-book-open,
-  .premium-card .lucide-circle-check-big {
-    opacity: 0 !important;
+  /* Cartões-resumo das Definições ficam alinhados verticalmente. */
+  .settings-premium .premium-card > div.flex.items-center {
+    min-height: 7.25rem;
+    align-items: center !important;
   }
 }
 
@@ -185,7 +157,6 @@
   .gradient-primary {
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.82) 100%);
   }
-
   .gradient-premium-dark {
     background: linear-gradient(145deg, hsl(216 52% 9%), hsl(216 42% 12%));
   }

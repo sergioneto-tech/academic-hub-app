@@ -1,0 +1,21 @@
+# Academic Hub
+
+> Aplicação Web pessoal para organizar o percurso académico de estudantes da Universidade Aberta.
+
+## Finalidade
+- Gerir cadeiras ativas e concluídas.
+- Registar e-fólios, atividades, exames, recursos, notas e datas.
+- Calcular progresso, média, ECTS e estado das avaliações.
+- Organizar calendário e plano pessoal de estudo.
+- Sincronizar dados privados com uma conta autenticada.
+
+## Áreas públicas da aplicação
+- /#/ — painel inicial
+- /#/ajuda — ajuda e guia de utilização
+- /#/legal — informação legal e privacidade
+
+## Privacidade
+Os dados académicos pertencem ao utilizador e não devem ser inferidos, expostos ou indexados. As áreas com dados pessoais funcionam no navegador e, quando ativado, num backend autenticado com políticas de acesso por utilizador.
+
+## Fonte institucional
+A aplicação referencia informação pública da Universidade Aberta, incluindo planos de estudo, calendário letivo e regulamentos. A confirmação final de regras, ponderações e prazos deve ser feita no PUC e nos canais oficiais da Universidade Aberta.

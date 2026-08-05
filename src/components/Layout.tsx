@@ -20,6 +20,7 @@ import {
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { ProfileAvatar } from "@/components/ProfileAvatarEditor";
+import { isMigrationNoticePending, MIGRATION_NOTICE_DISMISSED_EVENT } from "@/lib/migrationNoticeState";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -179,6 +180,13 @@ export default function Layout() {
   const [releaseNotes, setReleaseNotes] = useState<ReleaseNotesData | null>(null);
   const [whatsNew, setWhatsNew] = useState<ReleaseNotesEntry | null>(null);
   const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [migrationNoticePending, setMigrationNoticePending] = useState(() => isMigrationNoticePending());
+
+  useEffect(() => {
+    const dismissed = () => setMigrationNoticePending(false);
+    window.addEventListener(MIGRATION_NOTICE_DISMISSED_EVENT, dismissed);
+    return () => window.removeEventListener(MIGRATION_NOTICE_DISMISSED_EVENT, dismissed);
+  }, []);
   const notesUrl = useMemo(() => `${import.meta.env.BASE_URL ?? "./"}release-notes.json`, []);
 
   useEffect(() => {
@@ -197,6 +205,7 @@ export default function Layout() {
   }, [notesUrl, updateAvailable]);
 
   useEffect(() => {
+    if (migrationNoticePending) return;
     const versions = releaseNotes?.versions ?? [];
     if (versions.length === 0) return;
 
@@ -213,7 +222,7 @@ export default function Layout() {
     if (!entry) return;
     setWhatsNew(entry);
     setShowWhatsNew(true);
-  }, [releaseNotes, state.lastSeenRelease]);
+  }, [migrationNoticePending, releaseNotes, state.lastSeenRelease]);
 
   const dismissWhatsNew = () => {
     setShowWhatsNew(false);
@@ -339,7 +348,7 @@ export default function Layout() {
           </div>
           <div className="min-w-0">
             <div className="truncate text-base font-semibold text-sidebar-foreground">Academic Hub</div>
-            <div className="text-[11px] text-sidebar-foreground/55">Gestão académica pessoal</div>
+            <div className="text-[11px] text-sidebar-foreground/72">Gestão académica pessoal</div>
           </div>
         </div>
 
@@ -348,7 +357,7 @@ export default function Layout() {
             <ProfileAvatar className="h-11 w-11 text-sm" />
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold text-sidebar-foreground">{displayName}</div>
-              <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-sidebar-foreground/60">
+              <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-sidebar-foreground/75">
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: accent.color }} />
                 <span className="truncate">{state.degree?.name || "Licenciatura não definida"}</span>
               </div>
@@ -358,14 +367,14 @@ export default function Layout() {
 
         <nav className="flex-1 space-y-6 overflow-y-auto px-4 py-5">
           <div className="space-y-1">
-            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/40">
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/65">
               Académico
             </div>
             {PRIMARY_NAV.map((item) => <NavigationLink key={item.to} item={item} />)}
           </div>
 
           <div className="space-y-1">
-            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/40">
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/65">
               Apoio
             </div>
             {SUPPORT_NAV.map((item) => <NavigationLink key={item.to} item={item} />)}
@@ -387,7 +396,7 @@ export default function Layout() {
             {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {resolvedTheme === "dark" ? "Usar modo claro" : "Usar modo escuro"}
           </button>
-          <div className="px-3 text-[10px] text-sidebar-foreground/40">v{APP_VERSION} · por Sérgio Neto</div>
+          <div className="px-3 text-[10px] text-sidebar-foreground/65">v{APP_VERSION} · por Sérgio Neto</div>
         </div>
       </aside>
 
@@ -446,36 +455,38 @@ export default function Layout() {
 
         <main className="mx-auto max-w-[1500px] px-4 pb-28 pt-5 md:px-7 md:pb-10 md:pt-7 lg:px-10">
           {showWhatsNew && whatsNew && (
-            <section className="premium-surface mb-5 overflow-hidden border-[hsl(var(--gold)/0.45)]">
-              <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:justify-between md:p-5">
-                <div className="flex min-w-0 gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--gold-soft))] text-[hsl(var(--gold))]">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-semibold">O que mudou nesta versão</h2>
-                      <span className="rounded-full border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold-soft))] px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--gold))]">
-                        v{whatsNew.version}
-                      </span>
+            <div className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="whats-new-title">
+              <section className="premium-surface max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto border-[hsl(var(--gold)/0.45)]">
+                <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between md:p-6">
+                  <div className="flex min-w-0 gap-3">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--gold-soft))] text-[hsl(var(--gold))]">
+                      <Sparkles className="h-5 w-5" />
                     </div>
-                    {whatsNew.date && <div className="mt-0.5 text-[11px] text-muted-foreground">{whatsNew.date}</div>}
-                    <ul className="mt-3 grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
-                      {whatsNew.changes.slice(0, 8).map((change) => (
-                        <li key={change} className="flex gap-2">
-                          <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--gold))]" />
-                          <span>{change}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <NavLink to="/ajuda" className="mt-3 inline-flex text-xs font-medium text-primary hover:underline">
-                      Consultar Ajuda & Guia
-                    </NavLink>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 id="whats-new-title" className="font-semibold">O que mudou nesta versão</h2>
+                        <span className="rounded-full border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold-soft))] px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--gold))]">
+                          v{whatsNew.version}
+                        </span>
+                      </div>
+                      {whatsNew.date && <div className="mt-0.5 text-[11px] text-muted-foreground">{whatsNew.date}</div>}
+                      <ul className="mt-3 grid gap-1.5 text-xs text-muted-foreground sm:grid-cols-2">
+                        {whatsNew.changes.slice(0, 8).map((change) => (
+                          <li key={change} className="flex gap-2">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[hsl(var(--gold))]" />
+                            <span>{change}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <NavLink to="/ajuda" onClick={dismissWhatsNew} className="mt-3 inline-flex text-xs font-medium text-primary hover:underline">
+                        Consultar Ajuda & Guia
+                      </NavLink>
+                    </div>
                   </div>
+                  <Button size="sm" variant="secondary" onClick={dismissWhatsNew}>Compreendi</Button>
                 </div>
-                <Button size="sm" variant="secondary" onClick={dismissWhatsNew}>Compreendi</Button>
-              </div>
-            </section>
+              </section>
+            </div>
           )}
 
           {(updateAvailable || releaseNotesUpdateAvailable) && !deferUpdate && (

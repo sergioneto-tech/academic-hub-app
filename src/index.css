@@ -15,7 +15,7 @@
     --secondary: 216 25% 91%;
     --secondary-foreground: 222 55% 18%;
     --muted: 216 22% 92%;
-    --muted-foreground: 217 17% 43%;
+    --muted-foreground: 217 20% 36%;
     --accent: 216 36% 89%;
     --accent-foreground: 220 78% 30%;
     --destructive: 0 72% 51%;
@@ -54,7 +54,7 @@
     --secondary: 216 32% 15%;
     --secondary-foreground: 40 20% 94%;
     --muted: 216 30% 14%;
-    --muted-foreground: 218 14% 66%;
+    --muted-foreground: 218 18% 73%;
     --accent: 39 34% 17%;
     --accent-foreground: 39 66% 70%;
     --destructive: 0 58% 58%;
@@ -81,14 +81,14 @@
   }
 
   * { @apply border-border; }
-  html { background: hsl(var(--background)); }
+  html { background: hsl(var(--background)); scrollbar-gutter: stable; }
   body {
     @apply bg-background text-foreground antialiased;
     min-width: 320px;
     background-image:
       radial-gradient(circle at 15% 0%, hsl(var(--primary) / 0.055), transparent 32rem),
       radial-gradient(circle at 100% 100%, hsl(var(--gold) / 0.08), transparent 28rem);
-    background-attachment: fixed;
+    background-attachment: scroll;
   }
   .dark body {
     background-image:
@@ -140,5 +140,13 @@
   }
   .gradient-premium-dark {
     background: linear-gradient(145deg, hsl(216 52% 9%), hsl(216 42% 12%));
+  }
+}
+
+
+@layer utilities {
+  .content-auto {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 720px;
   }
 }

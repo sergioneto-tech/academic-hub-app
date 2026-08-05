@@ -1,35 +1,31 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CloudUpload, FileJson, ShieldCheck, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
-const NOTICE_KEY = "academic_hub_migration_notice_2026_08_05";
+import {
+  isMigrationNoticePending,
+  MIGRATION_NOTICE_DISMISSED_EVENT,
+  MIGRATION_NOTICE_KEY,
+} from "@/lib/migrationNoticeState";
 
 export default function MigrationNotice() {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      setOpen(localStorage.getItem(NOTICE_KEY) !== "dismissed");
-    } catch {
-      setOpen(true);
-    }
-  }, []);
+  const [open, setOpen] = useState(() => isMigrationNoticePending());
 
   const dismiss = () => {
     try {
-      localStorage.setItem(NOTICE_KEY, "dismissed");
+      localStorage.setItem(MIGRATION_NOTICE_KEY, "dismissed");
     } catch {
       // O aviso pode voltar a aparecer se o armazenamento local estiver indisponível.
     }
     setOpen(false);
+    window.dispatchEvent(new Event(MIGRATION_NOTICE_DISMISSED_EVENT));
   };
 
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="migration-title">
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-[hsl(var(--gold)/0.45)] bg-background shadow-2xl">
+      <div className="relative max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[hsl(var(--gold)/0.45)] bg-background shadow-2xl">
         <button
           type="button"
           onClick={dismiss}

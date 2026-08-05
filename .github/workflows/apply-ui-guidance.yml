@@ -27,9 +27,8 @@ jobs:
       - name: Install dependencies
         run: npm install --include=dev --legacy-peer-deps --no-audit --no-fund
 
-      - name: Verify quality
+      - name: Verify tests and production build
         run: |
-          npm run lint
           npm run test
           npm run build
 

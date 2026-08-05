@@ -196,7 +196,7 @@ export default function FlexibleCourseDetail({ courseId }: { courseId: string })
 
       <section className="grid gap-3 sm:grid-cols-3">
         <Card className="premium-card">
-          <CardContent className="p-4">
+          <CardContent className="flex min-h-36 flex-col items-center justify-center p-4 text-center">
             <div className="text-xs font-medium text-muted-foreground">Modelo selecionado</div>
             <div className="mt-1 text-lg font-semibold">{outcome?.modelLabel ?? "Por configurar"}</div>
             <p className="mt-1 text-[11px] text-muted-foreground">Confirma sempre os critérios no PUC.</p>
@@ -204,7 +204,7 @@ export default function FlexibleCourseDetail({ courseId }: { courseId: string })
         </Card>
 
         <Card className="premium-card">
-          <CardContent className="p-4">
+          <CardContent className="flex min-h-36 flex-col items-center justify-center p-4 text-center">
             <div className="text-xs font-medium text-muted-foreground">Resultado atual</div>
             <div className="mt-1 text-2xl font-semibold">
               {outcome?.rounded === null || outcome?.rounded === undefined ? "—" : `${outcome.rounded} / 20`}
@@ -216,7 +216,7 @@ export default function FlexibleCourseDetail({ courseId }: { courseId: string })
         </Card>
 
         <Card className="premium-card">
-          <CardContent className="p-4">
+          <CardContent className="flex min-h-36 flex-col items-center justify-center p-4 text-center">
             <div className="text-xs font-medium text-muted-foreground">Próximo passo</div>
             <div className="mt-1 text-lg font-semibold">
               {canComplete

@@ -122,28 +122,9 @@
     border-radius: 0 !important;
   }
 
-  /* Cartões de métricas do painel: conteúdo centrado nos dois eixos. */
-  .premium-card > div:has(.lucide-book-open),
-  .premium-card > div:has(.lucide-circle-check-big),
-  .premium-card > div:has(.lucide-trending-up),
-  .premium-card > div:has(.lucide-calendar-days) {
-    min-height: 8.75rem;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    padding-top: 1.35rem !important;
-    padding-bottom: 1.35rem !important;
-  }
-
-  .premium-card > div:has(.lucide-book-open) > div:last-child,
-  .premium-card > div:has(.lucide-circle-check-big) > div:last-child,
-  .premium-card > div:has(.lucide-trending-up) > div:last-child,
-  .premium-card > div:has(.lucide-calendar-days) > div:last-child {
-    display: flex;
-    min-height: 5.5rem;
-    flex-direction: column;
-    justify-content: center;
-    text-align: center;
+  /* Os cartões de métricas são centrados diretamente no componente, sem depender do tipo de ícone. */
+  .dashboard-metric-card {
+    min-height: 9rem;
   }
 
   /* Cartões-resumo das Definições ficam alinhados verticalmente. */

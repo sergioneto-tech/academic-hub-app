@@ -232,11 +232,11 @@ export default function Dashboard() {
           const Icon = metric.icon;
           return (
             <Card key={metric.label} className="premium-card">
-              <CardContent className="flex items-start gap-3 p-4">
+              <CardContent className="dashboard-metric-card flex min-h-36 flex-col items-center justify-center gap-2 p-4 text-center">
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                   <Icon className="h-5 w-5" />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 text-center">
                   <div className="text-xs font-medium text-muted-foreground">{metric.label}</div>
                   <div className="mt-0.5 text-2xl font-semibold tracking-tight">{metric.value}</div>
                   <div className="mt-1 text-[11px] text-muted-foreground">{metric.detail}</div>

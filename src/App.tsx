@@ -14,9 +14,12 @@ import PersonalStudyPlan from "./pages/PersonalStudyPlan";
 import HelpPage from "./pages/Help";
 import LegalPage from "./pages/Legal";
 import AcademicReportPage from "./pages/AcademicReport";
+import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
 
-export default function App() {
+const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE !== "false";
+
+function AcademicHubApp() {
   useAutoSync();
 
   return (
@@ -38,4 +41,12 @@ export default function App() {
       </Route>
     </Routes>
   );
+}
+
+export default function App() {
+  if (maintenanceMode) {
+    return <MaintenancePage />;
+  }
+
+  return <AcademicHubApp />;
 }

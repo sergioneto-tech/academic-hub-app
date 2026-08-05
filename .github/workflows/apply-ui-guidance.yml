@@ -7,6 +7,7 @@ on:
     paths:
       - ".github/workflows/apply-ui-guidance.yml"
       - "scripts/apply_pagespeed_optimizations.py"
+      - "package.json"
 
 permissions:
   contents: write
@@ -37,6 +38,6 @@ jobs:
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/App.tsx src/main.tsx src/components/MigrationNotice.tsx src/components/Layout.tsx src/lib/migrationNoticeState.ts src/pages/AcademicReport.tsx src/index.css index.html public/llms.txt public/_headers
+          git add src/App.tsx src/main.tsx src/components/MigrationNotice.tsx src/components/Layout.tsx src/lib/migrationNoticeState.ts src/pages/AcademicReport.tsx src/index.css index.html public/llms.txt public/_headers package.json
           git commit -m "Optimize initial load, CLS, accessibility and discovery"
           git push origin HEAD:perf/pagespeed-optimizations

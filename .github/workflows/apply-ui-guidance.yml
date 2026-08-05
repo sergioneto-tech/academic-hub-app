@@ -1,0 +1,302 @@
+name: Apply UI guidance refinements
+
+on:
+  push:
+    branches:
+      - migration/account-pilot
+    paths:
+      - ".github/workflows/apply-ui-guidance.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: migration/account-pilot
+          fetch-depth: 0
+
+      - name: Apply refinements
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  raise SystemExit(f"Insertion point not found: {label}")
+              return text.replace(old, new, 1)
+
+          # 1) Center dashboard metric cards in both axes.
+          path = Path("src/pages/Dashboard.tsx")
+          text = path.read_text(encoding="utf-8")
+          old = '''            <Card key={metric.label} className="premium-card">
+              <CardContent className="flex items-start gap-3 p-4">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-muted-foreground">{metric.label}</div>
+                  <div className="mt-0.5 text-2xl font-semibold tracking-tight">{metric.value}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{metric.detail}</div>
+                </div>
+              </CardContent>
+            </Card>'''
+          new = '''            <Card key={metric.label} className="premium-card">
+              <CardContent className="flex min-h-36 flex-col items-center justify-center gap-2 p-4 text-center">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 text-center">
+                  <div className="text-xs font-medium text-muted-foreground">{metric.label}</div>
+                  <div className="mt-0.5 text-2xl font-semibold tracking-tight">{metric.value}</div>
+                  <div className="mt-1 text-[11px] text-muted-foreground">{metric.detail}</div>
+                </div>
+              </CardContent>
+            </Card>'''
+          text = replace_once(text, old, new, "dashboard metric cards")
+          path.write_text(text, encoding="utf-8")
+
+          # 2) Center the three flexible-evaluation summary cards.
+          path = Path("src/pages/FlexibleCourseDetail.tsx")
+          text = path.read_text(encoding="utf-8")
+          start = text.index('      <section className="grid gap-3 sm:grid-cols-3">')
+          end = text.index('      </section>', start) + len('      </section>')
+          block = text[start:end]
+          if block.count('<CardContent className="p-4">') != 3:
+              raise SystemExit("Unexpected flexible summary card structure")
+          block = block.replace(
+              '<CardContent className="p-4">',
+              '<CardContent className="flex min-h-36 flex-col items-center justify-center p-4 text-center">',
+          )
+          text = text[:start] + block + text[end:]
+          path.write_text(text, encoding="utf-8")
+
+          # 3) Add clear guidance for Models 1-4 and make each explanatory card selectable.
+          path = Path("src/components/CourseEvaluationSettings.tsx")
+          text = path.read_text(encoding="utf-8")
+          pattern = re.compile(r'const MODEL_OPTIONS: Array<\{.*?\n\];\n\nconst TYPE_OPTIONS:', re.S)
+          replacement = '''const MODEL_OPTIONS: Array<{
+  value: EvaluationModel;
+  label: string;
+  description: string;
+  whenToUse: string;
+}> = [
+  {
+    value: "type1",
+    label: "Modelo 1",
+    description: "Combina elementos assíncronos e síncronos. É necessário cumprir o mínimo definido em cada componente e obter pelo menos 10/20 no total.",
+    whenToUse: "Seleciona quando o PUC indicar Modelo 1 e distribuir a avaliação entre trabalho assíncrono e momentos síncronos.",
+  },
+  {
+    value: "type2",
+    label: "Modelo 2",
+    description: "Usa atividades obrigatórias. Pelo menos N−1 atividades devem atingir a percentagem mínima definida e a soma final deve atingir 10/20.",
+    whenToUse: "Seleciona quando o PUC indicar Modelo 2 e apresentar várias atividades obrigatórias sujeitas à regra N−1.",
+  },
+  {
+    value: "type3",
+    label: "Modelo 3",
+    description: "Também aplica a regra N−1 às atividades obrigatórias. O número, o formato e a ponderação concreta de cada atividade são os definidos no PUC.",
+    whenToUse: "Seleciona apenas quando o PUC da cadeira indicar explicitamente Modelo 3.",
+  },
+  {
+    value: "type4",
+    label: "Modelo 4",
+    description: "Integra componentes assíncrona e síncrona, com mínimo em ambas e classificação global mínima de 10/20. As ponderações concretas vêm do PUC.",
+    whenToUse: "Seleciona apenas quando o PUC da cadeira indicar explicitamente Modelo 4.",
+  },
+  {
+    value: "exam-only",
+    label: "Avaliação final",
+    description: "Classificação obtida exclusivamente numa prova final de 20 valores.",
+    whenToUse: "Seleciona quando a FUC ou o PUC prever avaliação exclusivamente por prova final.",
+  },
+  {
+    value: "custom",
+    label: "Personalizado",
+    description: "Elementos obrigatórios configurados manualmente, totalizando 20 valores.",
+    whenToUse: "Usa apenas quando o PUC não corresponder diretamente a um dos modelos predefinidos.",
+  },
+];
+
+const TYPE_OPTIONS:'''
+          text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit("MODEL_OPTIONS block not found")
+
+          marker = '''            <p className="text-[11px] text-muted-foreground">
+              {regime === "legacy"
+                ? "O cálculo atual permanece exatamente como estava."
+                : MODEL_OPTIONS.find((option) => option.value === model)?.description}
+            </p>
+          </div>
+        </div>
+'''
+          enhanced = '''            <p className="text-[11px] text-muted-foreground">
+              {regime === "legacy"
+                ? "O cálculo atual permanece exatamente como estava."
+                : MODEL_OPTIONS.find((option) => option.value === model)?.description}
+            </p>
+          </div>
+        </div>
+
+        {regime === "regulation-2026" && (
+          <div className="space-y-3 rounded-2xl border bg-muted/15 p-4">
+            <div>
+              <div className="text-sm font-semibold">Como escolher o modelo</div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Não é uma preferência pessoal: seleciona o modelo indicado no PUC da cadeira. Os cartões abaixo resumem a lógica usada pela aplicação.
+              </p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {MODEL_OPTIONS.filter((option) => option.value.startsWith("type")).map((option) => {
+                const selected = option.value === model;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setModel(option.value)}
+                    className={`flex min-h-44 flex-col justify-center rounded-2xl border p-4 text-left transition-colors ${selected
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+                      : "bg-card hover:bg-muted/35"}`}
+                    aria-pressed={selected}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-base font-semibold">{option.label}</div>
+                      {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />}
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">{option.description}</p>
+                    <p className="mt-3 text-[11px] font-medium leading-5 text-foreground/80">{option.whenToUse}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Em caso de dúvida, confirma sempre a designação, os elementos, as ponderações e os mínimos diretamente no PUC.
+            </p>
+          </div>
+        )}
+'''
+          text = replace_once(text, marker, enhanced, "model guidance cards")
+          path.write_text(text, encoding="utf-8")
+
+          # 4) Ensure the migration notice appears before the release-notes card.
+          path = Path("src/components/MigrationNotice.tsx")
+          text = path.read_text(encoding="utf-8")
+          text = replace_once(
+              text,
+              'import { useEffect, useState } from "react";',
+              'import { useState } from "react";',
+              "migration notice React import",
+          )
+          text = replace_once(
+              text,
+              'const NOTICE_KEY = "academic_hub_migration_notice_2026_08_05";\n',
+              '''export const MIGRATION_NOTICE_KEY = "academic_hub_migration_notice_2026_08_05";
+export const MIGRATION_NOTICE_DISMISSED_EVENT = "academic-hub:migration-notice-dismissed";
+
+export function isMigrationNoticePending(): boolean {
+  try {
+    return localStorage.getItem(MIGRATION_NOTICE_KEY) !== "dismissed";
+  } catch {
+    return true;
+  }
+}
+''',
+              "migration notice constants",
+          )
+          old_state = '''export default function MigrationNotice() {
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    try {
+      setOpen(localStorage.getItem(NOTICE_KEY) !== "dismissed");
+    } catch {
+      setOpen(true);
+    }
+  }, []);
+'''
+          new_state = '''export default function MigrationNotice() {
+  const [open, setOpen] = useState(() => isMigrationNoticePending());
+'''
+          text = replace_once(text, old_state, new_state, "migration notice initial state")
+          text = replace_once(
+              text,
+              '      localStorage.setItem(NOTICE_KEY, "dismissed");',
+              '      localStorage.setItem(MIGRATION_NOTICE_KEY, "dismissed");',
+              "migration notice storage key",
+          )
+          text = replace_once(
+              text,
+              '    setOpen(false);\n  };',
+              '    setOpen(false);\n    window.dispatchEvent(new Event(MIGRATION_NOTICE_DISMISSED_EVENT));\n  };',
+              "migration notice dismissed event",
+          )
+          path.write_text(text, encoding="utf-8")
+
+          path = Path("src/components/Layout.tsx")
+          text = path.read_text(encoding="utf-8")
+          text = replace_once(
+              text,
+              'import { ProfileAvatar } from "@/components/ProfileAvatarEditor";\n',
+              'import { ProfileAvatar } from "@/components/ProfileAvatarEditor";\nimport { isMigrationNoticePending, MIGRATION_NOTICE_DISMISSED_EVENT } from "@/components/MigrationNotice";\n',
+              "layout migration import",
+          )
+          marker = '''  const [releaseNotes, setReleaseNotes] = useState<ReleaseNotesData | null>(null);
+  const [whatsNew, setWhatsNew] = useState<ReleaseNotesEntry | null>(null);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+'''
+          replacement = '''  const [releaseNotes, setReleaseNotes] = useState<ReleaseNotesData | null>(null);
+  const [whatsNew, setWhatsNew] = useState<ReleaseNotesEntry | null>(null);
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+  const [migrationNoticePending, setMigrationNoticePending] = useState(() => isMigrationNoticePending());
+
+  useEffect(() => {
+    const onMigrationNoticeDismissed = () => setMigrationNoticePending(false);
+    window.addEventListener(MIGRATION_NOTICE_DISMISSED_EVENT, onMigrationNoticeDismissed);
+    return () => window.removeEventListener(MIGRATION_NOTICE_DISMISSED_EVENT, onMigrationNoticeDismissed);
+  }, []);
+'''
+          text = replace_once(text, marker, replacement, "layout migration state")
+          text = replace_once(
+              text,
+              '''  useEffect(() => {
+    const versions = releaseNotes?.versions ?? [];
+''',
+              '''  useEffect(() => {
+    if (migrationNoticePending) return;
+    const versions = releaseNotes?.versions ?? [];
+''',
+              "release notes migration guard",
+          )
+          text = replace_once(
+              text,
+              '  }, [releaseNotes, state.lastSeenRelease]);',
+              '  }, [migrationNoticePending, releaseNotes, state.lastSeenRelease]);',
+              "release notes dependencies",
+          )
+          path.write_text(text, encoding="utf-8")
+
+      - name: Verify expected changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "Como escolher o modelo" src/components/CourseEvaluationSettings.tsx
+          grep -q "migrationNoticePending" src/components/Layout.tsx
+          grep -q "min-h-36 flex-col items-center" src/pages/Dashboard.tsx
+          grep -q "flex min-h-36 flex-col items-center" src/pages/FlexibleCourseDetail.tsx
+
+      - name: Commit refinements
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/pages/Dashboard.tsx src/pages/FlexibleCourseDetail.tsx src/components/CourseEvaluationSettings.tsx src/components/MigrationNotice.tsx src/components/Layout.tsx
+          git commit -m "Center cards and explain evaluation models"
+          git push origin HEAD:migration/account-pilot

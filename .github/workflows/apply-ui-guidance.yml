@@ -1,42 +1,43 @@
-name: Apply final UI corrections
+name: Apply PageSpeed optimizations
 
 on:
   push:
     branches:
-      - migration/account-pilot
+      - perf/pagespeed-optimizations
     paths:
       - ".github/workflows/apply-ui-guidance.yml"
-      - "scripts/apply_ui_final_fixes.py"
+      - "scripts/apply_pagespeed_optimizations.py"
 
 permissions:
   contents: write
 
 jobs:
-  patch:
+  optimize:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: migration/account-pilot
+          ref: perf/pagespeed-optimizations
           fetch-depth: 0
 
-      - name: Apply final corrections
-        run: python scripts/apply_ui_final_fixes.py
+      - name: Apply optimizations
+        run: python scripts/apply_pagespeed_optimizations.py
 
-      - name: Verify corrections
+      - name: Install dependencies
+        run: npm install --include=dev --legacy-peer-deps --no-audit --no-fund
+
+      - name: Verify quality
         run: |
-          set -euo pipefail
-          grep -q "dashboard-metric-card" src/pages/Dashboard.tsx
-          grep -q "Como escolher o modelo" src/components/CourseEvaluationSettings.tsx
-          grep -q "Escala inválida" src/components/CourseEvaluationSettings.tsx
-          grep -q "flex min-h-36 flex-col items-center" src/pages/FlexibleCourseDetail.tsx
+          npm run lint
+          npm run test
+          npm run build
 
-      - name: Commit corrections
+      - name: Commit optimizations
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/pages/Dashboard.tsx src/pages/FlexibleCourseDetail.tsx src/components/CourseEvaluationSettings.tsx src/index.css
-          git commit -m "Fix card alignment and invalid evaluation scales"
-          git push origin HEAD:migration/account-pilot
+          git add src/App.tsx src/main.tsx src/components/MigrationNotice.tsx src/components/Layout.tsx src/lib/migrationNoticeState.ts src/pages/AcademicReport.tsx src/index.css index.html public/llms.txt public/_headers
+          git commit -m "Optimize initial load, CLS, accessibility and discovery"
+          git push origin HEAD:perf/pagespeed-optimizations

@@ -21,8 +21,9 @@ jobs:
           fetch-depth: 0
 
       - name: Add validation card before account creation
-        shell: python
+        shell: bash
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
           path = Path("src/pages/Settings.tsx")
@@ -35,37 +36,37 @@ jobs:
           text = text.replace(old, new, 1)
 
           old = '''  const onSignUp = async () => {
-    if (!cloudConfig) {
-      toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
-      return;
-    }
-    try {
-      const result = await signUp(cloudConfig, cloudEmail.trim(), cloudPass);
-'''
+            if (!cloudConfig) {
+              toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
+              return;
+            }
+            try {
+              const result = await signUp(cloudConfig, cloudEmail.trim(), cloudPass);
+          '''
           new = '''  const onSignUp = async () => {
-    setAccountAlert(null);
+            setAccountAlert(null);
 
-    const email = cloudEmail.trim();
-    if (!email || !cloudPass) {
-      setAccountAlert("Preenche o email e a password antes de criares a conta. Só depois será enviado o email de confirmação.");
-      return;
-    }
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
-      setAccountAlert("Indica um endereço de email válido antes de continuares.");
-      return;
-    }
-    if (cloudPass.length < 8) {
-      setAccountAlert("A password deve ter pelo menos 8 caracteres.");
-      return;
-    }
+            const email = cloudEmail.trim();
+            if (!email || !cloudPass) {
+              setAccountAlert("Preenche o email e a password antes de criares a conta. Só depois será enviado o email de confirmação.");
+              return;
+            }
+            if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+              setAccountAlert("Indica um endereço de email válido antes de continuares.");
+              return;
+            }
+            if (cloudPass.length < 8) {
+              setAccountAlert("A password deve ter pelo menos 8 caracteres.");
+              return;
+            }
 
-    if (!cloudConfig) {
-      toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
-      return;
-    }
-    try {
-      const result = await signUp(cloudConfig, email, cloudPass);
-'''
+            if (!cloudConfig) {
+              toast({ title: "Sincronização indisponível", description: "Falta configuração do servidor (Supabase).", variant: "destructive" });
+              return;
+            }
+            try {
+              const result = await signUp(cloudConfig, email, cloudPass);
+          '''
           if old not in text:
               raise SystemExit("onSignUp insertion point not found")
           text = text.replace(old, new, 1)
@@ -84,7 +85,7 @@ jobs:
 
           old = '''          <div className="flex flex-wrap gap-2">
             <Button onClick={onSignUp} disabled={!cloudConfig}>Criar conta</Button>
-'''
+          '''
           new = '''          {accountAlert && (
             <div
               role="alert"
@@ -98,12 +99,13 @@ jobs:
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={onSignUp} disabled={!cloudConfig}>Criar conta</Button>
-'''
+          '''
           if old not in text:
               raise SystemExit("Account buttons insertion point not found")
           text = text.replace(old, new, 1)
 
           path.write_text(text, encoding="utf-8")
+          PY
 
       - name: Commit patch
         shell: bash

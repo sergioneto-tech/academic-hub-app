@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
+import MigrationNotice from "./components/MigrationNotice";
 import "./report-print.css";
 
 import Dashboard from "./pages/Dashboard";
@@ -23,23 +24,26 @@ function AcademicHubApp() {
   useAutoSync();
 
   return (
-    <Routes>
-      <Route element={<Layout />}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/cadeiras" element={<CoursesPage />} />
-        <Route path="/cadeiras/:id" element={<CourseDetailPremium />} />
-        <Route path="/calendario" element={<CalendarPage />} />
-        <Route path="/historico" element={<HistoryPage />} />
-        <Route path="/historico/relatorio" element={<AcademicReportPage />} />
-        <Route path="/plano" element={<StudyPlan />} />
-        <Route path="/plano/estudo" element={<PersonalStudyPlan />} />
-        <Route path="/definicoes" element={<SettingsPremium />} />
-        <Route path="/reset-password" element={<ResetPasswordPage />} />
-        <Route path="/ajuda" element={<HelpPage />} />
-        <Route path="/legal" element={<LegalPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Route>
-    </Routes>
+    <>
+      <MigrationNotice />
+      <Routes>
+        <Route element={<Layout />}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/cadeiras" element={<CoursesPage />} />
+          <Route path="/cadeiras/:id" element={<CourseDetailPremium />} />
+          <Route path="/calendario" element={<CalendarPage />} />
+          <Route path="/historico" element={<HistoryPage />} />
+          <Route path="/historico/relatorio" element={<AcademicReportPage />} />
+          <Route path="/plano" element={<StudyPlan />} />
+          <Route path="/plano/estudo" element={<PersonalStudyPlan />} />
+          <Route path="/definicoes" element={<SettingsPremium />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/ajuda" element={<HelpPage />} />
+          <Route path="/legal" element={<LegalPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </>
   );
 }
 

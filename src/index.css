@@ -81,15 +81,74 @@
   }
 
   * { @apply border-border; }
-  html { background: hsl(var(--background)); scrollbar-gutter: stable; }
+
+  html {
+    width: 100%;
+    max-width: 100%;
+    background: hsl(var(--background));
+    scrollbar-gutter: stable;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
-    min-width: 320px;
+    overflow-x: clip;
     background-image:
       radial-gradient(circle at 15% 0%, hsl(var(--primary) / 0.055), transparent 32rem),
       radial-gradient(circle at 100% 100%, hsl(var(--gold) / 0.08), transparent 28rem);
     background-attachment: scroll;
   }
+
+  #root {
+    overflow-x: clip;
+  }
+
+  main,
+  section,
+  article,
+  aside,
+  header,
+  footer,
+  nav,
+  form,
+  fieldset,
+  div {
+    min-width: 0;
+  }
+
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    max-width: 100%;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100%;
+  }
+
+  p,
+  a,
+  li,
+  dd,
+  dt,
+  code,
+  pre {
+    overflow-wrap: anywhere;
+  }
+
   .dark body {
     background-image:
       radial-gradient(circle at 14% 0%, hsl(var(--gold) / 0.065), transparent 30rem),
@@ -100,13 +159,20 @@
 @layer components {
   .premium-surface {
     @apply rounded-2xl border bg-card/95 shadow-[0_16px_45px_-30px_rgba(15,23,42,0.45)] backdrop-blur-sm;
+    min-width: 0;
+    max-width: 100%;
   }
+
   .premium-card {
     @apply rounded-xl border bg-card/90 shadow-[0_10px_28px_-24px_rgba(15,23,42,0.55)] transition-[border-color,box-shadow,transform] duration-200;
+    min-width: 0;
+    max-width: 100%;
   }
+
   .premium-card:hover {
     @apply shadow-[0_16px_34px_-25px_rgba(15,23,42,0.58)];
   }
+
   .gold-detail { color: hsl(var(--gold)); }
 
   /* Usa exatamente a mesma identidade visual no cabeçalho desktop e mobile. */
@@ -114,7 +180,7 @@
   header > div > div:first-child > div:first-child {
     color: transparent !important;
     background-color: transparent !important;
-    background-image: url('/academic-hub-icon-v8.svg') !important;
+    background-image: url('/academic-hub-icon-current-v8.svg') !important;
     background-position: center !important;
     background-repeat: no-repeat !important;
     background-size: contain !important;
@@ -127,10 +193,47 @@
     min-height: 9rem;
   }
 
-  /* Cartões-resumo das Definições ficam alinhados verticalmente. */
+  /* Toda a área de Definições adapta-se à largura real do dispositivo. */
+  .settings-premium,
+  .settings-premium > *,
+  .settings-premium section,
+  .settings-premium form,
+  .settings-premium [class*="Card"],
+  .settings-premium [data-radix-scroll-area-viewport] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .settings-premium {
+    overflow-x: clip;
+  }
+
   .settings-premium .premium-card > div.flex.items-center {
     min-height: 7.25rem;
     align-items: center !important;
+  }
+
+  .settings-premium input,
+  .settings-premium textarea,
+  .settings-premium [role="combobox"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .settings-premium p,
+  .settings-premium a,
+  .settings-premium span,
+  .settings-premium label,
+  .settings-premium .text-muted-foreground {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .settings-premium pre,
+  .settings-premium code {
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   @media (max-width: 639px) {
@@ -167,19 +270,83 @@
       line-height: 0.85rem;
     }
 
-    /* Cartões-resumo simples das Definições também ocupam duas colunas no telemóvel. */
+    /* Evita o zoom automático do iOS ao focar campos, sem bloquear o zoom manual. */
+    input:not([inputmode="numeric"]),
+    textarea,
+    [role="combobox"] {
+      font-size: 1rem;
+    }
+
+    /* Cartões-resumo das Definições usam duas colunas apenas quando há espaço real. */
     .settings-premium > section.grid.md\:grid-cols-2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(10rem, 100%), 1fr));
       gap: 0.625rem;
     }
 
     .settings-premium > section.grid.md\:grid-cols-2 .premium-card > div.flex.items-center {
-      min-height: 8.25rem;
+      min-height: 7.5rem;
       flex-direction: column;
       justify-content: center;
       gap: 0.5rem;
       padding: 0.75rem;
       text-align: center;
+    }
+
+    /* Reduz margens internas sem apertar o conteúdo dos cartões. */
+    .settings-premium [class*="CardHeader"] {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .settings-premium [class*="CardContent"] {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    /* Botões longos quebram texto em vez de alargar o ecrã. */
+    .settings-premium button:not([role="switch"]):not(.h-6):not(.h-7) {
+      height: auto;
+      min-height: 2.25rem;
+      white-space: normal;
+      line-height: 1.2;
+      text-align: center;
+    }
+
+    /* Linhas de perfil, estado e sincronização passam para coluna em ecrãs estreitos. */
+    .settings-premium .flex.items-center.justify-between {
+      flex-wrap: wrap;
+    }
+
+    .settings-premium .flex.items-center.justify-between > :first-child {
+      min-width: min(12rem, 100%);
+      flex: 1 1 12rem;
+    }
+
+    /* Os dois campos iniciais de cada cadeira continuam utilizáveis em 320 px e com zoom. */
+    .settings-premium .w-20.shrink-0 {
+      width: min(5rem, 28%);
+    }
+  }
+
+  @media (max-width: 359px) {
+    .settings-premium {
+      gap: 1rem;
+    }
+
+    .settings-premium .premium-surface,
+    .settings-premium .premium-card,
+    .settings-premium [class*="rounded-xl"],
+    .settings-premium [class*="rounded-lg"] {
+      max-width: 100%;
+    }
+
+    .settings-premium .flex.flex-wrap > button:not([role="switch"]) {
+      flex: 1 1 100%;
+      width: 100%;
+    }
+
+    .settings-premium .flex.items-center.gap-4 {
+      flex-wrap: wrap;
     }
   }
 }
@@ -188,12 +355,11 @@
   .gradient-primary {
     background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.82) 100%);
   }
+
   .gradient-premium-dark {
     background: linear-gradient(145deg, hsl(216 52% 9%), hsl(216 42% 12%));
   }
-}
 
-@layer utilities {
   .content-auto {
     content-visibility: auto;
     contain-intrinsic-size: 1px 720px;

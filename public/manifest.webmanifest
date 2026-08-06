@@ -11,16 +11,23 @@
   "background_color": "#E9EDF2",
   "theme_color": "#0B1D3A",
   "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "./academic-hub-icon-v8.svg",
-      "sizes": "any",
+      "src": "./academic-hub-icon-current-v8.svg",
+      "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "./academic-hub-icon-v8.svg",
-      "sizes": "any",
+      "src": "./academic-hub-icon-current-v8.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./academic-hub-icon-current-v8.svg",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "maskable"
     }

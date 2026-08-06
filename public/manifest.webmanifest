@@ -13,13 +13,13 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "./academic-hub-premium.svg?v=7",
+      "src": "./academic-hub-icon-v8.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
     },
     {
-      "src": "./academic-hub-premium.svg?v=7",
+      "src": "./academic-hub-icon-v8.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "maskable"

@@ -4,6 +4,7 @@ import {
   type CloudConfig,
   type AuthSession,
   getStoredSession,
+  isUabStudentEmail,
   refreshSession,
   storeSession,
   upsertRemoteState,
@@ -12,6 +13,9 @@ import {
 /**
  * Hook that automatically uploads state to cloud when changes occur.
  * Debounces to avoid excessive uploads (waits 5s after last change).
+ *
+ * Contas antigas com email não-UAb não fazem upload automático: a regularização
+ * é apresentada nas Definições antes de qualquer operação manual de cloud.
  */
 export function useAutoSync() {
   const { state, setSync } = useAppStore();
@@ -38,9 +42,8 @@ export function useAutoSync() {
 
     const session = getStoredSession(cloudConfig);
     if (!session) return;
+    if (!isUabStudentEmail(session.user.email)) return;
 
-    // Inclui também perfil/fotografia e preferências. Antes, uma alteração apenas
-    // na fotografia não mudava a impressão digital e podia nunca chegar à cloud.
     const fingerprint = JSON.stringify({
       courses: state.courses,
       assessments: state.assessments,
@@ -64,6 +67,8 @@ export function useAutoSync() {
         // Use existing session
       }
 
+      if (!isUabStudentEmail(fresh.user.email)) return;
+
       await upsertRemoteState(cloudConfig, fresh, state);
       lastUploadedRef.current = fingerprint;
 
@@ -75,16 +80,17 @@ export function useAutoSync() {
     }
   }, [cloudConfig, state, setSync]);
 
-  // Debounced auto-upload whenever synchronized state changes
   useEffect(() => {
     if (!state.sync?.enabled) return;
     if (!cloudConfig) return;
-    if (!getStoredSession(cloudConfig)) return;
+
+    const session = getStoredSession(cloudConfig);
+    if (!session || !isUabStudentEmail(session.user.email)) return;
 
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       void doUpload();
-    }, 5000); // 5 second debounce
+    }, 5000);
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);

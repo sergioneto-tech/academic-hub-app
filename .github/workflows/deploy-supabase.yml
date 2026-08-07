@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Apply migrations and deploy functions
+    name: Apply migrations, config and deploy functions
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -52,6 +52,9 @@ jobs:
 
       - name: Apply database migrations
         run: supabase db push --linked --include-all
+
+      - name: Apply project configuration
+        run: supabase config push --project-ref "$SUPABASE_PROJECT_REF"
 
       - name: Deploy Edge Functions
         shell: bash

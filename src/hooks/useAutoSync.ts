@@ -25,7 +25,15 @@ import {
 } from "@/lib/cloudSync";
 import type { AppState } from "@/lib/types";
 
+const SESSION_REFRESH_MARGIN_SECONDS = 5 * 60;
+
 function notify(detail: CloudSyncNoticeDetail) { window.dispatchEvent(new CustomEvent(CLOUD_SYNC_NOTICE_EVENT, { detail })); }
+
+function sessionNeedsRefresh(session: AuthSession): boolean {
+  if (!session.expires_at) return false;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return session.expires_at <= nowSeconds + SESSION_REFRESH_MARGIN_SECONDS;
+}
 
 function persistConflict(localState: AppState, remoteState: AppState & { syncMeta?: { deviceLabel?: string } }, remoteUpdatedAt: string) {
   localStorage.setItem(CLOUD_CONFLICT_KEY, JSON.stringify({
@@ -50,6 +58,7 @@ export function useAutoSync() {
   const isMountedRef = useRef(true);
   const pullingRef = useRef(false);
   const uploadingRef = useRef(false);
+  const refreshingRef = useRef<Promise<AuthSession | null> | null>(null);
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -59,11 +68,28 @@ export function useAutoSync() {
     if (!cloudConfig) return null;
     const stored = getStoredSession(cloudConfig);
     if (!stored || !isUabStudentEmail(stored.user.email)) return null;
-    try {
-      const fresh: AuthSession = await refreshSession(cloudConfig, stored);
-      storeSession(cloudConfig, fresh);
-      return fresh;
-    } catch { return stored; }
+
+    // O access token continua válido durante a maior parte da sessão. Não há razão para
+    // trocar o refresh token em cada foco, sincronização ou pequena alteração local.
+    if (!sessionNeedsRefresh(stored)) return stored;
+
+    // Deduplica pedidos simultâneos de refresh (ex.: focus + visibilitychange).
+    if (refreshingRef.current) return refreshingRef.current;
+
+    refreshingRef.current = (async () => {
+      try {
+        const fresh = await refreshSession(cloudConfig, stored);
+        storeSession(cloudConfig, fresh);
+        return fresh;
+      } catch (error) {
+        console.warn("[AutoSync] Session refresh failed; keeping current session:", error);
+        return stored;
+      } finally {
+        refreshingRef.current = null;
+      }
+    })();
+
+    return refreshingRef.current;
   }, [cloudConfig]);
 
   const applyRemote = useCallback((remoteState: AppState, updatedAt: string, deviceLabel?: string) => {
@@ -97,7 +123,6 @@ export function useAutoSync() {
         return;
       }
 
-      // Sem baseline neste dispositivo: a cloud é a fonte inicial, salvo se existirem dados locais reais.
       if (!baseline) {
         if (isLocallyFresh(current)) {
           applyRemote(remoteState, remote.updated_at, remoteState.syncMeta?.deviceLabel);
@@ -115,13 +140,8 @@ export function useAutoSync() {
         applyRemote(remoteState, remote.updated_at, remoteState.syncMeta?.deviceLabel);
         return;
       }
+      if (localChanged && !remoteChanged) return;
 
-      if (localChanged && !remoteChanged) {
-        // Alteração apenas local: o efeito de upload tratará dela.
-        return;
-      }
-
-      // Só existe conflito verdadeiro quando ambos mudaram desde a última versão comum.
       if (localChanged && remoteChanged) {
         persistConflict(current, remoteState, remote.updated_at);
         notify({ kind: "conflict", message: "Foram feitas alterações diferentes em dois dispositivos. Escolhe qual versão deve prevalecer nas Definições." });
@@ -155,7 +175,6 @@ export function useAutoSync() {
         }
 
         if (!baseline) {
-          // Nunca sobrescrever cloud silenciosamente num dispositivo sem uma referência comum.
           persistConflict(current, remoteState, remote.updated_at);
           notify({ kind: "conflict", message: "Existem dados diferentes neste dispositivo e na cloud. Escolhe uma versão nas Definições." });
           return;

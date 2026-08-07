@@ -14,6 +14,8 @@ import { formatPtNumber } from "@/lib/utils";
 const REPORT_LOGO = "/academic-hub-icon-current-v8.svg";
 type PrintOrientation = "portrait" | "landscape";
 
+type ReportDensity = "comfortable" | "balanced" | "compact";
+
 function sortCourses(a: Course, b: Course): number {
   if (a.year !== b.year) return a.year - b.year;
   if (a.semester !== b.semester) return a.semester - b.semester;
@@ -57,6 +59,12 @@ function compactAssessmentSummary(
   return parts.length > 0 ? parts.join(" · ") : "—";
 }
 
+function reportDensity(courseCount: number): ReportDensity {
+  if (courseCount <= 16) return "comfortable";
+  if (courseCount <= 24) return "balanced";
+  return "compact";
+}
+
 function ReportBrand() {
   return (
     <div className="academic-report-brand" aria-label="Academic Hub">
@@ -86,6 +94,7 @@ export default function AcademicReportPage() {
     () => state.courses.filter((course) => course.isCompleted).sort(sortCourses),
     [state.courses],
   );
+  const density = reportDensity(completed.length);
 
   const reportRows = useMemo(
     () => completed.map((course) => {
@@ -134,7 +143,7 @@ export default function AcademicReportPage() {
   };
 
   return (
-    <div className={`academic-report-view academic-report-${orientation}`}>
+    <div className={`academic-report-view academic-report-${orientation} academic-report-density-${density}`}>
       <div className="academic-report-actions print:hidden">
         <Button
           variant="outline"

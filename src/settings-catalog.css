@@ -1,0 +1,24 @@
+@media (min-width: 768px) {
+  /* Course catalog cards: keep short labels readable and use the available width. */
+  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 {
+    flex-wrap: nowrap;
+    column-gap: 0.75rem;
+  }
+
+  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > div {
+    flex-shrink: 0;
+  }
+
+  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > span {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > span.italic {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

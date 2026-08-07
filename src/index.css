@@ -208,6 +208,11 @@
     overflow-x: clip;
   }
 
+  /* O novo CloudAccountPanel substitui integralmente o antigo cartão técnico de conta/cloud. */
+  .settings-legacy > div > div:has([role="switch"]):has(input[type="password"]) {
+    display: none !important;
+  }
+
   .settings-premium .premium-card > div.flex.items-center {
     min-height: 7.25rem;
     align-items: center !important;

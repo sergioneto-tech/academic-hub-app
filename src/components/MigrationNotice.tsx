@@ -36,7 +36,7 @@ export default function MigrationNotice() {
         </button>
 
         <div className="border-b bg-primary/5 px-6 py-6 pr-16 sm:px-8">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold-soft))] px-3 py-1 text-xs font-semibold text-[hsl(var(--gold))]">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-amber-400/70 bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-950 dark:border-amber-500/60 dark:bg-amber-400/15 dark:text-amber-200">
             <ShieldCheck className="h-4 w-4" />
             Nova base de dados ativa
           </div>

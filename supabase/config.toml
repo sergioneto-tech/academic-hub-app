@@ -1,1 +1,5 @@
 project_id = "dayettlozmkjagrymjai"
+
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/hook_restrict_signup_to_uab"

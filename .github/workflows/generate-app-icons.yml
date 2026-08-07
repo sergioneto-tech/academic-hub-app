@@ -19,20 +19,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install SVG renderer
+      - name: Install image tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y librsvg2-bin
+          sudo apt-get install -y imagemagick
 
-      - name: Generate PNG icons from master SVG
+      - name: Extract embedded artwork and generate PNG icons
         run: |
           set -euo pipefail
           SRC="public/academic-hub-icon-current-v8.svg"
-          rsvg-convert -w 32 -h 32 "$SRC" -o public/academic-hub-icon-v10-32.png
-          rsvg-convert -w 180 -h 180 "$SRC" -o public/academic-hub-icon-v10-180.png
-          rsvg-convert -w 192 -h 192 "$SRC" -o public/academic-hub-icon-v10-192.png
-          rsvg-convert -w 512 -h 512 "$SRC" -o public/academic-hub-icon-v10-512.png
-          cp public/academic-hub-icon-v10-512.png public/academic-hub-icon-v10-512-maskable.png
+          python - <<'PY'
+          import base64, re
+          from pathlib import Path
+
+          svg = Path("public/academic-hub-icon-current-v8.svg").read_text(encoding="utf-8")
+          match = re.search(r'data:image/jpeg;base64,([^"\']+)', svg, re.S)
+          if not match:
+              raise SystemExit("Embedded JPEG artwork was not found in the master SVG")
+          raw = re.sub(r"\s+", "", match.group(1))
+          Path("/tmp/academic-hub-master.jpg").write_bytes(base64.b64decode(raw))
+          PY
+
+          identify /tmp/academic-hub-master.jpg
+          convert /tmp/academic-hub-master.jpg -strip -resize 32x32! public/academic-hub-icon-v10-32.png
+          convert /tmp/academic-hub-master.jpg -strip -resize 180x180! public/academic-hub-icon-v10-180.png
+          convert /tmp/academic-hub-master.jpg -strip -resize 192x192! public/academic-hub-icon-v10-192.png
+          convert /tmp/academic-hub-master.jpg -strip -resize 512x512! public/academic-hub-icon-v10-512.png
+          convert /tmp/academic-hub-master.jpg -strip -resize 410x410 -gravity center -background '#071D40' -extent 512x512 public/academic-hub-icon-v10-512-maskable.png
+
+          # Fail the workflow if a generated icon is suspiciously tiny/blank.
+          test "$(stat -c%s public/academic-hub-icon-v10-192.png)" -gt 5000
+          test "$(stat -c%s public/academic-hub-icon-v10-512.png)" -gt 15000
 
       - name: Commit generated icons
         run: |
@@ -48,5 +65,5 @@ jobs:
             echo "Icons already up to date."
             exit 0
           fi
-          git commit -m "Generate app icons from master Academic Hub logo"
+          git commit -m "Regenerate visible Academic Hub app icons"
           git push

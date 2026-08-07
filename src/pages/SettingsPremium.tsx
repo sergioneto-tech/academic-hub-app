@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import CloudAccountPanel from "@/components/CloudAccountPanel";
 import { ProfileAvatar } from "@/components/ProfileAvatarEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -252,11 +253,21 @@ export default function SettingsPremium() {
         </Card>
       </section>
 
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Conta Academic Hub</h2>
+          <p className="text-xs text-muted-foreground">
+            Conta institucional UAb, sincronização cloud, regularização de contas antigas e segurança dos dados.
+          </p>
+        </div>
+        <CloudAccountPanel />
+      </section>
+
       <section>
         <div className="mb-4">
-          <h2 className="text-lg font-semibold">Dados académicos e sincronização</h2>
+          <h2 className="text-lg font-semibold">Dados académicos</h2>
           <p className="text-xs text-muted-foreground">
-            Licenciatura, plano automático, backups, conta cloud e catálogo completo de cadeiras.
+            Licenciatura, plano automático, backups e catálogo completo de cadeiras.
           </p>
         </div>
         <div className="settings-legacy [&>div>div:first-child]:hidden">

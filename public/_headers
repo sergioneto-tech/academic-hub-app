@@ -23,20 +23,20 @@
 /academic-hub-premium.svg
   Cache-Control: public, max-age=31536000, immutable
 
-/academic-hub-icon-v8.svg
+/academic-hub-icon-current-v8.svg
   Cache-Control: public, max-age=31536000, immutable
 
-/academic-hub-icon-v6-32.png
+/academic-hub-icon-v9-32.png
   Cache-Control: public, max-age=31536000, immutable
 
-/academic-hub-icon-v6-180.png
+/academic-hub-icon-v9-180.png
   Cache-Control: public, max-age=31536000, immutable
 
-/academic-hub-icon-v6-192.png
+/academic-hub-icon-v9-192.png
   Cache-Control: public, max-age=31536000, immutable
 
-/academic-hub-icon-v6-512.png
+/academic-hub-icon-v9-512.png
   Cache-Control: public, max-age=31536000, immutable
 
-/academic-hub-icon-v6-512-maskable.png
+/academic-hub-icon-v9-512-maskable.png
   Cache-Control: public, max-age=31536000, immutable

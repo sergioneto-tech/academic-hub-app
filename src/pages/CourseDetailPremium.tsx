@@ -6,6 +6,7 @@ import EvaluationModeSelector from "@/components/EvaluationModeSelector";
 import { useAppStore } from "@/lib/AppStore";
 import CourseDetail from "@/pages/CourseDetail";
 import FlexibleCourseDetail from "@/pages/FlexibleCourseDetail";
+import HistoricalCourseDetail from "@/pages/HistoricalCourseDetail";
 
 export default function CourseDetailPremium() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ export default function CourseDetailPremium() {
   if (!id || !course) return <CourseDetail />;
 
   const regime = course.evaluationRegime ?? "legacy";
+  const historicalMode = course.legacyEvaluationMode ?? "efolios-exam";
 
   return (
     <>
@@ -25,7 +27,9 @@ export default function CourseDetailPremium() {
       {regime === "legacy" && <EvaluationModeSelector courseId={id} />}
       {regime === "regulation-2026"
         ? <FlexibleCourseDetail courseId={id} />
-        : <CourseDetail />}
+        : historicalMode === "efolios-exam"
+          ? <CourseDetail />
+          : <HistoricalCourseDetail courseId={id} mode={historicalMode} />}
     </>
   );
 }

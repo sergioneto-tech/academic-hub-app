@@ -46,21 +46,37 @@ type UserStateRow = {
   updated_at: string;
 };
 
+export type AccountMigrationStatus = {
+  user_id: string;
+  first_detected_at: string;
+  deadline: string;
+};
+
 const AUTH_KEY = "academic_hub_cloud_auth";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const UAB_STUDENT_EMAIL_DOMAIN = "estudante.uab.pt";
+
+export function isUabStudentEmail(email?: string | null): boolean {
+  const normalized = String(email ?? "").trim().toLowerCase();
+  if (!EMAIL_PATTERN.test(normalized)) return false;
+  return normalized.split("@")[1] === UAB_STUDENT_EMAIL_DOMAIN;
+}
 
 function normUrl(u: string) {
   return (u || "").trim().replace(/\/$/, "");
 }
 
 function validateCredentials(email: string, password: string, options?: { creatingAccount?: boolean }) {
-  const normalizedEmail = email.trim();
+  const normalizedEmail = email.trim().toLowerCase();
 
   if (!normalizedEmail) {
     throw new Error("Indica o email antes de continuar.");
   }
   if (!EMAIL_PATTERN.test(normalizedEmail)) {
     throw new Error("Indica um endereço de email válido.");
+  }
+  if (options?.creatingAccount && !isUabStudentEmail(normalizedEmail)) {
+    throw new Error(`A criação de conta é exclusiva a estudantes da UAb. Utiliza o teu email @${UAB_STUDENT_EMAIL_DOMAIN}.`);
   }
   if (!password) {
     throw new Error("Indica a password antes de continuar.");
@@ -123,7 +139,6 @@ export function storeSession(config: CloudConfig, session: AuthSession | null) {
 }
 
 function headers(config: CloudConfig, session?: AuthSession | null) {
-  // Nunca permitir service_role no cliente
   assertNotServiceRoleKey(config.supabaseAnonKey);
   const h: Record<string, string> = {
     apikey: config.supabaseAnonKey,
@@ -133,8 +148,7 @@ function headers(config: CloudConfig, session?: AuthSession | null) {
   return h;
 }
 
-async function postJson<T>(url: string, init: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+async function parseResponse(res: Response): Promise<any> {
   const text = await res.text();
   let json: any = null;
   try {
@@ -145,7 +159,12 @@ async function postJson<T>(url: string, init: RequestInit): Promise<T> {
   if (!res.ok) {
     throw new Error(friendlyAuthError(json, res.statusText));
   }
-  return json as T;
+  return json;
+}
+
+async function postJson<T>(url: string, init: RequestInit): Promise<T> {
+  const res = await fetch(url, init);
+  return (await parseResponse(res)) as T;
 }
 
 export type SignUpResult = {
@@ -157,8 +176,6 @@ export async function signUp(config: CloudConfig, email: string, password: strin
   const credentials = validateCredentials(email, password, { creatingAccount: true });
   const signupUrl = new URL(`${normUrl(config.supabaseUrl)}/auth/v1/signup`);
 
-  // Garante que o link de confirmação regressa ao ambiente onde a conta foi criada.
-  // Em Preview volta ao pages.dev; em produção volta ao domínio oficial.
   if (typeof window !== "undefined" && window.location?.origin) {
     signupUrl.searchParams.set("redirect_to", window.location.origin);
   }
@@ -169,8 +186,6 @@ export async function signUp(config: CloudConfig, email: string, password: strin
     body: JSON.stringify(credentials),
   });
 
-  // When email confirmation is required, Supabase returns the user object
-  // but without a valid access_token / refresh_token
   if (!data?.access_token) {
     return { session: null, confirmationRequired: true };
   }
@@ -194,6 +209,75 @@ export async function refreshSession(config: CloudConfig, session: AuthSession):
     headers: headers(config),
     body: JSON.stringify({ refresh_token: session.refresh_token }),
   });
+}
+
+export async function requestAccountEmailChange(
+  config: CloudConfig,
+  session: AuthSession,
+  newEmail: string,
+): Promise<void> {
+  const normalizedEmail = newEmail.trim().toLowerCase();
+  if (!isUabStudentEmail(normalizedEmail)) {
+    throw new Error(`Indica o teu endereço institucional @${UAB_STUDENT_EMAIL_DOMAIN}.`);
+  }
+
+  const url = new URL(`${normUrl(config.supabaseUrl)}/auth/v1/user`);
+  if (typeof window !== "undefined" && window.location?.origin) {
+    url.searchParams.set("redirect_to", window.location.origin);
+  }
+
+  await postJson<any>(url.toString(), {
+    method: "PUT",
+    headers: headers(config, session),
+    body: JSON.stringify({ email: normalizedEmail }),
+  });
+}
+
+async function fetchMigrationStatus(config: CloudConfig, session: AuthSession): Promise<AccountMigrationStatus | null> {
+  const url = `${normUrl(config.supabaseUrl)}/rest/v1/account_email_migration?user_id=eq.${session.user.id}&select=user_id,first_detected_at,deadline&limit=1`;
+  const res = await fetch(url, { headers: headers(config, session), cache: "no-store" });
+  if (!res.ok) {
+    const text = await res.text();
+    let json: any = null;
+    try {
+      json = text ? JSON.parse(text) : null;
+    } catch {
+      // ignore
+    }
+    const msg = json?.message || json?.hint || json?.details || res.statusText || "Erro ao consultar regularização da conta";
+    throw new Error(String(msg));
+  }
+  const rows = (await res.json()) as AccountMigrationStatus[];
+  return rows?.[0] ?? null;
+}
+
+export async function getOrCreateAccountMigrationStatus(
+  config: CloudConfig,
+  session: AuthSession,
+): Promise<AccountMigrationStatus | null> {
+  if (isUabStudentEmail(session.user.email)) return null;
+
+  const existing = await fetchMigrationStatus(config, session);
+  if (existing) return existing;
+
+  const url = `${normUrl(config.supabaseUrl)}/rest/v1/account_email_migration`;
+  const res = await fetch(url, {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      ...headers(config, session),
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({ user_id: session.user.id }),
+  });
+
+  if (res.status === 409) {
+    return fetchMigrationStatus(config, session);
+  }
+
+  const json = await parseResponse(res);
+  const rows = (json as AccountMigrationStatus[]) ?? [];
+  return rows[0] ?? fetchMigrationStatus(config, session);
 }
 
 export async function fetchRemoteState(config: CloudConfig, session: AuthSession): Promise<UserStateRow | null> {
@@ -242,7 +326,6 @@ export async function upsertRemoteState(config: CloudConfig, session: AuthSessio
 }
 
 export async function deleteUserAccount(config: CloudConfig, session: AuthSession): Promise<void> {
-  // Primeiro, apagar os dados do utilizador na tabela user_state
   const deleteStateUrl = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?user_id=eq.${session.user.id}`;
   const deleteStateRes = await fetch(deleteStateUrl, {
     method: "DELETE",
@@ -261,7 +344,6 @@ export async function deleteUserAccount(config: CloudConfig, session: AuthSessio
     throw new Error(String(msg));
   }
 
-  // Depois, apagar a conta de autenticação
   const deleteAuthUrl = `${normUrl(config.supabaseUrl)}/auth/v1/user`;
   const deleteAuthRes = await fetch(deleteAuthUrl, {
     method: "DELETE",

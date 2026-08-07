@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputDirectory = resolve(root, "public");
-const SAMPLE_SCALE = 3;
+
+const SOURCE_WIDTH = 63;
+const SOURCE_HEIGHT = 57;
+const SOURCE_PIXELS = Buffer.from("PASTE_REDACTED", "base64");
+const NAVY = [7, 29, 64, 255];
 
 const crcTable = new Uint32Array(256);
 for (let value = 0; value < 256; value += 1) {
@@ -54,94 +58,65 @@ function encodePng(width, height, pixels) {
   ]);
 }
 
-function distanceToSegment(x, y, x1, y1, x2, y2) {
-  const dx = x2 - x1;
-  const dy = y2 - y1;
-  const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared === 0) return Math.hypot(x - x1, y - y1);
-  const t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / lengthSquared));
-  return Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
-}
-
-function roundedRectDistance(x, y, centreX, centreY, halfWidth, halfHeight, radius) {
-  const dx = Math.abs(x - centreX) - (halfWidth - radius);
-  const dy = Math.abs(y - centreY) - (halfHeight - radius);
-  const outside = Math.hypot(Math.max(dx, 0), Math.max(dy, 0));
-  return outside + Math.min(Math.max(dx, dy), 0) - radius;
-}
-
-function mix(a, b, amount) {
-  return Math.round(a + (b - a) * amount);
-}
-
-function blend(base, overlay, alpha) {
+function sourcePixel(x, y) {
+  if (x < 0 || x >= SOURCE_WIDTH || y < 0 || y >= SOURCE_HEIGHT) return NAVY;
+  const offset = (y * SOURCE_WIDTH + x) * 4;
   return [
-    mix(base[0], overlay[0], alpha),
-    mix(base[1], overlay[1], alpha),
-    mix(base[2], overlay[2], alpha),
-    255,
+    SOURCE_PIXELS[offset],
+    SOURCE_PIXELS[offset + 1],
+    SOURCE_PIXELS[offset + 2],
+    SOURCE_PIXELS[offset + 3],
   ];
 }
 
-function sampleIcon(x, y, maskable) {
-  const transparent = [0, 0, 0, 0];
-  const navy = [7, 29, 64, 255];
-  const navyLight = [16, 57, 120, 255];
-  const white = [250, 251, 253, 255];
-  const gold = [205, 160, 72, 255];
-  const goldLight = [231, 194, 111, 255];
-
-  const tileHalf = maskable ? 0.5 : 0.455;
-  const tileRadius = maskable ? 0 : 0.13;
-  const tileDistance = roundedRectDistance(x, y, 0.5, 0.5, tileHalf, tileHalf, tileRadius);
-  if (!maskable && tileDistance > 0) return transparent;
-
-  const radial = Math.max(0, 1 - Math.hypot(x - 0.33, y - 0.24) / 0.9);
-  let colour = blend(navy, navyLight, radial * 0.34);
-
-  const left = maskable ? 0.22 : 0.235;
-  const right = maskable ? 0.78 : 0.765;
-  const top = maskable ? 0.27 : 0.28;
-  const bottom = maskable ? 0.73 : 0.72;
-
-  const aLeft = distanceToSegment(x, y, left, bottom, 0.40, top) <= 0.044;
-  const aRight = distanceToSegment(x, y, 0.40, top, 0.55, bottom) <= 0.044;
-  const aCross = distanceToSegment(x, y, 0.30, 0.55, 0.49, 0.55) <= 0.027;
-  if (aLeft || aRight || aCross) colour = white;
-
-  const hLeft = Math.abs(x - 0.535) <= 0.040 && y >= top && y <= bottom;
-  const hRight = Math.abs(x - right) <= 0.040 && y >= top && y <= bottom;
-  const hCross = Math.abs(y - 0.52) <= 0.032 && x >= 0.535 && x <= right;
-  if (hLeft || hRight || hCross) colour = gold;
-
-  const highlight = Math.abs(x - (right - 0.018)) <= 0.011 && y >= top + 0.025 && y <= bottom - 0.025;
-  if (highlight) colour = goldLight;
-
-  return colour;
+function bilinear(x, y) {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const x1 = x0 + 1;
+  const y1 = y0 + 1;
+  const tx = x - x0;
+  const ty = y - y0;
+  const p00 = sourcePixel(x0, y0);
+  const p10 = sourcePixel(x1, y0);
+  const p01 = sourcePixel(x0, y1);
+  const p11 = sourcePixel(x1, y1);
+  return p00.map((_, c) => Math.round(
+    p00[c] * (1 - tx) * (1 - ty) +
+    p10[c] * tx * (1 - ty) +
+    p01[c] * (1 - tx) * ty +
+    p11[c] * tx * ty
+  ));
 }
 
 function renderIcon(size, maskable = false) {
   const pixels = Buffer.alloc(size * size * 4);
-  const samples = SAMPLE_SCALE * SAMPLE_SCALE;
+  const squareSource = Math.max(SOURCE_WIDTH, SOURCE_HEIGHT);
+  const safeScale = maskable ? 0.88 : 1;
+  const renderedSize = size * safeScale;
+  const renderedOffset = (size - renderedSize) / 2;
+  const sourceYOffset = (squareSource - SOURCE_HEIGHT) / 2;
 
   for (let py = 0; py < size; py += 1) {
     for (let px = 0; px < size; px += 1) {
-      const totals = [0, 0, 0, 0];
-      for (let sy = 0; sy < SAMPLE_SCALE; sy += 1) {
-        for (let sx = 0; sx < SAMPLE_SCALE; sx += 1) {
-          const sample = sampleIcon(
-            (px + (sx + 0.5) / SAMPLE_SCALE) / size,
-            (py + (sy + 0.5) / SAMPLE_SCALE) / size,
-            maskable,
-          );
-          for (let channel = 0; channel < 4; channel += 1) totals[channel] += sample[channel];
-        }
+      let colour = NAVY;
+      if (
+        px >= renderedOffset &&
+        px < renderedOffset + renderedSize &&
+        py >= renderedOffset &&
+        py < renderedOffset + renderedSize
+      ) {
+        const sxSquare = ((px - renderedOffset + 0.5) / renderedSize) * squareSource - 0.5;
+        const sySquare = ((py - renderedOffset + 0.5) / renderedSize) * squareSource - 0.5;
+        const sx = sxSquare;
+        const sy = sySquare - sourceYOffset;
+        colour = bilinear(sx, sy);
       }
 
       const offset = (py * size + px) * 4;
-      for (let channel = 0; channel < 4; channel += 1) {
-        pixels[offset + channel] = Math.round(totals[channel] / samples);
-      }
+      pixels[offset] = colour[0];
+      pixels[offset + 1] = colour[1];
+      pixels[offset + 2] = colour[2];
+      pixels[offset + 3] = colour[3];
     }
   }
 
@@ -150,11 +125,11 @@ function renderIcon(size, maskable = false) {
 
 mkdirSync(outputDirectory, { recursive: true });
 for (const [fileName, size, maskable] of [
-  ["academic-hub-icon-v6-32.png", 32, false],
-  ["academic-hub-icon-v6-180.png", 180, false],
-  ["academic-hub-icon-v6-192.png", 192, false],
-  ["academic-hub-icon-v6-512.png", 512, false],
-  ["academic-hub-icon-v6-512-maskable.png", 512, true],
+  ["academic-hub-icon-v9-32.png", 32, false],
+  ["academic-hub-icon-v9-180.png", 180, false],
+  ["academic-hub-icon-v9-192.png", 192, false],
+  ["academic-hub-icon-v9-512.png", 512, false],
+  ["academic-hub-icon-v9-512-maskable.png", 512, true],
 ]) {
   writeFileSync(resolve(outputDirectory, fileName), renderIcon(size, maskable));
   console.log(`Generated ${fileName} (${size}x${size})`);

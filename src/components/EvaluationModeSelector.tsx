@@ -1,4 +1,4 @@
-import { Scale } from "lucide-react";
+import { History, Scale } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppStore } from "@/lib/AppStore";
-import type { EvaluationRegime } from "@/lib/types";
+import type { EvaluationRegime, LegacyEvaluationMode } from "@/lib/types";
 
 export default function EvaluationModeSelector({ courseId }: { courseId: string }) {
   const { state, updateCourse } = useAppStore();
@@ -18,47 +18,83 @@ export default function EvaluationModeSelector({ courseId }: { courseId: string 
   if (!course) return null;
 
   const regime: EvaluationRegime = course.evaluationRegime ?? "legacy";
+  const historicalMode: LegacyEvaluationMode = course.legacyEvaluationMode ?? "efolios-exam";
 
   const setRegime = (next: EvaluationRegime) => {
     updateCourse(courseId, {
       evaluationRegime: next,
-      evaluationModel: course.evaluationModel ?? "custom",
+      evaluationModel: next === "regulation-2026" ? (course.evaluationModel ?? "custom") : course.evaluationModel,
+    });
+  };
+
+  const setHistoricalMode = (next: LegacyEvaluationMode) => {
+    updateCourse(courseId, {
+      evaluationRegime: "legacy",
+      legacyEvaluationMode: next,
+      manualFinalGrade: next === "final-grade-only" ? course.manualFinalGrade : undefined,
     });
   };
 
   return (
     <div className="mx-auto max-w-5xl px-4 pt-4 md:px-6">
       <Card className="premium-card">
-        <CardContent className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] sm:items-center md:p-5">
+        <CardContent className="space-y-5 p-4 md:p-5">
           <div className="flex min-w-0 gap-3">
             <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--gold-soft))] text-[hsl(var(--gold))]">
               <Scale className="h-5 w-5" />
             </div>
             <div>
-              <div className="font-semibold">Modo de avaliação</div>
+              <div className="font-semibold">Como foi avaliada esta cadeira?</div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                A escolha é feita por cadeira e não elimina notas, datas ou elementos já registados.
+                Seleciona a estrutura indicada no PUC ou, para cadeiras antigas, a forma de avaliação utilizada na altura. Esta escolha não elimina notas ou datas já registadas.
               </p>
             </div>
           </div>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor={`evaluation-mode-${courseId}`} className="text-xs text-muted-foreground">
-              Regime aplicável
-            </Label>
-            <Select value={regime} onValueChange={(value) => setRegime(value as EvaluationRegime)}>
-              <SelectTrigger id={`evaluation-mode-${courseId}`}>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="legacy">Regime publicado — e-fólios + g-fólio</SelectItem>
-                <SelectItem value="regulation-2026">Configuração flexível baseada no PUC</SelectItem>
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] leading-4 text-muted-foreground">
-              A configuração flexível corresponde ao projeto colocado em consulta pública e deve ser confirmada no PUC.
-            </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor={`evaluation-regime-${courseId}`} className="text-xs text-muted-foreground">
+                Período / estrutura
+              </Label>
+              <Select value={regime} onValueChange={(value) => setRegime(value as EvaluationRegime)}>
+                <SelectTrigger id={`evaluation-regime-${courseId}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="legacy">Regime anterior ou histórico</SelectItem>
+                  <SelectItem value="regulation-2026">Configuração flexível conforme o PUC</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {regime === "legacy" && (
+              <div className="grid gap-1.5">
+                <Label htmlFor={`historical-mode-${courseId}`} className="text-xs text-muted-foreground">
+                  Estrutura de avaliação
+                </Label>
+                <Select value={historicalMode} onValueChange={(value) => setHistoricalMode(value as LegacyEvaluationMode)}>
+                  <SelectTrigger id={`historical-mode-${courseId}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="efolios-exam">e-fólios + g-fólio / prova final</SelectItem>
+                    <SelectItem value="exam-only">Apenas exame / prova final</SelectItem>
+                    <SelectItem value="custom">Avaliação histórica personalizada</SelectItem>
+                    <SelectItem value="final-grade-only">Registar apenas a nota final</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
+
+          {regime === "legacy" && historicalMode !== "efolios-exam" && (
+            <div className="flex items-start gap-2 rounded-xl border bg-muted/25 p-3 text-xs leading-5 text-muted-foreground">
+              <History className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <span>
+                Esta opção destina-se também a unidades curriculares antigas. Não é necessário inventar e-fólios ou ponderações que não existiam ou que já não são conhecidos.
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

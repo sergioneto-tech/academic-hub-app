@@ -19,6 +19,7 @@ const PersonalStudyPlan = lazy(() => import("./pages/PersonalStudyPlan"));
 const HelpPage = lazy(() => import("./pages/Help"));
 const LegalPage = lazy(() => import("./pages/Legal"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
+const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
 
 const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
@@ -41,6 +42,7 @@ function AcademicHubApp() {
           <Route path="/calendario" element={<LazyPage><CalendarPage /></LazyPage>} />
           <Route path="/historico" element={<LazyPage><HistoryPage /></LazyPage>} />
           <Route path="/historico/relatorio" element={<LazyPage><AcademicReportPage /></LazyPage>} />
+          <Route path="/historico/relatorio-completo" element={<LazyPage><AcademicProgressReport /></LazyPage>} />
           <Route path="/plano" element={<LazyPage><StudyPlan /></LazyPage>} />
           <Route path="/plano/estudo" element={<LazyPage><PersonalStudyPlan /></LazyPage>} />
           <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />

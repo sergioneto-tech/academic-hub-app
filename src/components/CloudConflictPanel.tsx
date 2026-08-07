@@ -7,12 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { useAppStore } from "@/lib/AppStore";
 import { getStoredSession, isUabStudentEmail, type CloudConfig, upsertRemoteState } from "@/lib/cloudSync";
+import {
+  CLOUD_CONFLICT_CHANGED_EVENT,
+  CLOUD_CONFLICT_KEY,
+  clearCloudConflict,
+  getDeviceId,
+  getDeviceLabel,
+  setSyncBaseline,
+} from "@/lib/cloudSyncState";
 import type { AppState } from "@/lib/types";
 import { APP_VERSION } from "@/lib/version";
 
-export const CLOUD_CONFLICT_KEY = "academic_hub_cloud_conflict";
-export const CLOUD_CONFLICT_CHANGED_EVENT = "academic-hub:cloud-conflict-changed";
-export const LAST_REMOTE_APPLIED_KEY = "academic_hub_last_remote_applied";
+export { CLOUD_CONFLICT_CHANGED_EVENT, CLOUD_CONFLICT_KEY } from "@/lib/cloudSyncState";
 
 type ConflictPayload = {
   createdAt: string;
@@ -27,22 +33,14 @@ function parseConflict(): ConflictPayload | null {
   try {
     const raw = localStorage.getItem(CLOUD_CONFLICT_KEY);
     return raw ? (JSON.parse(raw) as ConflictPayload) : null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function formatDateTime(value?: string) {
   if (!value) return "Sem data registada";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("pt-PT", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return date.toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function summary(state: AppState) {
@@ -50,12 +48,6 @@ function summary(state: AppState) {
   const active = state.courses.filter((course) => course.isActive).length;
   const graded = state.assessments.filter((item) => item.grade !== null).length;
   return `${completed} concluídas · ${active} ativas · ${graded} avaliações com nota`;
-}
-
-function currentDeviceLabel() {
-  const ua = navigator.userAgent.toLowerCase();
-  const type = /ipad|tablet/.test(ua) ? "tablet" : /mobi|android|iphone/.test(ua) ? "telemóvel" : "computador";
-  return `${type} · ${navigator.platform || "dispositivo"}`;
 }
 
 export default function CloudConflictPanel() {
@@ -83,12 +75,6 @@ export default function CloudConflictPanel() {
 
   if (location.pathname !== "/definicoes" || !conflict) return null;
 
-  const clearConflict = () => {
-    localStorage.removeItem(CLOUD_CONFLICT_KEY);
-    window.dispatchEvent(new Event(CLOUD_CONFLICT_CHANGED_EVENT));
-    setConflict(null);
-  };
-
   const chooseVersion = async (choice: "local" | "remote") => {
     if (!cloudConfig) return;
     const session = getStoredSession(cloudConfig);
@@ -100,41 +86,32 @@ export default function CloudConflictPanel() {
     try {
       setBusy(choice);
       const selected = choice === "local" ? conflict.localState : conflict.remoteState;
-      const preparedAt = new Date().toISOString();
       const prepared = {
         ...selected,
         meta: { ...(selected.meta ?? {}), appVersion: APP_VERSION },
-        sync: { ...(selected.sync ?? { enabled: true }), enabled: true, lastSyncAt: preparedAt },
-        syncMeta: { deviceLabel: currentDeviceLabel() },
+        sync: { ...(selected.sync ?? { enabled: true }), enabled: true },
+        syncMeta: { deviceId: getDeviceId(), deviceLabel: getDeviceLabel() },
       } as AppState;
 
-      // O conflito permanece bloqueado enquanto a versão escolhida é gravada, evitando novo auto-upload concorrente.
-      replaceState(prepared);
+      // Primeiro grava a escolha na cloud; só depois torna essa versão a referência comum local.
       const saved = await upsertRemoteState(cloudConfig, session, prepared);
-
-      // Usa a data exata devolvida pelo servidor. Assim, após F5, local e cloud partem da mesma referência.
-      const syncedAt = saved.updated_at || preparedAt;
+      const syncedAt = saved.updated_at || new Date().toISOString();
       const finalState: AppState = {
         ...prepared,
         sync: { ...(prepared.sync ?? { enabled: true }), enabled: true, lastSyncAt: syncedAt },
       };
+      setSyncBaseline(finalState);
       replaceState(finalState);
-      localStorage.setItem(LAST_REMOTE_APPLIED_KEY, syncedAt);
-      clearConflict();
+      clearCloudConflict();
+      setConflict(null);
 
       toast({
         title: choice === "local" ? "Versão deste dispositivo escolhida" : "Versão da cloud escolhida",
-        description: "A versão escolhida foi aplicada e gravada na cloud. Os dispositivos estão novamente sincronizados.",
+        description: "Conflito resolvido. Esta versão é agora a referência comum e o cartão não voltará a aparecer enquanto não existirem alterações concorrentes reais.",
       });
     } catch (error) {
-      toast({
-        title: "Não foi possível concluir",
-        description: error instanceof Error ? error.message : "Erro inesperado ao resolver o conflito.",
-        variant: "destructive",
-      });
-    } finally {
-      setBusy(null);
-    }
+      toast({ title: "Não foi possível concluir", description: error instanceof Error ? error.message : "Erro inesperado ao resolver o conflito.", variant: "destructive" });
+    } finally { setBusy(null); }
   };
 
   return (
@@ -142,14 +119,10 @@ export default function CloudConflictPanel() {
       <Card className="border-amber-500/45 bg-amber-500/[0.04] shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-start gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/12 text-amber-600">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-500/12 text-amber-600"><AlertTriangle className="h-5 w-5" /></div>
             <div>
               <CardTitle className="text-lg">Escolher a versão dos dados</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Foram encontradas alterações diferentes neste dispositivo e na cloud. Escolhe qual versão deve ficar válida. Depois da escolha, o Academic Hub grava-a automaticamente na cloud.
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Foram encontradas alterações diferentes neste dispositivo e na cloud. Escolhe qual versão deve ficar válida. Esta escolha passa a ser a nova referência comum para os teus dispositivos.</p>
             </div>
           </div>
         </CardHeader>
@@ -158,21 +131,14 @@ export default function CloudConflictPanel() {
             <div className="flex items-center gap-2 font-semibold"><MonitorSmartphone className="h-4 w-4" /> Este dispositivo</div>
             <div className="mt-2 text-sm text-muted-foreground">Última referência: {formatDateTime(conflict.localUpdatedAt)}</div>
             <div className="mt-1 text-sm">{summary(conflict.localState)}</div>
-            <Button className="mt-4 w-full" variant="outline" disabled={busy !== null} onClick={() => void chooseVersion("local")}>
-              <Upload className="mr-2 h-4 w-4" />
-              {busy === "local" ? "A guardar…" : "Usar esta versão"}
-            </Button>
+            <Button className="mt-4 w-full" variant="outline" disabled={busy !== null} onClick={() => void chooseVersion("local")}><Upload className="mr-2 h-4 w-4" />{busy === "local" ? "A guardar…" : "Usar esta versão"}</Button>
           </section>
-
           <section className="rounded-xl border bg-background p-4">
             <div className="flex items-center gap-2 font-semibold"><CloudDownload className="h-4 w-4" /> Versão da cloud</div>
             <div className="mt-2 text-sm text-muted-foreground">Gravada: {formatDateTime(conflict.remoteUpdatedAt)}</div>
             {conflict.remoteDeviceLabel ? <div className="mt-1 text-xs text-muted-foreground">Origem: {conflict.remoteDeviceLabel}</div> : null}
             <div className="mt-1 text-sm">{summary(conflict.remoteState)}</div>
-            <Button className="mt-4 w-full" disabled={busy !== null} onClick={() => void chooseVersion("remote")}>
-              <CloudDownload className="mr-2 h-4 w-4" />
-              {busy === "remote" ? "A aplicar…" : "Usar versão da cloud"}
-            </Button>
+            <Button className="mt-4 w-full" disabled={busy !== null} onClick={() => void chooseVersion("remote")}><CloudDownload className="mr-2 h-4 w-4" />{busy === "remote" ? "A aplicar…" : "Usar versão da cloud"}</Button>
           </section>
         </CardContent>
       </Card>

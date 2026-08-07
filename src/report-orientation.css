@@ -18,13 +18,8 @@
   color: hsl(var(--accent-foreground));
 }
 
-/* Give the wordmark a little breathing room below the AH mark. */
-.academic-report-brand-name {
-  margin-top: 3px;
-}
-.academic-report-brand-rule {
-  margin-top: 3px;
-}
+.academic-report-brand-name { margin-top: 3px; }
+.academic-report-brand-rule { margin-top: 3px; }
 
 .academic-report-portrait .academic-report-sheet {
   width: min(210mm, calc(100vw - 3rem));
@@ -35,7 +30,6 @@
   min-height: 210mm;
 }
 
-/* Portrait page 2: one course = one line, using the whole page width. */
 .academic-report-portrait-table-wrap {
   flex: 1 1 auto;
   overflow: hidden;
@@ -61,7 +55,6 @@
 .academic-report-portrait-table th:nth-child(6) { width: 33%; }
 .academic-report-portrait-table th:nth-child(7) { width: 7%; }
 
-/* Screen preview follows the same adaptive density as print. */
 .academic-report-density-comfortable .academic-report-portrait-table { font-size: 9.5px; }
 .academic-report-density-comfortable .academic-report-portrait-table th,
 .academic-report-density-comfortable .academic-report-portrait-table td { padding: 5px 4px; }
@@ -114,32 +107,41 @@
 }
 
 @media print {
+  /* Print only the report canvas. The app shell is removed from the print flow entirely. */
   html,
   body,
-  #root,
-  #root > div,
-  main,
-  .academic-report-view {
+  #root {
     margin: 0 !important;
     padding: 0 !important;
     min-height: 0 !important;
+    height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
   }
 
-  /* The application shell must not contribute a third blank printed page. */
-  .min-h-dvh,
-  #root,
   #root > div,
+  #root > div > div,
   main {
+    margin: 0 !important;
+    padding: 0 !important;
     min-height: 0 !important;
-    height: auto !important;
+    height: 0 !important;
+    overflow: visible !important;
   }
+
+  .min-h-dvh { min-height: 0 !important; height: 0 !important; }
 
   .academic-report-view {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
     display: block !important;
-    position: relative !important;
-    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
     min-height: 0 !important;
+    height: auto !important;
     overflow: visible !important;
+    background: #fff !important;
   }
 
   .academic-report-sheet {
@@ -163,34 +165,23 @@
   html[data-report-orientation="portrait"] .academic-report-sheet {
     page: academicHubPortrait;
     width: 210mm !important;
-    height: 296mm !important;
-    min-height: 296mm !important;
-    max-height: 296mm !important;
+    height: 295.5mm !important;
+    min-height: 295.5mm !important;
+    max-height: 295.5mm !important;
     padding: 6mm 7mm 11mm !important;
   }
-  html[data-report-orientation="portrait"],
-  html[data-report-orientation="portrait"] body,
-  html[data-report-orientation="portrait"] #root,
-  html[data-report-orientation="portrait"] .academic-report-view {
-    width: 210mm !important;
-  }
+  html[data-report-orientation="portrait"] .academic-report-view { width: 210mm !important; }
 
   html[data-report-orientation="landscape"] .academic-report-sheet {
     page: academicHubLandscape;
     width: 297mm !important;
-    height: 209mm !important;
-    min-height: 209mm !important;
-    max-height: 209mm !important;
+    height: 208.5mm !important;
+    min-height: 208.5mm !important;
+    max-height: 208.5mm !important;
     padding: 5mm 8mm 10mm !important;
   }
-  html[data-report-orientation="landscape"],
-  html[data-report-orientation="landscape"] body,
-  html[data-report-orientation="landscape"] #root,
-  html[data-report-orientation="landscape"] .academic-report-view {
-    width: 297mm !important;
-  }
+  html[data-report-orientation="landscape"] .academic-report-view { width: 297mm !important; }
 
-  /* More breathing room around the logo wordmark without enlarging the whole header. */
   .academic-report-brand-name { margin-top: 0.9mm !important; }
   .academic-report-brand-rule { margin-top: 0.7mm !important; }
 
@@ -203,7 +194,6 @@
     padding: 0.8mm 2mm !important;
   }
 
-  /* Adaptive portrait density. */
   html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-portrait-table {
     font-size: 7.25pt;
     line-height: 1.08;
@@ -212,9 +202,7 @@
     padding: 1.35mm 0.9mm !important;
     font-size: 7pt;
   }
-  html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-portrait-table td {
-    padding: 1.25mm 0.9mm !important;
-  }
+  html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-portrait-table td { padding: 1.25mm 0.9mm !important; }
   html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-assessment-summary { font-size: 6.8pt !important; }
 
   html[data-report-orientation="portrait"] .academic-report-density-balanced .academic-report-portrait-table { font-size: 6.25pt; }
@@ -257,7 +245,6 @@
     padding-bottom: 1mm;
   }
 
-  /* Adaptive landscape density. */
   html[data-report-orientation="landscape"] .academic-report-density-comfortable .academic-report-detail-table { font-size: 7.2pt; }
   html[data-report-orientation="landscape"] .academic-report-density-comfortable .academic-report-detail-table th,
   html[data-report-orientation="landscape"] .academic-report-density-comfortable .academic-report-detail-table td { padding: 1.15mm 1.1mm; }

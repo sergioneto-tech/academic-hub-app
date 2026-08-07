@@ -7,6 +7,7 @@ import { applyTheme, getStoredTheme, getSystemTheme } from "@/lib/theme";
 import { UpdateProvider } from "@/lib/UpdateProvider";
 import { AppStoreProvider } from "./lib/AppStore";
 import { Toaster } from "@/components/ui/toaster";
+import LocalTimeIndicator from "@/components/LocalTimeIndicator";
 import App from "./App";
 
 const initialTheme = getStoredTheme() ?? getSystemTheme();
@@ -58,6 +59,7 @@ function renderApp() {
         <UpdateProvider>
           <AppStoreProvider>
             <App />
+            <LocalTimeIndicator />
             <Toaster />
           </AppStoreProvider>
         </UpdateProvider>

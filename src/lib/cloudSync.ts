@@ -5,6 +5,21 @@ export type CloudConfig = {
   supabaseAnonKey: string;
 };
 
+type JsonRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonRecord) : {};
+}
+
+function getStringField(value: unknown, ...keys: string[]): string | undefined {
+  const record = asRecord(value);
+  for (const key of keys) {
+    const candidate = record[key];
+    if (typeof candidate === "string" && candidate.trim()) return candidate;
+  }
+  return undefined;
+}
+
 function decodeBase64Url(input: string): string {
   const b64 = input.replace(/-/g, "+").replace(/_/g, "/");
   const pad = "=".repeat((4 - (b64.length % 4)) % 4);
@@ -15,8 +30,8 @@ function getJwtRole(jwt: string): string | undefined {
   try {
     const parts = jwt.split(".");
     if (parts.length < 2) return undefined;
-    const payload = JSON.parse(decodeBase64Url(parts[1]));
-    return payload?.role;
+    const payload = asRecord(JSON.parse(decodeBase64Url(parts[1])) as unknown);
+    return typeof payload.role === "string" ? payload.role : undefined;
   } catch {
     return undefined;
   }
@@ -88,8 +103,8 @@ function validateCredentials(email: string, password: string, options?: { creati
   return { email: normalizedEmail, password };
 }
 
-function friendlyAuthError(json: any, fallback: string): string {
-  const code = String(json?.code || json?.error_code || "");
+function friendlyAuthError(json: unknown, fallback: string): string {
+  const code = getStringField(json, "code", "error_code") ?? "";
 
   if (code === "anonymous_provider_disabled") {
     return "Indica um email e uma password válidos. A aplicação não cria contas anónimas.";
@@ -110,7 +125,7 @@ function friendlyAuthError(json: any, fallback: string): string {
     return "Email ou password incorretos.";
   }
 
-  return String(json?.msg || json?.message || json?.error_description || json?.error || fallback || "Erro");
+  return getStringField(json, "msg", "message", "error_description", "error") ?? fallback ?? "Erro";
 }
 
 export function getStoredSession(config: CloudConfig): AuthSession | null {
@@ -134,7 +149,7 @@ export function storeSession(config: CloudConfig, session: AuthSession | null) {
     }
     localStorage.setItem(AUTH_KEY, JSON.stringify({ url: normUrl(config.supabaseUrl), session }));
   } catch {
-    // ignore
+    // Sem impacto funcional quando o armazenamento local não está disponível.
   }
 }
 
@@ -148,13 +163,13 @@ function headers(config: CloudConfig, session?: AuthSession | null) {
   return h;
 }
 
-async function parseResponse(res: Response): Promise<any> {
+async function parseResponse(res: Response): Promise<unknown> {
   const text = await res.text();
-  let json: any = null;
+  let json: unknown = null;
   try {
-    json = text ? JSON.parse(text) : null;
+    json = text ? (JSON.parse(text) as unknown) : null;
   } catch {
-    // ignore
+    // A resposta pode não ser JSON; o status HTTP continua a ser tratado.
   }
   if (!res.ok) {
     throw new Error(friendlyAuthError(json, res.statusText));
@@ -180,7 +195,7 @@ export async function signUp(config: CloudConfig, email: string, password: strin
     signupUrl.searchParams.set("redirect_to", window.location.origin);
   }
 
-  const data = await postJson<any>(signupUrl.toString(), {
+  const data = await postJson<Partial<AuthSession>>(signupUrl.toString(), {
     method: "POST",
     headers: headers(config),
     body: JSON.stringify(credentials),
@@ -226,7 +241,7 @@ export async function requestAccountEmailChange(
     url.searchParams.set("redirect_to", window.location.origin);
   }
 
-  await postJson<any>(url.toString(), {
+  await postJson<unknown>(url.toString(), {
     method: "PUT",
     headers: headers(config, session),
     body: JSON.stringify({ email: normalizedEmail }),
@@ -238,14 +253,14 @@ async function fetchMigrationStatus(config: CloudConfig, session: AuthSession): 
   const res = await fetch(url, { headers: headers(config, session), cache: "no-store" });
   if (!res.ok) {
     const text = await res.text();
-    let json: any = null;
+    let json: unknown = null;
     try {
-      json = text ? JSON.parse(text) : null;
+      json = text ? (JSON.parse(text) as unknown) : null;
     } catch {
-      // ignore
+      // Mantém a mensagem de fallback.
     }
-    const msg = json?.message || json?.hint || json?.details || res.statusText || "Erro ao consultar regularização da conta";
-    throw new Error(String(msg));
+    const msg = getStringField(json, "message", "hint", "details") ?? res.statusText ?? "Erro ao consultar regularização da conta";
+    throw new Error(msg);
   }
   const rows = (await res.json()) as AccountMigrationStatus[];
   return rows?.[0] ?? null;
@@ -276,7 +291,7 @@ export async function getOrCreateAccountMigrationStatus(
   }
 
   const json = await parseResponse(res);
-  const rows = (json as AccountMigrationStatus[]) ?? [];
+  const rows = Array.isArray(json) ? (json as AccountMigrationStatus[]) : [];
   return rows[0] ?? fetchMigrationStatus(config, session);
 }
 
@@ -310,19 +325,19 @@ export async function upsertRemoteState(config: CloudConfig, session: AuthSessio
   });
 
   const text = await res.text();
-  let json: any = null;
+  let json: unknown = null;
   try {
-    json = text ? JSON.parse(text) : null;
+    json = text ? (JSON.parse(text) as unknown) : null;
   } catch {
-    // ignore
+    // Mantém a mensagem de fallback.
   }
   if (!res.ok) {
-    const msg = json?.message || json?.hint || json?.details || json?.error || res.statusText || "Erro";
-    throw new Error(String(msg));
+    const msg = getStringField(json, "message", "hint", "details", "error") ?? res.statusText ?? "Erro";
+    throw new Error(msg);
   }
 
-  const rows = (json as UserStateRow[]) ?? [];
-  return rows[0] ?? (payload as unknown as UserStateRow);
+  const rows = Array.isArray(json) ? (json as UserStateRow[]) : [];
+  return rows[0] ?? (payload as UserStateRow);
 }
 
 export async function deleteUserAccount(config: CloudConfig, session: AuthSession): Promise<void> {
@@ -334,14 +349,14 @@ export async function deleteUserAccount(config: CloudConfig, session: AuthSessio
 
   if (!deleteStateRes.ok) {
     const text = await deleteStateRes.text();
-    let json: any = null;
+    let json: unknown = null;
     try {
-      json = text ? JSON.parse(text) : null;
+      json = text ? (JSON.parse(text) as unknown) : null;
     } catch {
-      // ignore
+      // Mantém a mensagem de fallback.
     }
-    const msg = json?.message || json?.hint || json?.details || json?.error || deleteStateRes.statusText || "Erro ao apagar dados";
-    throw new Error(String(msg));
+    const msg = getStringField(json, "message", "hint", "details", "error") ?? deleteStateRes.statusText ?? "Erro ao apagar dados";
+    throw new Error(msg);
   }
 
   const deleteAuthUrl = `${normUrl(config.supabaseUrl)}/auth/v1/user`;
@@ -352,13 +367,13 @@ export async function deleteUserAccount(config: CloudConfig, session: AuthSessio
 
   if (!deleteAuthRes.ok) {
     const text = await deleteAuthRes.text();
-    let json: any = null;
+    let json: unknown = null;
     try {
-      json = text ? JSON.parse(text) : null;
+      json = text ? (JSON.parse(text) as unknown) : null;
     } catch {
-      // ignore
+      // Mantém a mensagem de fallback.
     }
-    const msg = json?.message || json?.hint || json?.details || json?.error || deleteAuthRes.statusText || "Erro ao apagar conta";
-    throw new Error(String(msg));
+    const msg = getStringField(json, "message", "hint", "details", "error") ?? deleteAuthRes.statusText ?? "Erro ao apagar conta";
+    throw new Error(msg);
   }
 }

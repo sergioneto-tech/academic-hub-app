@@ -71,6 +71,8 @@ const AUTH_KEY = "academic_hub_cloud_auth";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const UAB_STUDENT_EMAIL_DOMAIN = "estudante.uab.pt";
 
+let refreshInFlight: Promise<AuthSession> | null = null;
+
 export function isUabStudentEmail(email?: string | null): boolean {
   const normalized = String(email ?? "").trim().toLowerCase();
   if (!EMAIL_PATTERN.test(normalized)) return false;
@@ -116,6 +118,14 @@ function friendlyAuthError(json: unknown, fallback: string): string {
     rawMessage.includes("too many requests")
   ) {
     return "Foram efetuadas demasiadas tentativas num curto espaço de tempo. Aguarda alguns minutos antes de tentar novamente.";
+  }
+  if (
+    code === "pgrst303" ||
+    code === "bad_jwt" ||
+    rawMessage.includes("jwt expired") ||
+    rawMessage.includes("token has expired")
+  ) {
+    return "A sessão da cloud expirou. A aplicação tentou renová-la automaticamente. Se o problema continuar, sai da conta e volta a entrar; os dados locais serão mantidos.";
   }
   if (code === "anonymous_provider_disabled") {
     return "Indica um email e uma password válidos. A aplicação não cria contas anónimas.";
@@ -193,6 +203,17 @@ async function postJson<T>(url: string, init: RequestInit): Promise<T> {
   return (await parseResponse(res)) as T;
 }
 
+async function parseRestError(res: Response, fallback: string): Promise<Error> {
+  const text = await res.text();
+  let json: unknown = null;
+  try {
+    json = text ? (JSON.parse(text) as unknown) : null;
+  } catch {
+    // Mantém o texto bruto como fallback.
+  }
+  return new Error(friendlyAuthError(json, text || res.statusText || fallback));
+}
+
 export type SignUpResult = {
   session: AuthSession | null;
   confirmationRequired: boolean;
@@ -221,20 +242,37 @@ export async function signUp(config: CloudConfig, email: string, password: strin
 export async function signIn(config: CloudConfig, email: string, password: string): Promise<AuthSession> {
   const credentials = validateCredentials(email, password);
   const url = `${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=password`;
-  return postJson<AuthSession>(url, {
+  const session = await postJson<AuthSession>(url, {
     method: "POST",
     headers: headers(config),
     body: JSON.stringify(credentials),
   });
+  storeSession(config, session);
+  return session;
 }
 
 export async function refreshSession(config: CloudConfig, session: AuthSession): Promise<AuthSession> {
+  if (refreshInFlight) return refreshInFlight;
+
+  const latestStored = getStoredSession(config);
+  const source = latestStored?.user.id === session.user.id ? latestStored : session;
   const url = `${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=refresh_token`;
-  return postJson<AuthSession>(url, {
-    method: "POST",
-    headers: headers(config),
-    body: JSON.stringify({ refresh_token: session.refresh_token }),
-  });
+
+  refreshInFlight = (async () => {
+    const fresh = await postJson<AuthSession>(url, {
+      method: "POST",
+      headers: headers(config),
+      body: JSON.stringify({ refresh_token: source.refresh_token }),
+    });
+    storeSession(config, fresh);
+    return fresh;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 export async function requestAccountEmailChange(
@@ -262,17 +300,7 @@ export async function requestAccountEmailChange(
 async function fetchMigrationStatus(config: CloudConfig, session: AuthSession): Promise<AccountMigrationStatus | null> {
   const url = `${normUrl(config.supabaseUrl)}/rest/v1/account_email_migration?user_id=eq.${session.user.id}&select=user_id,first_detected_at,deadline&limit=1`;
   const res = await fetch(url, { headers: headers(config, session), cache: "no-store" });
-  if (!res.ok) {
-    const text = await res.text();
-    let json: unknown = null;
-    try {
-      json = text ? (JSON.parse(text) as unknown) : null;
-    } catch {
-      // Mantém a mensagem de fallback.
-    }
-    const msg = getStringField(json, "message", "hint", "details") ?? res.statusText ?? "Erro ao consultar regularização da conta";
-    throw new Error(msg);
-  }
+  if (!res.ok) throw await parseRestError(res, "Erro ao consultar regularização da conta");
   const rows = (await res.json()) as AccountMigrationStatus[];
   return rows?.[0] ?? null;
 }
@@ -309,10 +337,7 @@ export async function getOrCreateAccountMigrationStatus(
 export async function fetchRemoteState(config: CloudConfig, session: AuthSession): Promise<UserStateRow | null> {
   const url = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?user_id=eq.${session.user.id}&select=state,updated_at,user_id&limit=1`;
   const res = await fetch(url, { headers: headers(config, session), cache: "no-store" });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(txt || res.statusText);
-  }
+  if (!res.ok) throw await parseRestError(res, "Erro ao carregar dados da cloud");
   const data = (await res.json()) as UserStateRow[];
   return data?.[0] ?? null;
 }
@@ -335,18 +360,9 @@ export async function upsertRemoteState(config: CloudConfig, session: AuthSessio
     body: JSON.stringify(payload),
   });
 
-  const text = await res.text();
-  let json: unknown = null;
-  try {
-    json = text ? (JSON.parse(text) as unknown) : null;
-  } catch {
-    // Mantém a mensagem de fallback.
-  }
-  if (!res.ok) {
-    const msg = getStringField(json, "message", "hint", "details", "error") ?? res.statusText ?? "Erro";
-    throw new Error(msg);
-  }
+  if (!res.ok) throw await parseRestError(res, "Erro ao guardar dados na cloud");
 
+  const json = (await res.json()) as unknown;
   const rows = Array.isArray(json) ? (json as UserStateRow[]) : [];
   return rows[0] ?? (payload as UserStateRow);
 }
@@ -358,17 +374,7 @@ export async function deleteUserAccount(config: CloudConfig, session: AuthSessio
     headers: headers(config, session),
   });
 
-  if (!deleteStateRes.ok) {
-    const text = await deleteStateRes.text();
-    let json: unknown = null;
-    try {
-      json = text ? (JSON.parse(text) as unknown) : null;
-    } catch {
-      // Mantém a mensagem de fallback.
-    }
-    const msg = getStringField(json, "message", "hint", "details", "error") ?? deleteStateRes.statusText ?? "Erro ao apagar dados";
-    throw new Error(msg);
-  }
+  if (!deleteStateRes.ok) throw await parseRestError(deleteStateRes, "Erro ao apagar dados");
 
   const deleteAuthUrl = `${normUrl(config.supabaseUrl)}/auth/v1/user`;
   const deleteAuthRes = await fetch(deleteAuthUrl, {
@@ -376,15 +382,5 @@ export async function deleteUserAccount(config: CloudConfig, session: AuthSessio
     headers: headers(config, session),
   });
 
-  if (!deleteAuthRes.ok) {
-    const text = await deleteAuthRes.text();
-    let json: unknown = null;
-    try {
-      json = text ? (JSON.parse(text) as unknown) : null;
-    } catch {
-      // Mantém a mensagem de fallback.
-    }
-    const msg = getStringField(json, "message", "hint", "details", "error") ?? deleteAuthRes.statusText ?? "Erro ao apagar conta";
-    throw new Error(msg);
-  }
+  if (!deleteAuthRes.ok) throw await parseRestError(deleteAuthRes, "Erro ao apagar conta");
 }

@@ -1,4 +1,5 @@
 import type { AppState } from "@/lib/types";
+import { migrate } from "@/lib/storage";
 
 export const CLOUD_SYNC_BASELINE_KEY = "academic_hub_cloud_sync_baseline_v2";
 export const CLOUD_CONFLICT_KEY = "academic_hub_cloud_conflict";
@@ -10,20 +11,26 @@ function stableSort<T extends { id?: string; code?: string }>(items: T[] | undef
   return [...(items ?? [])].sort((a, b) => String(a.id ?? a.code ?? "").localeCompare(String(b.id ?? b.code ?? "")));
 }
 
+/** Normaliza backups/cloud antigos para a estrutura atual antes de comparar ou aplicar. */
+export function normalizeCloudState(raw: unknown): AppState {
+  return migrate(raw);
+}
+
 /**
  * Fingerprint apenas dos dados académicos/preferências que devem sincronizar.
  * Exclui metadados de sincronização e ordena coleções por id para evitar falsos conflitos.
  */
-export function cloudStateFingerprint(state: AppState): string {
+export function cloudStateFingerprint(raw: AppState | unknown): string {
+  const state = normalizeCloudState(raw);
   return JSON.stringify({
     degree: state.degree ?? null,
     courses: stableSort(state.courses),
     assessments: stableSort(state.assessments),
     rules: stableSort(state.rules),
     studyBlocks: stableSort(state.studyBlocks),
-    profile: state.profile ?? null,
-    appearance: state.appearance ?? null,
-    notifications: state.notifications ?? null,
+    profile: state.profile ?? {},
+    appearance: state.appearance ?? { theme: "system" },
+    notifications: state.notifications ?? { deadlines: true, exams: true, grades: true },
     lastSeenRelease: state.lastSeenRelease ?? null,
   });
 }
@@ -50,7 +57,8 @@ export function hasCloudConflict(): boolean {
   try { return Boolean(localStorage.getItem(CLOUD_CONFLICT_KEY)); } catch { return false; }
 }
 
-export function isLocallyFresh(state: AppState): boolean {
+export function isLocallyFresh(raw: AppState | unknown): boolean {
+  const state = normalizeCloudState(raw);
   const hasMeaningfulCourseData = state.courses.some((course) => course.isActive || course.isCompleted);
   const hasGrades = state.assessments.some((assessment) => assessment.grade !== null);
   const hasStudyBlocks = Boolean(state.studyBlocks?.length);

@@ -1,4 +1,4 @@
-const SW_VERSION = "1.0.0-install10";
+const SW_VERSION = "1.0.0-install11";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -11,6 +11,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {})
   );
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -32,6 +33,12 @@ function putInCache(req, res) {
   return res;
 }
 
+function networkFirst(req, fallbackToRoot = false) {
+  return fetch(req, { cache: "no-store" })
+    .then((res) => (res && res.ok ? putInCache(req, res) : res))
+    .catch(() => caches.match(req).then((cached) => cached || (fallbackToRoot ? caches.match("./") : undefined)));
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -40,18 +47,16 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   const isNavigation = req.mode === "navigate";
-  const isFreshFile =
+  const isVersionSensitiveAsset = url.pathname.includes("/assets/");
+  const mustBeFresh =
     url.pathname.endsWith("/sw.js") ||
     url.pathname.includes("manifest.webmanifest") ||
     url.pathname.endsWith(".html") ||
-    isNavigation;
+    isNavigation ||
+    isVersionSensitiveAsset;
 
-  if (isFreshFile) {
-    event.respondWith(
-      fetch(req, { cache: "no-store" })
-        .then((res) => (res && res.ok ? putInCache(req, res) : res))
-        .catch(() => caches.match(req).then((cached) => cached || caches.match("./")))
-    );
+  if (mustBeFresh) {
+    event.respondWith(networkFirst(req, isNavigation));
     return;
   }
 

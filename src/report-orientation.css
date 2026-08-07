@@ -7,7 +7,6 @@
   flex-shrink: 0;
 }
 
-/* Make the return action readable in both themes. */
 .academic-report-back-button {
   border-color: hsl(var(--border));
   background: hsl(var(--card));
@@ -19,7 +18,14 @@
   color: hsl(var(--accent-foreground));
 }
 
-/* The preview itself visibly changes proportions. */
+/* Give the wordmark a little breathing room below the AH mark. */
+.academic-report-brand-name {
+  margin-top: 3px;
+}
+.academic-report-brand-rule {
+  margin-top: 3px;
+}
+
 .academic-report-portrait .academic-report-sheet {
   width: min(210mm, calc(100vw - 3rem));
   min-height: 297mm;
@@ -38,18 +44,15 @@
 .academic-report-portrait-table {
   table-layout: fixed;
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 6.8px;
-  line-height: 1.05;
+  line-height: 1.08;
 }
 .academic-report-portrait-table th,
 .academic-report-portrait-table td {
-  padding: 3px 3px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: middle;
 }
-.academic-report-portrait-table th { font-size: 6.6px; }
 .academic-report-portrait-table th:nth-child(1) { width: 4%; }
 .academic-report-portrait-table th:nth-child(2) { width: 24%; }
 .academic-report-portrait-table th:nth-child(3) { width: 7%; }
@@ -57,30 +60,45 @@
 .academic-report-portrait-table th:nth-child(5) { width: 16%; }
 .academic-report-portrait-table th:nth-child(6) { width: 33%; }
 .academic-report-portrait-table th:nth-child(7) { width: 7%; }
-.academic-report-assessment-summary { font-size: 6.5px; }
 
-/* Landscape keeps the detailed matrix but remains compact enough for a complete degree. */
+/* Screen preview follows the same adaptive density as print. */
+.academic-report-density-comfortable .academic-report-portrait-table { font-size: 9.5px; }
+.academic-report-density-comfortable .academic-report-portrait-table th,
+.academic-report-density-comfortable .academic-report-portrait-table td { padding: 5px 4px; }
+.academic-report-density-comfortable .academic-report-assessment-summary { font-size: 9px; }
+
+.academic-report-density-balanced .academic-report-portrait-table { font-size: 8px; }
+.academic-report-density-balanced .academic-report-portrait-table th,
+.academic-report-density-balanced .academic-report-portrait-table td { padding: 4px 3px; }
+.academic-report-density-balanced .academic-report-assessment-summary { font-size: 7.6px; }
+
+.academic-report-density-compact .academic-report-portrait-table { font-size: 6.8px; }
+.academic-report-density-compact .academic-report-portrait-table th,
+.academic-report-density-compact .academic-report-portrait-table td { padding: 3px; }
+.academic-report-density-compact .academic-report-assessment-summary { font-size: 6.5px; }
+
 .academic-report-landscape .academic-report-detail-table {
   table-layout: fixed;
-  font-size: 7px;
   line-height: 1.05;
 }
 .academic-report-landscape .academic-report-detail-table th,
-.academic-report-landscape .academic-report-detail-table td {
-  padding: 2px 4px;
-  vertical-align: middle;
-}
-.academic-report-landscape .academic-report-detail-table th { font-size: 6.7px; }
-.academic-report-landscape .academic-report-category {
-  padding: 1px 3px;
-  font-size: 6px;
-  white-space: normal;
-}
-.academic-report-landscape .academic-report-detail-total {
-  padding-top: 4px;
-  padding-bottom: 4px;
-  font-size: 8px;
-}
+.academic-report-landscape .academic-report-detail-table td { vertical-align: middle; }
+.academic-report-landscape .academic-report-category { white-space: normal; }
+
+.academic-report-density-comfortable.academic-report-landscape .academic-report-detail-table { font-size: 9px; }
+.academic-report-density-comfortable.academic-report-landscape .academic-report-detail-table th,
+.academic-report-density-comfortable.academic-report-landscape .academic-report-detail-table td { padding: 4px 5px; }
+.academic-report-density-comfortable.academic-report-landscape .academic-report-category { font-size: 8px; padding: 2px 4px; }
+
+.academic-report-density-balanced.academic-report-landscape .academic-report-detail-table { font-size: 8px; }
+.academic-report-density-balanced.academic-report-landscape .academic-report-detail-table th,
+.academic-report-density-balanced.academic-report-landscape .academic-report-detail-table td { padding: 3px 4px; }
+.academic-report-density-balanced.academic-report-landscape .academic-report-category { font-size: 7px; padding: 1px 3px; }
+
+.academic-report-density-compact.academic-report-landscape .academic-report-detail-table { font-size: 7px; }
+.academic-report-density-compact.academic-report-landscape .academic-report-detail-table th,
+.academic-report-density-compact.academic-report-landscape .academic-report-detail-table td { padding: 2px 4px; }
+.academic-report-density-compact.academic-report-landscape .academic-report-category { font-size: 6px; padding: 1px 3px; }
 
 .academic-report-landscape .academic-report-summary-table,
 .academic-report-portrait .academic-report-summary-table {
@@ -98,17 +116,32 @@
 @media print {
   html,
   body,
+  #root,
+  #root > div,
+  main,
   .academic-report-view {
     margin: 0 !important;
     padding: 0 !important;
+    min-height: 0 !important;
   }
 
-  /* Critical: avoid the legacy fixed/min heights adding a trailing blank sheet. */
-  .academic-report-view {
-    display: block !important;
+  /* The application shell must not contribute a third blank printed page. */
+  .min-h-dvh,
+  #root,
+  #root > div,
+  main {
     min-height: 0 !important;
     height: auto !important;
   }
+
+  .academic-report-view {
+    display: block !important;
+    position: relative !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
   .academic-report-sheet {
     box-sizing: border-box;
     overflow: hidden !important;
@@ -117,6 +150,7 @@
     border-radius: 0 !important;
     box-shadow: none !important;
   }
+
   .academic-report-page-one {
     break-after: page !important;
     page-break-after: always !important;
@@ -129,13 +163,14 @@
   html[data-report-orientation="portrait"] .academic-report-sheet {
     page: academicHubPortrait;
     width: 210mm !important;
-    height: 296.5mm !important;
-    min-height: 296.5mm !important;
-    max-height: 296.5mm !important;
-    padding: 6mm 7mm 12mm !important;
+    height: 296mm !important;
+    min-height: 296mm !important;
+    max-height: 296mm !important;
+    padding: 6mm 7mm 11mm !important;
   }
   html[data-report-orientation="portrait"],
   html[data-report-orientation="portrait"] body,
+  html[data-report-orientation="portrait"] #root,
   html[data-report-orientation="portrait"] .academic-report-view {
     width: 210mm !important;
   }
@@ -143,50 +178,67 @@
   html[data-report-orientation="landscape"] .academic-report-sheet {
     page: academicHubLandscape;
     width: 297mm !important;
-    height: 209.5mm !important;
-    min-height: 209.5mm !important;
-    max-height: 209.5mm !important;
-    padding: 5mm 8mm 11mm !important;
+    height: 209mm !important;
+    min-height: 209mm !important;
+    max-height: 209mm !important;
+    padding: 5mm 8mm 10mm !important;
   }
   html[data-report-orientation="landscape"],
   html[data-report-orientation="landscape"] body,
+  html[data-report-orientation="landscape"] #root,
   html[data-report-orientation="landscape"] .academic-report-view {
     width: 297mm !important;
   }
 
+  /* More breathing room around the logo wordmark without enlarging the whole header. */
+  .academic-report-brand-name { margin-top: 0.9mm !important; }
+  .academic-report-brand-rule { margin-top: 0.7mm !important; }
+
   html[data-report-orientation="portrait"] .academic-report-detail-header,
-  html[data-report-orientation="portrait"] .academic-report-compact-header {
-    min-height: 17mm !important;
-  }
+  html[data-report-orientation="portrait"] .academic-report-compact-header { min-height: 18mm !important; }
   html[data-report-orientation="portrait"] .academic-report-page-two .academic-report-disclaimer {
     margin-top: 1mm !important;
     margin-bottom: 2mm !important;
     min-height: 6mm;
     padding: 0.8mm 2mm !important;
   }
-  html[data-report-orientation="portrait"] .academic-report-portrait-table {
-    font-size: 5.25pt;
-    line-height: 1;
+
+  /* Adaptive portrait density. */
+  html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-portrait-table {
+    font-size: 7.25pt;
+    line-height: 1.08;
   }
-  html[data-report-orientation="portrait"] .academic-report-portrait-table th {
-    padding: 0.85mm 0.7mm !important;
+  html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-portrait-table th {
+    padding: 1.35mm 0.9mm !important;
+    font-size: 7pt;
+  }
+  html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-portrait-table td {
+    padding: 1.25mm 0.9mm !important;
+  }
+  html[data-report-orientation="portrait"] .academic-report-density-comfortable .academic-report-assessment-summary { font-size: 6.8pt !important; }
+
+  html[data-report-orientation="portrait"] .academic-report-density-balanced .academic-report-portrait-table { font-size: 6.25pt; }
+  html[data-report-orientation="portrait"] .academic-report-density-balanced .academic-report-portrait-table th {
+    padding: 1mm 0.8mm !important;
+    font-size: 6pt;
+  }
+  html[data-report-orientation="portrait"] .academic-report-density-balanced .academic-report-portrait-table td { padding: 0.95mm 0.8mm !important; }
+  html[data-report-orientation="portrait"] .academic-report-density-balanced .academic-report-assessment-summary { font-size: 5.9pt !important; }
+
+  html[data-report-orientation="portrait"] .academic-report-density-compact .academic-report-portrait-table { font-size: 5.25pt; }
+  html[data-report-orientation="portrait"] .academic-report-density-compact .academic-report-portrait-table th {
+    padding: 0.82mm 0.7mm !important;
     font-size: 5.1pt;
   }
-  html[data-report-orientation="portrait"] .academic-report-portrait-table td {
-    padding: 0.72mm 0.7mm !important;
-    font-size: 5.05pt;
-  }
-  html[data-report-orientation="portrait"] .academic-report-assessment-summary {
-    font-size: 4.85pt !important;
-  }
+  html[data-report-orientation="portrait"] .academic-report-density-compact .academic-report-portrait-table td { padding: 0.7mm !important; }
+  html[data-report-orientation="portrait"] .academic-report-density-compact .academic-report-assessment-summary { font-size: 4.85pt !important; }
+
   html[data-report-orientation="portrait"] .academic-report-detail-total {
     margin-top: 2mm !important;
     padding: 1mm 3mm !important;
     font-size: 6.5pt !important;
   }
-  html[data-report-orientation="portrait"] .academic-report-summary-table {
-    font-size: 6.1pt;
-  }
+  html[data-report-orientation="portrait"] .academic-report-summary-table { font-size: 6.1pt; }
   html[data-report-orientation="portrait"] .academic-report-summary-table th,
   html[data-report-orientation="portrait"] .academic-report-summary-table td {
     padding-top: 1.05mm;
@@ -195,7 +247,7 @@
 
   html[data-report-orientation="landscape"] .academic-report-compact-header,
   html[data-report-orientation="landscape"] .academic-report-detail-header {
-    min-height: 13mm;
+    min-height: 14mm;
     margin-bottom: 1.5mm;
   }
   html[data-report-orientation="landscape"] .academic-report-disclaimer {
@@ -204,21 +256,26 @@
     padding-top: 1mm;
     padding-bottom: 1mm;
   }
-  html[data-report-orientation="landscape"] .academic-report-summary-table,
-  html[data-report-orientation="landscape"] .academic-report-detail-table {
-    font-size: 5.7pt;
-    line-height: 1;
-  }
+
+  /* Adaptive landscape density. */
+  html[data-report-orientation="landscape"] .academic-report-density-comfortable .academic-report-detail-table { font-size: 7.2pt; }
+  html[data-report-orientation="landscape"] .academic-report-density-comfortable .academic-report-detail-table th,
+  html[data-report-orientation="landscape"] .academic-report-density-comfortable .academic-report-detail-table td { padding: 1.15mm 1.1mm; }
+  html[data-report-orientation="landscape"] .academic-report-density-comfortable .academic-report-category { font-size: 6.5pt; }
+
+  html[data-report-orientation="landscape"] .academic-report-density-balanced .academic-report-detail-table { font-size: 6.3pt; }
+  html[data-report-orientation="landscape"] .academic-report-density-balanced .academic-report-detail-table th,
+  html[data-report-orientation="landscape"] .academic-report-density-balanced .academic-report-detail-table td { padding: 0.9mm 1mm; }
+  html[data-report-orientation="landscape"] .academic-report-density-balanced .academic-report-category { font-size: 5.7pt; }
+
+  html[data-report-orientation="landscape"] .academic-report-density-compact .academic-report-detail-table { font-size: 5.7pt; }
+  html[data-report-orientation="landscape"] .academic-report-density-compact .academic-report-detail-table th,
+  html[data-report-orientation="landscape"] .academic-report-density-compact .academic-report-detail-table td { padding: 0.7mm 1mm; }
+  html[data-report-orientation="landscape"] .academic-report-density-compact .academic-report-category { font-size: 5pt; }
+
+  html[data-report-orientation="landscape"] .academic-report-summary-table { font-size: 5.7pt; line-height: 1; }
   html[data-report-orientation="landscape"] .academic-report-summary-table th,
-  html[data-report-orientation="landscape"] .academic-report-summary-table td,
-  html[data-report-orientation="landscape"] .academic-report-detail-table th,
-  html[data-report-orientation="landscape"] .academic-report-detail-table td {
-    padding: 0.75mm 1mm;
-  }
-  html[data-report-orientation="landscape"] .academic-report-category {
-    padding: 0.2mm 0.6mm;
-    font-size: 5pt;
-  }
+  html[data-report-orientation="landscape"] .academic-report-summary-table td { padding: 0.75mm 1mm; }
   html[data-report-orientation="landscape"] .academic-report-summary-strip,
   html[data-report-orientation="landscape"] .academic-report-detail-total {
     margin-top: 1.5mm;
@@ -228,13 +285,7 @@
 }
 
 @media (max-width: 760px) {
-  .academic-report-actions {
-    align-items: stretch;
-  }
-  .academic-report-portrait-table {
-    min-width: 720px;
-  }
-  .academic-report-portrait-table-wrap {
-    overflow-x: auto;
-  }
+  .academic-report-actions { align-items: stretch; }
+  .academic-report-portrait-table { min-width: 720px; }
+  .academic-report-portrait-table-wrap { overflow-x: auto; }
 }

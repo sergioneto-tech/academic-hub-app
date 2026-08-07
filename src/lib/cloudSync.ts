@@ -104,8 +104,19 @@ function validateCredentials(email: string, password: string, options?: { creati
 }
 
 function friendlyAuthError(json: unknown, fallback: string): string {
-  const code = getStringField(json, "code", "error_code") ?? "";
+  const code = (getStringField(json, "code", "error_code") ?? "").toLowerCase();
+  const rawMessage = (getStringField(json, "msg", "message", "error_description", "error") ?? fallback ?? "").toLowerCase();
 
+  if (
+    code === "over_request_rate_limit" ||
+    code === "over_email_send_rate_limit" ||
+    code === "rate_limit_exceeded" ||
+    rawMessage.includes("request rate limit reached") ||
+    rawMessage.includes("rate limit") ||
+    rawMessage.includes("too many requests")
+  ) {
+    return "Foram efetuadas demasiadas tentativas num curto espaço de tempo. Aguarda alguns minutos antes de tentar novamente.";
+  }
   if (code === "anonymous_provider_disabled") {
     return "Indica um email e uma password válidos. A aplicação não cria contas anónimas.";
   }

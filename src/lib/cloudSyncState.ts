@@ -7,8 +7,18 @@ export const CLOUD_CONFLICT_CHANGED_EVENT = "academic-hub:cloud-conflict-changed
 export const DEVICE_ID_KEY = "academic_hub_device_id";
 export const DEVICE_LABEL_KEY = "academic_hub_device_label";
 
-function stableSort<T extends { id?: string; code?: string }>(items: T[] | undefined): T[] {
-  return [...(items ?? [])].sort((a, b) => String(a.id ?? a.code ?? "").localeCompare(String(b.id ?? b.code ?? "")));
+function stableKey(value: unknown): string {
+  if (value && typeof value === "object") {
+    const item = value as { id?: string; code?: string; courseId?: string };
+    if (item.id) return `id:${item.id}`;
+    if (item.code) return `code:${item.code}`;
+    if (item.courseId) return `course:${item.courseId}`;
+  }
+  try { return JSON.stringify(value); } catch { return String(value); }
+}
+
+function stableSort<T>(items: T[] | undefined): T[] {
+  return [...(items ?? [])].sort((a, b) => stableKey(a).localeCompare(stableKey(b), "pt-PT"));
 }
 
 /** Normaliza backups/cloud antigos para a estrutura atual antes de comparar ou aplicar. */
@@ -18,7 +28,7 @@ export function normalizeCloudState(raw: unknown): AppState {
 
 /**
  * Fingerprint apenas dos dados académicos/preferências que devem sincronizar.
- * Exclui metadados de sincronização e ordena coleções por id para evitar falsos conflitos.
+ * Exclui metadados de sincronização e ordena coleções para evitar falsos conflitos.
  */
 export function cloudStateFingerprint(raw: AppState | unknown): string {
   const state = normalizeCloudState(raw);

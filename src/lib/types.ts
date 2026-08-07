@@ -9,6 +9,7 @@ export type Degree = {
 
 export type EvaluationRegime = "legacy" | "regulation-2026";
 export type EvaluationModel = "type1" | "type2" | "type3" | "type4" | "exam-only" | "custom";
+export type LegacyEvaluationMode = "efolios-exam" | "exam-only" | "custom" | "final-grade-only";
 
 export type Course = {
   id: UUID;
@@ -24,6 +25,10 @@ export type Course = {
   evaluationRegime?: EvaluationRegime;
   /** Modelo flexível configurado pelo aluno de acordo com o PUC da cadeira. */
   evaluationModel?: EvaluationModel;
+  /** Estrutura utilizada em cadeiras do regime anterior/histórico. Ausente = e-fólios + g-fólio. */
+  legacyEvaluationMode?: LegacyEvaluationMode;
+  /** Nota final conhecida quando já não existe detalhe fiável da composição histórica. */
+  manualFinalGrade?: number;
 
   /** Sessões (ex.: abertura, antes de atividades ou antes de exame). */
   sessions?: CourseSession[];
@@ -98,6 +103,13 @@ export type SyncSettings = {
 
   /** Data/hora do último upload/download realizado (informativo). */
   lastSyncAt?: string; // ISO
+  /** Última alteração local relevante; permite detetar conflitos entre dispositivos. */
+  localModifiedAt?: string; // ISO
+  /** Dispositivo que originou a versão cloud atualmente conhecida. */
+  lastSyncDeviceId?: string;
+  lastSyncDeviceLabel?: string;
+  /** Impede upload automático enquanto o utilizador decide um conflito. */
+  conflictPending?: boolean;
 };
 
 export type ProfileSettings = {

@@ -2,78 +2,28 @@
 @page academicHubPortrait { size: A4 portrait; margin: 0; }
 @page academicHubLandscape { size: A4 landscape; margin: 0; }
 
+/* Compact academic catalogue: labels must never break letter by letter. */
+.settings-legacy span.text-\[10px\] {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 @media print {
-  html[data-report-orientation="portrait"] .academic-report-sheet {
-    page: academicHubPortrait;
-    width: 210mm;
-    height: 297mm;
-    min-height: 297mm;
-  }
-
-  html[data-report-orientation="portrait"],
-  html[data-report-orientation="portrait"] body,
-  html[data-report-orientation="portrait"] .academic-report-view {
-    width: 210mm !important;
-  }
-
-  html[data-report-orientation="landscape"] .academic-report-sheet {
-    page: academicHubLandscape;
-    width: 297mm;
-    height: 210mm;
-    min-height: 210mm;
-    padding: 7mm 9mm 16mm;
-  }
-
-  html[data-report-orientation="landscape"],
-  html[data-report-orientation="landscape"] body,
-  html[data-report-orientation="landscape"] .academic-report-view {
-    width: 297mm !important;
-  }
-
-  html[data-report-orientation="landscape"] .academic-report-compact-header {
-    min-height: 19mm;
-  }
-
-  html[data-report-orientation="landscape"] .academic-report-summary-table td {
-    padding-top: 1.6mm;
-    padding-bottom: 1.6mm;
-  }
+  html[data-report-orientation="portrait"] .academic-report-sheet { page: academicHubPortrait; width: 210mm; height: 297mm; min-height: 297mm; }
+  html[data-report-orientation="portrait"], html[data-report-orientation="portrait"] body, html[data-report-orientation="portrait"] .academic-report-view { width: 210mm !important; }
+  html[data-report-orientation="landscape"] .academic-report-sheet { page: academicHubLandscape; width: 297mm; height: 210mm; min-height: 210mm; padding: 7mm 9mm 16mm; }
+  html[data-report-orientation="landscape"], html[data-report-orientation="landscape"] body, html[data-report-orientation="landscape"] .academic-report-view { width: 297mm !important; }
+  html[data-report-orientation="landscape"] .academic-report-compact-header { min-height: 19mm; }
+  html[data-report-orientation="landscape"] .academic-report-summary-table td { padding-top: 1.6mm; padding-bottom: 1.6mm; }
 }
 
-.academic-report-portrait-details {
-  display: grid;
-  gap: 8px;
-  flex: 1 1 auto;
-}
-
-.academic-report-portrait-row {
-  border: 1px solid var(--report-line);
-  border-radius: 9px;
-  overflow: hidden;
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-.academic-report-portrait-main {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 2px 12px;
-  padding: 7px 9px;
-  background: #fbfcfe;
-  font-size: 9px;
-}
-
+.academic-report-portrait-details { display: grid; gap: 8px; flex: 1 1 auto; }
+.academic-report-portrait-row { border: 1px solid var(--report-line); border-radius: 9px; overflow: hidden; font-family: Arial, Helvetica, sans-serif; }
+.academic-report-portrait-main { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 7px 9px; background: #fbfcfe; font-size: 9px; }
 .academic-report-portrait-main strong { color: var(--report-navy); }
 .academic-report-portrait-main span { grid-column: 1; color: #64748b; }
 .academic-report-portrait-main b { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--report-navy); }
-
-.academic-report-portrait-breakdown {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 14px;
-  border-top: 1px solid var(--report-line);
-  padding: 6px 9px;
-  font-size: 8px;
-}
+.academic-report-portrait-breakdown { display: flex; flex-wrap: wrap; gap: 5px 14px; border-top: 1px solid var(--report-line); padding: 6px 9px; font-size: 8px; }
 
 @media print {
   html[data-report-orientation="portrait"] .academic-report-portrait-details { gap: 1.5mm; }

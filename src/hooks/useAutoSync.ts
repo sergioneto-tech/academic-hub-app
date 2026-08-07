@@ -33,10 +33,25 @@ function notify(detail: CloudSyncNoticeDetail) {
   window.dispatchEvent(new CustomEvent(CLOUD_SYNC_NOTICE_EVENT, { detail }));
 }
 
+function jwtExpiry(accessToken?: string): number | null {
+  if (!accessToken) return null;
+  try {
+    const [, payload] = accessToken.split(".");
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const decoded = JSON.parse(atob(padded)) as { exp?: number };
+    return typeof decoded.exp === "number" ? decoded.exp : null;
+  } catch {
+    return null;
+  }
+}
+
 function sessionNeedsRefresh(session: AuthSession): boolean {
-  if (!session.expires_at) return false;
+  const expiry = session.expires_at ?? jwtExpiry(session.access_token);
+  if (!expiry) return true;
   const nowSeconds = Math.floor(Date.now() / 1000);
-  return session.expires_at <= nowSeconds + SESSION_REFRESH_MARGIN_SECONDS;
+  return expiry <= nowSeconds + SESSION_REFRESH_MARGIN_SECONDS;
 }
 
 function persistConflict(
@@ -182,10 +197,7 @@ export function useAutoSync() {
       if (typeof navigator !== "undefined" && !navigator.onLine) return;
 
       failureCountRef.current += 1;
-      if (
-        failureCountRef.current >= CLOUD_FAILURES_BEFORE_WARNING &&
-        !warningShownRef.current
-      ) {
+      if (failureCountRef.current >= CLOUD_FAILURES_BEFORE_WARNING && !warningShownRef.current) {
         warningShownRef.current = true;
         notify({
           kind: "error",

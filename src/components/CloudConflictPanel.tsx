@@ -12,6 +12,7 @@ import { APP_VERSION } from "@/lib/version";
 
 export const CLOUD_CONFLICT_KEY = "academic_hub_cloud_conflict";
 export const CLOUD_CONFLICT_CHANGED_EVENT = "academic-hub:cloud-conflict-changed";
+export const LAST_REMOTE_APPLIED_KEY = "academic_hub_last_remote_applied";
 
 type ConflictPayload = {
   createdAt: string;
@@ -98,22 +99,32 @@ export default function CloudConflictPanel() {
 
     try {
       setBusy(choice);
-      const now = new Date().toISOString();
       const selected = choice === "local" ? conflict.localState : conflict.remoteState;
-      const next = {
+      const preparedAt = new Date().toISOString();
+      const prepared = {
         ...selected,
         meta: { ...(selected.meta ?? {}), appVersion: APP_VERSION },
-        sync: { ...(selected.sync ?? { enabled: true }), enabled: true, lastSyncAt: now },
+        sync: { ...(selected.sync ?? { enabled: true }), enabled: true, lastSyncAt: preparedAt },
         syncMeta: { deviceLabel: currentDeviceLabel() },
       } as AppState;
 
-      replaceState(next);
-      await upsertRemoteState(cloudConfig, session, next);
-      localStorage.setItem("academic_hub_last_remote_applied", now);
+      // O conflito permanece bloqueado enquanto a versão escolhida é gravada, evitando novo auto-upload concorrente.
+      replaceState(prepared);
+      const saved = await upsertRemoteState(cloudConfig, session, prepared);
+
+      // Usa a data exata devolvida pelo servidor. Assim, após F5, local e cloud partem da mesma referência.
+      const syncedAt = saved.updated_at || preparedAt;
+      const finalState: AppState = {
+        ...prepared,
+        sync: { ...(prepared.sync ?? { enabled: true }), enabled: true, lastSyncAt: syncedAt },
+      };
+      replaceState(finalState);
+      localStorage.setItem(LAST_REMOTE_APPLIED_KEY, syncedAt);
       clearConflict();
+
       toast({
         title: choice === "local" ? "Versão deste dispositivo escolhida" : "Versão da cloud escolhida",
-        description: "A versão escolhida foi aplicada e gravada automaticamente na cloud.",
+        description: "A versão escolhida foi aplicada e gravada na cloud. Os dispositivos estão novamente sincronizados.",
       });
     } catch (error) {
       toast({

@@ -3,6 +3,7 @@ name: Quality checks
 on:
   push:
     branches:
+      - main
       - agent/academic-hub-2026-premium
   pull_request:
     branches:
@@ -44,6 +45,7 @@ jobs:
         run: >-
           npx eslint
           src/App.tsx
+          src/components/CloudAccountPanel.tsx
           src/components/CourseEvaluationSettings.tsx
           src/components/EvaluationFrameworkNotice.tsx
           src/components/EvaluationModeSelector.tsx
@@ -51,8 +53,10 @@ jobs:
           src/components/ProfileAvatarEditor.tsx
           src/components/ui/card.tsx
           src/components/ui/pt-datetime-input.tsx
+          src/hooks/useAutoSync.ts
           src/lib/AppStore.tsx
           src/lib/calculations.ts
+          src/lib/cloudSync.ts
           src/lib/degreeTheme.ts
           src/lib/storage.ts
           src/lib/theme.ts

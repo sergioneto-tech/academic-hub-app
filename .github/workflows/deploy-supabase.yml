@@ -8,6 +8,7 @@ on:
       - "supabase/migrations/**"
       - "supabase/functions/**"
       - "supabase/config.toml"
+      - "supabase/auth-email-templates.json"
       - ".github/workflows/deploy-supabase.yml"
   workflow_dispatch:
 
@@ -55,6 +56,19 @@ jobs:
 
       - name: Apply project configuration
         run: supabase config push --project-ref "$SUPABASE_PROJECT_REF"
+
+      - name: Apply Academic Hub email templates
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! curl --silent --show-error --fail-with-body \
+            --request PATCH \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data-binary @supabase/auth-email-templates.json; then
+            echo "::warning::Não foi possível personalizar os emails de autenticação automaticamente. As migrações e o Auth Hook podem continuar; verifica Authentication > Email Templates no Supabase."
+          fi
 
       - name: Deploy Edge Functions
         shell: bash

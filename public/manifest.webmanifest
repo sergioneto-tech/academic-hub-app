@@ -14,19 +14,19 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "./academic-hub-icon-v9-192.png",
+      "src": "./academic-hub-icon-v10-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./academic-hub-icon-v9-512.png",
+      "src": "./academic-hub-icon-v10-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./academic-hub-icon-v9-512-maskable.png",
+      "src": "./academic-hub-icon-v10-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

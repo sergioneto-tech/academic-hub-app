@@ -16,6 +16,17 @@ function formatDateTime(date: Date, timeZone?: string) {
   }).format(date);
 }
 
+function formatMobileTime(date: Date, timeZone?: string) {
+  return new Intl.DateTimeFormat("pt-PT", {
+    timeZone,
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 function localZoneLabel(timeZone: string) {
   const city = timeZone.split("/").pop()?.replace(/_/g, " ") || "Local";
   return city === "Lisbon" ? "Portugal" : city;
@@ -45,20 +56,21 @@ export default function LocalTimeIndicator() {
 
   return (
     <div
-      className="pointer-events-none fixed right-[7.25rem] top-2 z-[35] hidden items-center gap-1.5 rounded-full border border-border/60 bg-background/72 px-2.5 py-1 text-[10px] text-muted-foreground shadow-sm backdrop-blur-md sm:flex md:right-32 md:top-3.5 lg:right-36"
+      className="pointer-events-none fixed left-1/2 top-1.5 z-[35] flex -translate-x-1/2 items-center gap-1 rounded-full border border-border/60 bg-background/82 px-2 py-1 text-[9px] font-semibold text-foreground/80 shadow-sm backdrop-blur-md sm:text-[10px] md:left-auto md:right-48 md:top-3.5 md:translate-x-0 md:px-2.5"
       title={`Fuso horário do dispositivo: ${localTimeZone}`}
       aria-label={isPortugalZone ? `Hora local: ${formatDateTime(now)}` : `Hora local: ${formatDateTime(now)}; Portugal: ${formatDateTime(now, PORTUGAL_TIME_ZONE)}`}
     >
-      <Clock3 className="h-3 w-3 shrink-0" />
-      {isPortugalZone ? (
-        <span className="whitespace-nowrap">{localZoneLabel(localTimeZone)} · {formatDateTime(now)}</span>
-      ) : (
-        <>
-          <span className="whitespace-nowrap">{localZoneLabel(localTimeZone)} · {formatDateTime(now)}</span>
-          <span className="text-border">|</span>
-          <span className="whitespace-nowrap">Portugal · {formatDateTime(now, PORTUGAL_TIME_ZONE)}</span>
-        </>
-      )}
+      <Clock3 className="h-3 w-3 shrink-0 text-muted-foreground" />
+      <span className="sm:hidden whitespace-nowrap">
+        {isPortugalZone
+          ? `${localZoneLabel(localTimeZone)} · ${formatMobileTime(now)}`
+          : `${localZoneLabel(localTimeZone)} ${formatMobileTime(now)} · PT ${formatMobileTime(now, PORTUGAL_TIME_ZONE)}`}
+      </span>
+      <span className="hidden sm:inline whitespace-nowrap">
+        {isPortugalZone
+          ? `${localZoneLabel(localTimeZone)} · ${formatDateTime(now)}`
+          : `${localZoneLabel(localTimeZone)} · ${formatDateTime(now)} | Portugal · ${formatDateTime(now, PORTUGAL_TIME_ZONE)}`}
+      </span>
     </div>
   );
 }

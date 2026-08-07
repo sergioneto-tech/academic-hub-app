@@ -1,9 +1,10 @@
-const SW_VERSION = "1.0.0-install11";
+const SW_VERSION = "1.0.0-install12";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
-  "./manifest.webmanifest?v=9",
-  "./academic-hub-icon-current-v8.svg",
+  "./manifest.webmanifest?v=10",
+  "./academic-hub-icon-v9-192.png",
+  "./academic-hub-icon-v9-512.png",
   "./release-notes.json",
 ];
 

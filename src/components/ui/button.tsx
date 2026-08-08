@@ -9,7 +9,7 @@ const buttonVariants = cva(
     "transition-[transform,box-shadow,background-color,border-color,color,filter] duration-[180ms] ease-out " +
     "hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 " +
-    "disabled:pointer-events-none disabled:translate-y-0 disabled:scale-100 disabled:shadow-none disabled:opacity-50 " +
+    "disabled:pointer-events-none disabled:translate-y-0 disabled:scale-100 disabled:shadow-none disabled:opacity-65 " +
     "motion-reduce:transform-none motion-reduce:transition-none ring-offset-background " +
     "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
@@ -20,11 +20,11 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/95 hover:brightness-105 hover:shadow-md active:shadow-sm",
         outline:
-          "border border-input bg-background shadow-sm hover:border-primary/50 hover:bg-primary/5 hover:text-foreground hover:shadow-md active:shadow-sm",
+          "border border-input bg-background text-foreground shadow-sm hover:border-primary/50 hover:bg-primary/5 hover:text-foreground hover:shadow-md active:shadow-sm",
         secondary:
           "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/90 hover:brightness-105 hover:shadow-md active:shadow-sm",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground hover:shadow-sm active:shadow-none",
+          "text-foreground hover:bg-accent hover:text-accent-foreground hover:shadow-sm active:shadow-none",
         link:
           "text-primary underline-offset-4 shadow-none hover:translate-y-0 hover:underline hover:shadow-none active:scale-100",
       },

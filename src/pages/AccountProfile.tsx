@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, ShieldCheck, UserRound } from "lucide-react";
+import { Check, ShieldCheck, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import CloudAccountPanel from "@/components/CloudAccountPanel";
+import PageNavigationActions from "@/components/PageNavigationActions";
 import { ProfileAvatar } from "@/components/ProfileAvatarEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ export default function AccountProfilePage() {
 
   return (
     <div className="space-y-6">
-      <div><Button asChild variant="ghost" size="sm"><Link to="/"><ArrowLeft className="mr-2 h-4 w-4"/>Voltar ao início</Link></Button></div>
+      <PageNavigationActions />
       <section className="premium-surface overflow-hidden p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

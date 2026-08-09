@@ -1,0 +1,61 @@
+/* Ajustes de responsividade quando o menu lateral já está visível. */
+@media (min-width: 768px) {
+  /* A fotografia do utilizador já está no menu lateral: evita repetições no cabeçalho e no resumo. */
+  header > div > div:last-child > div.hidden.sm\:block {
+    display: none !important;
+  }
+
+  main > div.space-y-6 > section.premium-surface:first-child .absolute.right-5.top-5.md\:static {
+    display: none !important;
+  }
+
+  /* Dá mais presença e legibilidade ao cartão de utilizador na sidebar. */
+  aside > div:nth-child(2) {
+    padding: 1rem 0.75rem 1.1rem;
+  }
+
+  aside > div:nth-child(2) > div {
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 1rem;
+  }
+
+  aside > div:nth-child(2) > div > div:first-child {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    flex: 0 0 3.5rem;
+  }
+
+  aside > div:nth-child(2) > div > div:nth-child(2) > div:first-child {
+    font-size: 0.95rem;
+    line-height: 1.2rem;
+  }
+
+  aside > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(2) {
+    margin-top: 0.4rem;
+    align-items: flex-start;
+    line-height: 1rem;
+  }
+
+  aside > div:nth-child(2) > div > div:nth-child(2) > div:nth-child(2) > span:last-child {
+    overflow: visible !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* No tablet, texto e ações do resumo deixam de competir pela mesma linha. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  main > div.space-y-6 > section.premium-surface:first-child > div.relative.grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  main > div.space-y-6 > section.premium-surface:first-child > div.relative.grid > div:last-child {
+    align-items: flex-start !important;
+  }
+
+  main > div.space-y-6 > section.premium-surface:first-child > div.relative.grid > div:first-child {
+    padding-right: 0 !important;
+  }
+}

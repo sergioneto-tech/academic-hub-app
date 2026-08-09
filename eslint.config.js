@@ -21,6 +21,10 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // Storage/cache access is deliberately best-effort in the PWA. Browsers can
+      // deny localStorage/sessionStorage (private mode, quota, privacy settings),
+      // so these catch blocks intentionally fall back without interrupting the UI.
+      "no-empty": ["error", { allowEmptyCatch: true }],
     },
   },
 );

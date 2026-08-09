@@ -42,29 +42,29 @@ export default function MigrationNotice() {
           </div>
           <h2 id="migration-title" className="text-2xl font-semibold tracking-tight">Os teus dados antigos precisam de uma migração única</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            O Academic Hub passou para uma infraestrutura nova e controlada diretamente pela aplicação. Contas e registos criados antes de 5 de agosto de 2026 não são transferidos automaticamente pelo fornecedor anterior.
+            O Academic Hub passou para uma infraestrutura nova e controlada diretamente pela aplicação. Os dados que ainda estejam apenas neste dispositivo podem agora ser copiados para a nova cloud através de um processo assistido.
           </p>
         </div>
 
         <div className="grid gap-3 p-6 sm:grid-cols-2 sm:p-8">
           <div className="flex min-h-36 flex-col items-center justify-center rounded-2xl border bg-muted/25 p-5 text-center">
             <FileJson className="mb-3 h-7 w-7 text-primary" />
-            <div className="font-semibold">Já usavas o Academic Hub</div>
+            <div className="font-semibold">Já tinhas uma conta antiga</div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Cria e confirma a conta nova, entra na aplicação, importa o último backup JSON e confirma que as cadeiras, notas, perfil e histórico reapareceram.
+              Entra com a conta que já utilizavas. Se este dispositivo ainda tiver as tuas cadeiras, notas e histórico, a aplicação vai detetá-los e propor a migração automática. Se mudaste de dispositivo, importa primeiro o teu backup JSON.
             </p>
           </div>
           <div className="flex min-h-36 flex-col items-center justify-center rounded-2xl border bg-muted/25 p-5 text-center">
             <CloudUpload className="mb-3 h-7 w-7 text-[hsl(var(--gold))]" />
-            <div className="font-semibold">Concluir a migração</div>
+            <div className="font-semibold">Migração protegida</div>
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
-              Ativa a sincronização e usa “Guardar na cloud (upload)”. Depois testa “Carregar da cloud (download)” noutro navegador ou dispositivo.
+              Antes de copiar os dados, a aplicação confirma que a nova cloud da conta está vazia. Se já existirem dados remotos, nada é substituído automaticamente.
             </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-3 border-t bg-muted/20 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <p className="text-xs text-muted-foreground">Contas criadas a partir de 5 de agosto de 2026 já usam diretamente a nova base de dados.</p>
+          <p className="text-xs text-muted-foreground">Depois da cópia, as contas antigas devem regularizar o email para @estudante.uab.pt sem criar uma segunda conta.</p>
           <Button type="button" onClick={dismiss} className="sm:min-w-40">Compreendi</Button>
         </div>
       </div>

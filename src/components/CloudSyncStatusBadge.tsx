@@ -48,7 +48,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
   }
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 hidden items-center gap-1.5 rounded-full border bg-background/95 px-3 py-1.5 text-[11px] font-medium shadow-lg backdrop-blur md:inline-flex ${tone}`} role="status" aria-live="polite">
+    <div className={`fixed bottom-[8.25rem] left-4 z-50 hidden w-[16rem] items-center justify-center gap-1.5 rounded-xl border bg-sidebar/95 px-3 py-2 text-[11px] font-medium shadow-md backdrop-blur md:inline-flex ${tone}`} role="status" aria-live="polite">
       <Icon className="h-3.5 w-3.5" />
       {label}
     </div>

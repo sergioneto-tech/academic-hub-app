@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Camera, ImagePlus, Trash2 } from "lucide-react";
 
+import CloudSyncStatusBadge from "@/components/CloudSyncStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,7 @@ export function ProfileAvatar({ className, editable = false }: { className?: str
   const accent = getDegreeAccent(state.degree);
   const avatarUrl = state.profile?.avatarUrl;
   const displayName = state.profile?.displayName || "Aluno";
+  const isDashboardHeroAvatar = !editable && Boolean(className?.includes("h-20 w-20") && className?.includes("sm:h-24 sm:w-24"));
 
   const content = (
     <div className={cn("relative shrink-0", className)}>
@@ -76,7 +78,16 @@ export function ProfileAvatar({ className, editable = false }: { className?: str
     </div>
   );
 
-  return editable ? <ProfileAvatarEditor trigger={content} /> : content;
+  if (editable) return <ProfileAvatarEditor trigger={content} />;
+  if (isDashboardHeroAvatar) {
+    return (
+      <div className="flex flex-col items-center">
+        {content}
+        <CloudSyncStatusBadge embedded />
+      </div>
+    );
+  }
+  return content;
 }
 
 export default function ProfileAvatarEditor({ trigger }: { trigger?: React.ReactNode }) {

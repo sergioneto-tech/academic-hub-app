@@ -46,6 +46,8 @@ jobs:
           npx eslint
           src/App.tsx
           src/components/CloudAccountPanel.tsx
+          src/components/CloudRecoveryCard.tsx
+          src/components/CloudSyncStatusBadge.tsx
           src/components/CourseEvaluationSettings.tsx
           src/components/EvaluationFrameworkNotice.tsx
           src/components/EvaluationModeSelector.tsx
@@ -54,10 +56,14 @@ jobs:
           src/components/ui/card.tsx
           src/components/ui/pt-datetime-input.tsx
           src/hooks/useAutoSync.ts
+          src/hooks/useRealtimeSync.ts
           src/lib/AppStore.tsx
           src/lib/calculations.ts
+          src/lib/cloudHistory.ts
           src/lib/cloudSync.ts
+          src/lib/cloudSyncState.ts
           src/lib/degreeTheme.ts
+          src/lib/realtimeSync.ts
           src/lib/storage.ts
           src/lib/theme.ts
           src/lib/types.ts
@@ -70,4 +76,5 @@ jobs:
           src/pages/History.tsx
           src/pages/Legal.tsx
           src/pages/SettingsPremium.tsx
+          src/test/cloud-sync-reliability.test.ts
           src/test/regulation-2026.test.ts

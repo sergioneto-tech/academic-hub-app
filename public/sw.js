@@ -1,11 +1,11 @@
-const SW_VERSION = "1.0.0-install13";
+const SW_VERSION = "1.1.0-install14";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
   "./academic-hub-icon-v10-192.png",
   "./academic-hub-icon-v10-512.png",
-  "./release-notes.json",
+  "./release-notes.json?v=1.1.0",
 ];
 
 self.addEventListener("install", (event) => {
@@ -49,10 +49,12 @@ self.addEventListener("fetch", (event) => {
 
   const isNavigation = req.mode === "navigate";
   const isVersionSensitiveAsset = url.pathname.includes("/assets/");
+  const isReleaseNotes = url.pathname.endsWith("/release-notes.json");
   const mustBeFresh =
     url.pathname.endsWith("/sw.js") ||
     url.pathname.includes("manifest.webmanifest") ||
     url.pathname.endsWith(".html") ||
+    isReleaseNotes ||
     isNavigation ||
     isVersionSensitiveAsset;
 

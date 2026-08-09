@@ -2,6 +2,7 @@ import { Suspense, lazy, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import MigrationNotice from "./components/MigrationNotice";
+import LegacyMigrationAssistant from "./components/LegacyMigrationAssistant";
 import CloudSyncNotice from "./components/CloudSyncNotice";
 import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
@@ -37,6 +38,7 @@ function AcademicHubApp() {
   return (
     <>
       <MigrationNotice />
+      <LegacyMigrationAssistant />
       <CloudSyncNotice />
       <MobileExitGuard />
       <Routes>

@@ -4,12 +4,15 @@ import Layout from "./components/Layout";
 import MigrationNotice from "./components/MigrationNotice";
 import LegacyMigrationAssistant from "./components/LegacyMigrationAssistant";
 import CloudSyncNotice from "./components/CloudSyncNotice";
+import CloudSyncStatusBadge from "./components/CloudSyncStatusBadge";
+import CloudRecoveryCard from "./components/CloudRecoveryCard";
 import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
 import MobileExitGuard from "./components/MobileExitGuard";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
+import { useRealtimeSync } from "./hooks/useRealtimeSync";
 
 const CalendarPage = lazy(() => import("./pages/Calendar"));
 const HistoryPage = lazy(() => import("./pages/History"));
@@ -35,11 +38,13 @@ function ExplorePage({ children }: { children: ReactNode }) { return <GuestReadO
 
 function AcademicHubApp() {
   useAutoSync();
+  useRealtimeSync();
   return (
     <>
       <MigrationNotice />
       <LegacyMigrationAssistant />
       <CloudSyncNotice />
+      <CloudSyncStatusBadge />
       <MobileExitGuard />
       <Routes>
         <Route element={<Layout />}>
@@ -53,7 +58,7 @@ function AcademicHubApp() {
           <Route path="/plano" element={<LazyPage><ExplorePage><StudyPlan /></ExplorePage></LazyPage>} />
           <Route path="/plano/estudo" element={<LazyPage><ExplorePage><PersonalStudyPlan /></ExplorePage></LazyPage>} />
           <Route path="/conta" element={<LazyPage><AccountProfilePage /></LazyPage>} />
-          <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
+          <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><CloudRecoveryCard /><SettingsPremium /></></LazyPage>} />
           <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
           <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
           <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />

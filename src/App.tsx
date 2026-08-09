@@ -4,6 +4,7 @@ import Layout from "./components/Layout";
 import MigrationNotice from "./components/MigrationNotice";
 import CloudSyncNotice from "./components/CloudSyncNotice";
 import CloudConflictPanel from "./components/CloudConflictPanel";
+import GuestReadOnly from "./components/GuestReadOnly";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
@@ -27,6 +28,7 @@ function RouteFallback() {
   return <div className="grid min-h-[42vh] place-items-center" role="status" aria-live="polite"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary/25 border-t-primary motion-reduce:animate-none" /><span className="sr-only">A carregar…</span></div>;
 }
 function LazyPage({ children }: { children: ReactNode }) { return <Suspense fallback={<RouteFallback />}>{children}</Suspense>; }
+function ExplorePage({ children }: { children: ReactNode }) { return <GuestReadOnly>{children}</GuestReadOnly>; }
 
 function AcademicHubApp() {
   useAutoSync();
@@ -36,15 +38,15 @@ function AcademicHubApp() {
       <CloudSyncNotice />
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/cadeiras" element={<LazyPage><CoursesPage /></LazyPage>} />
-          <Route path="/cadeiras/:id" element={<LazyPage><CourseDetailPremium /></LazyPage>} />
-          <Route path="/calendario" element={<LazyPage><CalendarPage /></LazyPage>} />
-          <Route path="/historico" element={<LazyPage><HistoryPage /></LazyPage>} />
-          <Route path="/historico/relatorio" element={<LazyPage><AcademicReportPage /></LazyPage>} />
-          <Route path="/historico/relatorio-completo" element={<LazyPage><AcademicProgressReport /></LazyPage>} />
-          <Route path="/plano" element={<LazyPage><StudyPlan /></LazyPage>} />
-          <Route path="/plano/estudo" element={<LazyPage><PersonalStudyPlan /></LazyPage>} />
+          <Route path="/" element={<ExplorePage><Dashboard /></ExplorePage>} />
+          <Route path="/cadeiras" element={<LazyPage><ExplorePage><CoursesPage /></ExplorePage></LazyPage>} />
+          <Route path="/cadeiras/:id" element={<LazyPage><ExplorePage><CourseDetailPremium /></ExplorePage></LazyPage>} />
+          <Route path="/calendario" element={<LazyPage><ExplorePage><CalendarPage /></ExplorePage></LazyPage>} />
+          <Route path="/historico" element={<LazyPage><ExplorePage><HistoryPage /></ExplorePage></LazyPage>} />
+          <Route path="/historico/relatorio" element={<LazyPage><ExplorePage><AcademicReportPage /></ExplorePage></LazyPage>} />
+          <Route path="/historico/relatorio-completo" element={<LazyPage><ExplorePage><AcademicProgressReport /></ExplorePage></LazyPage>} />
+          <Route path="/plano" element={<LazyPage><ExplorePage><StudyPlan /></ExplorePage></LazyPage>} />
+          <Route path="/plano/estudo" element={<LazyPage><ExplorePage><PersonalStudyPlan /></ExplorePage></LazyPage>} />
           <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
           <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
           <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />

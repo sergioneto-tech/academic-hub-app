@@ -5,6 +5,7 @@ import MigrationNotice from "./components/MigrationNotice";
 import CloudSyncNotice from "./components/CloudSyncNotice";
 import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
+import MobileExitGuard from "./components/MobileExitGuard";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
@@ -37,6 +38,7 @@ function AcademicHubApp() {
     <>
       <MigrationNotice />
       <CloudSyncNotice />
+      <MobileExitGuard />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<ExplorePage><Dashboard /></ExplorePage>} />

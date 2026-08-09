@@ -175,6 +175,24 @@
 
   .gold-detail { color: hsl(var(--gold)); }
 
+  /* O cartão "O que mudou" pode ser maior do que o ecrã em versões com muitas notas.
+     O overlay e o próprio cartão passam a permitir scroll sem esconder o botão final. */
+  div[class*="z-[90]"][class*="fixed"][class*="inset-0"] {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    align-items: start;
+  }
+
+  div[class*="z-[90]"][class*="fixed"][class*="inset-0"] > .premium-surface {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    margin-top: auto;
+    margin-bottom: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Usa exatamente a mesma identidade visual no cabeçalho desktop e mobile. */
   aside > div:first-child > div:first-child,
   header > div > div:first-child > div:first-child {

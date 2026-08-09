@@ -1,6 +1,21 @@
 {
-  "latest": "1.0.0",
+  "latest": "1.1.0",
   "versions": [
+    {
+      "version": "1.1.0",
+      "date": "2026-08-09",
+      "changes": [
+        "Novo modo de exploração para visitantes, permitindo consultar a estrutura e informação pública antes de criar conta, mantendo protegidas as ações que alteram dados.",
+        "Nova área Conta e Perfil, separando identificação do aluno, fotografia, conta, sincronização cloud e segurança das definições gerais.",
+        "Ajuda & Guia renovada com percurso passo a passo para novos utilizadores e visitantes.",
+        "Fotografia do aluno adicionada ao resumo académico da página inicial também no telemóvel, mantendo a cor de assinatura associada à licenciatura.",
+        "Navegação secundária melhorada com Voltar atrás e Ir para o início, preservando o contexto de onde o aluno veio.",
+        "Botão ou gesto Voltar do telemóvel passa a respeitar o histórico da aplicação e, no início, apresenta confirmação antes de sair.",
+        "Contraste reforçado em botões, separadores, selects e controlos no modo escuro.",
+        "Relatórios académicos mantêm os dois modelos, identificação do aluno e opções de impressão vertical e horizontal.",
+        "Melhorias gerais de consistência visual, navegação e experiência PWA em computador, tablet e telemóvel."
+      ]
+    },
     {
       "version": "1.0.0",
       "date": "2026-08-04",

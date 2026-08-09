@@ -1,4 +1,4 @@
-const SW_VERSION = "1.0.0-install13";
+const SW_VERSION = "1.1.0-install14";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -52,6 +52,7 @@ self.addEventListener("fetch", (event) => {
   const mustBeFresh =
     url.pathname.endsWith("/sw.js") ||
     url.pathname.includes("manifest.webmanifest") ||
+    url.pathname.endsWith("/release-notes.json") ||
     url.pathname.endsWith(".html") ||
     isNavigation ||
     isVersionSensitiveAsset;

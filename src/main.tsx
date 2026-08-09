@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import "./index.css";
 import "./settings-catalog.css";
+import "./tablet-sidebar-layout.css";
 import { applyTheme, getStoredTheme, getSystemTheme } from "@/lib/theme";
 import { UpdateProvider } from "@/lib/UpdateProvider";
 import { AppStoreProvider } from "./lib/AppStore";

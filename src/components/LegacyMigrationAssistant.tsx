@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, CloudUpload, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -38,6 +38,7 @@ export default function LegacyMigrationAssistant() {
   const [noticeDismissed, setNoticeDismissed] = useState(() => !isMigrationNoticePending());
   const [eligibility, setEligibility] = useState<Eligibility>("checking");
   const [busy, setBusy] = useState(false);
+  const migrationCompletedRef = useRef(false);
 
   const cloudConfig: CloudConfig | null = useMemo(() => {
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
@@ -58,6 +59,11 @@ export default function LegacyMigrationAssistant() {
   }, []);
 
   useEffect(() => {
+    // Depois de uma migração concluída, mantém o passo de sucesso visível.
+    // O replaceState altera o estado local e voltaria a disparar esta verificação,
+    // fazendo a cloud recém-criada parecer uma migração pré-existente.
+    if (migrationCompletedRef.current) return;
+
     if (!noticeDismissed || !cloudConfig || !hasMeaningfulLocalMigrationData(state)) {
       setEligibility("hidden");
       return;
@@ -143,6 +149,7 @@ export default function LegacyMigrationAssistant() {
 
       setSyncBaseline(migratedState);
       clearCloudConflict();
+      migrationCompletedRef.current = true;
       replaceState(migratedState);
       setEligibility("migrated");
       toast({

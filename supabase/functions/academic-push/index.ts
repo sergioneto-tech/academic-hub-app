@@ -4,6 +4,7 @@ import webpush from "web-push";
 type Pref = { user_id:string; deadlines_enabled:boolean; exams_enabled:boolean; uab_enabled:boolean; efinal_lead_days:number; exam_lead_days:number; uab_lead_days:number; timezone:string };
 type Sub = { id:string; user_id:string; endpoint:string; p256dh:string; auth:string; enabled:boolean };
 type Due = { key:string; title:string; body:string; url:string };
+type UabPeriod = { id:string; label:string; open:string; close:string };
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -16,10 +17,6 @@ const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringif
 });
 
 const UAB_URL = "https://portal.uab.pt/calendario-letivo/";
-const UAB_PERIODS = [
-  { id:"2026-s1", label:"Inscrições do 1.º semestre", open:"2026-08-18", close:"2026-09-01" },
-  { id:"2026-s2", label:"Inscrições do 2.º semestre", open:"2026-11-17", close:"2026-12-01" },
-];
 
 function ymdInZone(date:Date, timeZone:string){
   const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year:"numeric", month:"2-digit", day:"2-digit" }).formatToParts(date);
@@ -32,7 +29,22 @@ function timePart(v?:string){ return v?.includes("T") ? v.slice(11,16) : ""; }
 function courseLabel(state:any, courseId:string){ const c=(state.courses??[]).find((x:any)=>x.id===courseId); return c?`${c.code} — ${c.name}`:"Cadeira"; }
 function activeIds(state:any){ return new Set((state.courses??[]).filter((c:any)=>c.isActive&&!c.isCompleted).map((c:any)=>c.id)); }
 
-function buildDue(state:any,pref:Pref,now:Date):Due[]{
+function extractUabPeriods(rows:any[]):UabPeriod[]{
+  const periods:UabPeriod[]=[];
+  for(const row of rows??[]){
+    const year=row?.payload?.academicYear??row?.academic_year??"";
+    const events=Array.isArray(row?.payload?.events)?row.payload.events:[];
+    for(const event of events){
+      if(event?.id!=="matriculas-1sem"&&event?.id!=="matriculas-2sem") continue;
+      if(typeof event.startDate!=="string"||typeof event.endDate!=="string") continue;
+      const semester=event.id==="matriculas-1sem"?"1.º":"2.º";
+      periods.push({id:`${year}:${event.id}`,label:`Inscrições do ${semester} semestre`,open:event.startDate.slice(0,10),close:event.endDate.slice(0,10)});
+    }
+  }
+  return periods;
+}
+
+function buildDue(state:any,pref:Pref,now:Date,uabPeriods:UabPeriod[]):Due[]{
   const today=ymdInZone(now,pref.timezone||"Europe/Lisbon"), due:Due[]=[];
   const active=activeIds(state);
   for(const a of state.assessments??[]){
@@ -53,7 +65,7 @@ function buildDue(state:any,pref:Pref,now:Date):Due[]{
     }
   }
   if(pref.uab_enabled){
-    for(const p of UAB_PERIODS){
+    for(const p of uabPeriods){
       const openLeft=daysBetween(today,p.open), closeLeft=daysBetween(today,p.close);
       if(openLeft===pref.uab_lead_days) due.push({key:`uab:${p.id}:open-lead:${openLeft}`,title:`${p.label} abrem em ${openLeft} dias`,body:"Universidade Aberta",url:UAB_URL});
       if(openLeft===0) due.push({key:`uab:${p.id}:open`,title:`${p.label} abrem hoje`,body:"Consulta o calendário oficial da UAb.",url:UAB_URL});
@@ -88,13 +100,15 @@ export default {
     let prefQ=db.from("push_preferences").select("*"); if(onlyUser) prefQ=prefQ.eq("user_id",onlyUser);
     const {data:prefs}=await prefQ; if(!prefs?.length) return jsonResponse({sent:0});
     const ids=prefs.map((p:any)=>p.user_id);
-    const [{data:states},{data:subs},{data:logs}]=await Promise.all([
+    const [{data:states},{data:subs},{data:logs},{data:calendarRows}]=await Promise.all([
       db.from("user_state").select("user_id,state").in("user_id",ids),
       db.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth,enabled").in("user_id",ids).eq("enabled",true),
       db.from("push_delivery_log").select("user_id,event_key").in("user_id",ids),
+      db.from("uab_academic_calendars").select("academic_year,payload").eq("is_valid",true).order("academic_year",{ascending:false}).limit(2),
     ]);
     const stateMap=new Map((states??[]).map((r:any)=>[r.user_id,r.state]));
     const sentKeys=new Set((logs??[]).map((r:any)=>`${r.user_id}|${r.event_key}`));
+    const uabPeriods=extractUabPeriods(calendarRows??[]);
     let sent=0;
     for(const pref of prefs as Pref[]){
       let userSubs=(subs??[]).filter((s:any)=>s.user_id===pref.user_id) as Sub[];
@@ -102,7 +116,7 @@ export default {
         userSubs=userSubs.filter((s)=>s.endpoint===targetEndpoint);
       }
       if(!userSubs.length) continue;
-      const events=body.mode==="test"&&onlyUser===pref.user_id ? [{key:`test:${Date.now()}`,title:"Academic Hub",body:"Notificações ativadas com sucesso neste dispositivo.",url:"/#/definicoes"}] : buildDue(stateMap.get(pref.user_id)??{},pref,new Date());
+      const events=body.mode==="test"&&onlyUser===pref.user_id ? [{key:`test:${Date.now()}`,title:"Academic Hub",body:"Notificações ativadas com sucesso neste dispositivo.",url:"/#/definicoes"}] : buildDue(stateMap.get(pref.user_id)??{},pref,new Date(),uabPeriods);
       for(const event of events){
         if(body.mode!=="test" && sentKeys.has(`${pref.user_id}|${event.key}`)) continue;
         let ok=false;

@@ -1,6 +1,17 @@
 {
-  "latest": "1.2.0",
+  "latest": "1.2.2",
   "versions": [
+    {
+      "version": "1.2.2",
+      "date": "2026-08-10",
+      "changes": [
+        "Corrigida a ativação das notificações em dispositivos onde a sessão Cloud precisava de ser renovada.",
+        "Evitada a falha 'Invalid Refresh Token: Already Used' quando duas partes da aplicação tentam renovar a sessão em simultâneo.",
+        "As notificações passam a reutilizar a sessão Cloud já existente e só renovam o token quando o servidor realmente o exige.",
+        "Mantido o suporte a notificações no iPhone, iPad, Android e computador, com ativação individual por dispositivo.",
+        "O cartão 'O que mudou nesta versão' volta a aparecer corretamente após esta atualização."
+      ]
+    },
     {
       "version": "1.2.0",
       "date": "2026-08-10",

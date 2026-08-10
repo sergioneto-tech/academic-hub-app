@@ -48,13 +48,8 @@ function getCloudConfig(): CloudConfig {
 
 async function getCloudAuthContext(): Promise<CloudAuthContext> {
   const config = getCloudConfig();
-  let session = getStoredSession(config);
+  const session = getStoredSession(config);
   if (!session) throw new Error("Inicia sessão na conta do Academic Hub para ativar notificações.");
-
-  const now = Math.floor(Date.now() / 1000);
-  if (session.expires_at && session.expires_at <= now + 60) {
-    session = await refreshSession(config, session);
-  }
   return { config, session };
 }
 
@@ -65,6 +60,36 @@ function authHeaders(context: CloudAuthContext, extra?: Record<string, string>) 
     "Content-Type": "application/json",
     ...extra,
   };
+}
+
+function delay(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function recoverConcurrentRefresh(context: CloudAuthContext, error: unknown): Promise<AuthSession> {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  if (!/refresh token.*already used|already used/i.test(message)) throw error;
+
+  for (const wait of [120, 250, 500]) {
+    await delay(wait);
+    const latest = getStoredSession(context.config);
+    if (
+      latest?.user.id === context.session.user.id &&
+      (latest.access_token !== context.session.access_token || latest.refresh_token !== context.session.refresh_token)
+    ) {
+      return latest;
+    }
+  }
+
+  throw new Error("A sessão da cloud foi renovada noutro processo, mas a nova sessão ainda não ficou disponível. Fecha e volta a abrir o Academic Hub e tenta novamente.");
+}
+
+async function refreshForRequest(context: CloudAuthContext): Promise<AuthSession> {
+  try {
+    return await refreshSession(context.config, context.session);
+  } catch (error) {
+    return recoverConcurrentRefresh(context, error);
+  }
 }
 
 async function cloudFetch(
@@ -82,7 +107,7 @@ async function cloudFetch(
   });
 
   if (response.status === 401 && retry) {
-    const fresh = await refreshSession(context.config, context.session);
+    const fresh = await refreshForRequest(context);
     return cloudFetch({ config: context.config, session: fresh }, url, init, false);
   }
   return response;

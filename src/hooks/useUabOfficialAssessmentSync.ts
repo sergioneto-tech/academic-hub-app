@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useAppStore } from "@/lib/AppStore";
+import { getRegulationOutcome, needsResit } from "@/lib/calculations";
 import type { AppState, Assessment, Course } from "@/lib/types";
 
 const ACADEMIC_YEAR = "2026/2027";
@@ -91,6 +92,11 @@ function applyOfficialDate(
   return assessment;
 }
 
+function clearOfficialDate(assessment: Assessment, checkedAt: string | undefined): Assessment {
+  if (assessment.dateSource !== "official" || !assessment.date) return assessment;
+  return { ...assessment, date: undefined, officialCheckedAt: checkedAt };
+}
+
 function officialSlots(course: Course, entry: OfficialExamEntry) {
   const examPath = course.evaluationModel === "exam-only"
     || (course.evaluationRegime === "legacy" && course.legacyEvaluationMode === "exam-only");
@@ -127,7 +133,36 @@ function applySnapshot(state: AppState, snapshot: OfficialSnapshot): AppState {
     return course;
   });
 
+  const stateWithOfficialRegime: AppState = { ...state, courses };
   const courseById = new Map(courses.map((course) => [course.id, course]));
+  const examByCourse = new Map(
+    state.assessments
+      .filter((assessment) => assessment.type === "exam")
+      .map((assessment) => [assessment.courseId, assessment]),
+  );
+  const resitByCourse = new Map(
+    state.assessments
+      .filter((assessment) => assessment.type === "resit")
+      .map((assessment) => [assessment.courseId, assessment]),
+  );
+
+  const shouldExposeResit = new Map<string, boolean>();
+  for (const course of courses) {
+    if (!course.isActive || course.isCompleted) continue;
+    const resource = resitByCourse.get(course.id);
+    if (resource?.grade !== null && resource?.grade !== undefined) {
+      shouldExposeResit.set(course.id, true);
+      continue;
+    }
+    if (course.evaluationRegime === "regulation-2026") {
+      const outcome = getRegulationOutcome(stateWithOfficialRegime, course.id);
+      shouldExposeResit.set(course.id, outcome?.kind === "resit" || outcome?.kind === "failed");
+      continue;
+    }
+    const normal = examByCourse.get(course.id);
+    shouldExposeResit.set(course.id, normal?.grade !== null && normal?.grade !== undefined && needsResit(stateWithOfficialRegime, course.id));
+  }
+
   const assessments = state.assessments.map((assessment) => {
     if (assessment.type !== "exam" && assessment.type !== "resit") return assessment;
     const course = courseById.get(assessment.courseId);
@@ -135,11 +170,16 @@ function applySnapshot(state: AppState, snapshot: OfficialSnapshot): AppState {
     const scheduled = schedules.get(`${course.semester}:${normalizedCode(course.code)}`);
     if (!scheduled) return assessment;
     const slots = officialSlots(course, scheduled.entry);
-    const next = applyOfficialDate(
-      assessment,
-      assessment.type === "exam" ? slots.normal : slots.resit,
-      scheduled.checkedAt,
-    );
+
+    let next: Assessment;
+    if (assessment.type === "exam") {
+      next = applyOfficialDate(assessment, slots.normal, scheduled.checkedAt);
+    } else if (shouldExposeResit.get(course.id)) {
+      next = applyOfficialDate(assessment, slots.resit, scheduled.checkedAt);
+    } else {
+      next = clearOfficialDate(assessment, scheduled.checkedAt);
+    }
+
     if (next !== assessment) changed = true;
     return next;
   });
@@ -149,21 +189,13 @@ function applySnapshot(state: AppState, snapshot: OfficialSnapshot): AppState {
 
 export function useUabOfficialAssessmentSync() {
   const { state, replaceState } = useAppStore();
+  const [snapshot, setSnapshot] = useState<OfficialSnapshot | null>(() => readCache());
 
   useEffect(() => {
-    let cancelled = false;
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim().replace(/\/$/, "");
-
-    const apply = (snapshot: OfficialSnapshot | null) => {
-      if (!snapshot || cancelled) return;
-      const next = applySnapshot(state, snapshot);
-      if (next !== state) replaceState(next);
-    };
-
-    apply(readCache());
-    if (!supabaseUrl) return () => { cancelled = true; };
-
+    if (!supabaseUrl) return;
     const controller = new AbortController();
+
     void fetch(`${supabaseUrl}/functions/v1/uab-assessment-sync?year=${encodeURIComponent(ACADEMIC_YEAR)}`, {
       cache: "no-store",
       signal: controller.signal,
@@ -172,19 +204,21 @@ export function useUabOfficialAssessmentSync() {
         if (!response.ok) throw new Error(`assessment ${response.status}`);
         return response.json() as Promise<OfficialSnapshot>;
       })
-      .then((snapshot) => {
-        if (cancelled) return;
-        writeCache(snapshot);
-        apply(snapshot);
+      .then((next) => {
+        writeCache(next);
+        setSnapshot(next);
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
         // Mantém silenciosamente a última fonte oficial válida em cache.
       });
 
-    return () => {
-      cancelled = true;
-      controller.abort();
-    };
-  }, [replaceState, state]);
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (!snapshot) return;
+    const next = applySnapshot(state, snapshot);
+    if (next !== state) replaceState(next);
+  }, [replaceState, snapshot, state]);
 }

@@ -18,6 +18,13 @@ export type PushPreferences = {
   timezone: string;
 };
 
+export type RegisteredPushDevice = {
+  device_label: string | null;
+  user_agent: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export const DEFAULT_PUSH_PREFERENCES: PushPreferences = {
   deadlines_enabled: true,
   exams_enabled: true,
@@ -143,12 +150,19 @@ function urlBase64ToUint8Array(value: string) {
   return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
 }
 
+export function isAppleMobileDevice() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return /iPhone|iPad|iPod/i.test(ua) ||
+    ((/Macintosh|Mac OS X/i.test(ua) || navigator.platform === "MacIntel") && navigator.maxTouchPoints > 1);
+}
+
 function defaultDeviceLabel() {
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
-    ? "iPhone/iPad"
-    : /Android/i.test(navigator.userAgent)
-      ? "Android"
-      : "Computador";
+  const ua = navigator.userAgent || "";
+  if (/iPhone|iPod/i.test(ua)) return "iPhone";
+  if (/iPad/i.test(ua) || isAppleMobileDevice()) return "iPad";
+  if (/Android/i.test(ua)) return "Android";
+  return "Computador";
 }
 
 export function pushSupported() {
@@ -187,10 +201,30 @@ export async function savePushPreferences(prefs: PushPreferences) {
   await assertOk(response, "Não foi possível guardar as preferências de notificações.");
 }
 
+export async function loadRegisteredPushDevices(): Promise<RegisteredPushDevice[]> {
+  const context = await getCloudAuthContext();
+  const url = `${context.config.supabaseUrl}/rest/v1/push_subscriptions?user_id=eq.${encodeURIComponent(context.session.user.id)}&enabled=eq.true&select=device_label,user_agent,created_at,updated_at&order=updated_at.desc`;
+  const response = await cloudFetch(context, url, { cache: "no-store" });
+  await assertOk(response, "Não foi possível carregar os dispositivos registados.");
+  return await response.json() as RegisteredPushDevice[];
+}
+
 export async function currentPushSubscription() {
   if (!pushSupported()) return null;
   const registration = await navigator.serviceWorker.ready;
   return registration.pushManager.getSubscription();
+}
+
+async function ensureLocalPushSubscription() {
+  const registration = await navigator.serviceWorker.ready;
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  return subscription;
 }
 
 async function registerSubscription(
@@ -219,29 +253,20 @@ async function registerSubscription(
 
 export async function reconcilePushOnThisDevice(deviceLabel = defaultDeviceLabel()) {
   if (!pushSupported() || Notification.permission !== "granted") return null;
-  const subscription = await currentPushSubscription();
-  if (!subscription) return null;
   const context = await getCloudAuthContext();
+  const subscription = await ensureLocalPushSubscription();
   await registerSubscription(context, subscription, deviceLabel);
   return subscription;
 }
 
-export async function enablePushOnThisDevice(deviceLabel: string) {
+export async function enablePushOnThisDevice(deviceLabel = defaultDeviceLabel()) {
   if (!pushSupported()) throw new Error("Este dispositivo/navegador não suporta notificações Push.");
   const context = await getCloudAuthContext();
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") throw new Error("A autorização de notificações não foi concedida.");
 
-  const registration = await navigator.serviceWorker.ready;
-  let subscription = await registration.pushManager.getSubscription();
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-  }
-
+  const subscription = await ensureLocalPushSubscription();
   await registerSubscription(context, subscription, deviceLabel);
   const preferences = await loadPushPreferences() ?? DEFAULT_PUSH_PREFERENCES;
   await savePushPreferences(preferences);
@@ -261,24 +286,23 @@ export async function disablePushOnThisDevice() {
 
 export async function sendPushTest() {
   const context = await getCloudAuthContext();
-  let subscription = await currentPushSubscription();
-  if (!subscription && Notification.permission === "granted") {
-    const registration = await navigator.serviceWorker.ready;
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+
+  // Antes do teste, garante que o dispositivo onde o botão foi premido também está
+  // registado. Isto repara automaticamente instalações iOS/iPadOS que já tinham
+  // permissão concedida mas perderam a associação ao servidor.
+  if (pushSupported() && Notification.permission === "granted") {
+    const subscription = await ensureLocalPushSubscription();
+    await registerSubscription(context, subscription);
   }
-  if (!subscription) throw new Error("Este dispositivo ainda não tem uma subscrição Push ativa.");
 
-  // Repara automaticamente casos em que o navegador tem a subscrição local,
-  // mas ela não chegou a ser gravada no Supabase (ex.: falha de sessão anterior).
-  await registerSubscription(context, subscription);
-
+  // O teste serve para validar a conta inteira: envia para todos os dispositivos
+  // ativos do utilizador, não apenas para o endpoint onde o botão foi premido.
   const response = await cloudFetch(context, `${context.config.supabaseUrl}/functions/v1/academic-push`, {
     method: "POST",
     cache: "no-store",
-    body: JSON.stringify({ mode: "test", targetEndpoint: subscription.endpoint }),
+    body: JSON.stringify({ mode: "test" }),
   });
   await assertOk(response, "Não foi possível enviar a notificação de teste.");
+  const result = await response.json().catch(() => ({ sent: 0 })) as { sent?: number };
+  return Number(result.sent ?? 0);
 }

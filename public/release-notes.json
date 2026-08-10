@@ -1,6 +1,18 @@
 {
-  "latest": "1.2.4",
+  "latest": "1.2.5",
   "versions": [
+    {
+      "version": "1.2.5",
+      "date": "2026-08-10",
+      "changes": [
+        "Corrigido o caso real observado no iPad: se a permissão de notificações já estiver concedida mas a subscrição Push local tiver desaparecido, o Academic Hub recria-a e volta a registá-la automaticamente no servidor.",
+        "Melhorada a identificação de iPadOS quando o sistema se apresenta como Mac, evitando que o iPad seja tratado incorretamente como computador.",
+        "O teste de notificações passa a validar todos os dispositivos ativos da mesma conta e indica quantos receberam o envio; a área de notificações mostra também os dispositivos atualmente registados.",
+        "O ícone principal das notificações passa a usar fundo dourado e monograma AH branco; no Android, o pequeno badge da barra de estado continua sujeito à máscara monocromática aplicada pelo próprio sistema.",
+        "Corrigido o botão Atualizar: ao aceitar uma versão nova o aviso desaparece imediatamente, a cache da PWA é limpa e existe uma recarga forçada de segurança caso o navegador não conclua a troca do Service Worker.",
+        "Os dados locais, a cloud, as cadeiras, avaliações e histórico não são apagados durante a atualização."
+      ]
+    },
     {
       "version": "1.2.4",
       "date": "2026-08-10",

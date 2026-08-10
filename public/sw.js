@@ -1,12 +1,16 @@
-const SW_VERSION = "1.2.4-push5";
+const SW_VERSION = "1.2.5-push1";
 const CACHE = `academic-hub-${SW_VERSION}`;
+const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
+const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
+const NOTIFICATION_GOLD = "#CB9D48";
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
   "./academic-hub-icon-v10-192.png",
   "./academic-hub-icon-v10-512.png",
-  "./academic-hub-notification-badge.png",
-  "./release-notes.json?v=1.2.4",
+  NOTIFICATION_ICON,
+  NOTIFICATION_BADGE,
+  "./release-notes.json?v=1.2.5",
 ];
 
 self.addEventListener("install", (event) => {
@@ -35,8 +39,11 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Academic Hub";
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || "Tens um novo alerta académico.",
-    icon: data.icon || "./academic-hub-icon-v10-192.png",
-    badge: data.badge || "./academic-hub-notification-badge.png",
+    // O ícone visível da notificação passa a usar fundo dourado e AH branco.
+    // O badge da barra Android continua separado porque o sistema o mascara automaticamente.
+    icon: NOTIFICATION_ICON,
+    badge: NOTIFICATION_BADGE,
+    color: NOTIFICATION_GOLD,
     data: { url: data.url || "./#/calendario" },
     tag: data.tag || undefined,
     renotify: false,

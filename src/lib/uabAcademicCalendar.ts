@@ -12,27 +12,18 @@ import { formatPtDate } from "@/lib/date";
 export type AcademicEvent = {
   id: string;
   label: string;
-  /** Descrição curta para o alerta */
   description: string;
-  /** Data início (YYYY-MM-DD) */
   startDate: string;
-  /** Data fim (YYYY-MM-DD) — pode ser igual a startDate se for dia único */
   endDate: string;
-  /** Semestre a que se refere (0 = geral, 1 = 1º sem, 2 = 2º sem) */
   semester: 0 | 1 | 2;
-  /** Categoria do evento */
   category: "enrollment" | "classes" | "exams" | "break" | "deadline" | "info";
-  /** Quantos dias antes do início alertar (default: 7) */
   alertDaysBefore?: number;
-  /** Ícone emoji */
   icon: string;
 };
 
 type AcademicCalendarYear = {
   academicYear: string;
-  /** Data a partir da qual este calendário já deve ser considerado para alertas. */
   activeFrom: string;
-  /** Data limite operacional do calendário académico. */
   activeUntil: string;
   officialSource: string;
   events: AcademicEvent[];
@@ -55,14 +46,24 @@ function daysUntil(ymd: string): number | null {
   return Math.round((startOfDay(target).getTime() - today.getTime()) / 86400000);
 }
 
+/**
+ * O novo ano letivo passa a ser considerado a partir de agosto, altura em que
+ * começam normalmente as inscrições do 1.º semestre. Assim o título nunca fica
+ * preso ao ano anterior só porque ainda não foi adicionada uma nova tabela de datas.
+ */
+export function getAcademicYearForDate(referenceDate = new Date()): string {
+  const year = referenceDate.getFullYear();
+  const startsThisCalendarYear = referenceDate.getMonth() >= 7;
+  const startYear = startsThisCalendarYear ? year : year - 1;
+  return `${startYear}/${startYear + 1}`;
+}
+
 const CALENDAR_2026_2027: AcademicCalendarYear = {
   academicYear: "2026/2027",
-  // Começa nas primeiras candidaturas publicadas para este ano letivo.
   activeFrom: "2026-03-10",
   activeUntil: "2027-12-31",
   officialSource: "https://portal.uab.pt/wp-content/uploads/2026/03/Calendario-Letivo-202627_1-ciclo_V2.pdf",
   events: [
-    // ── Candidaturas ────────────────────────────
     {
       id: "candidaturas-com-provas",
       label: "Candidaturas (com provas)",
@@ -96,8 +97,6 @@ const CALENDAR_2026_2027: AcademicCalendarYear = {
       alertDaysBefore: 7,
       icon: "📢",
     },
-
-    // ── 1º Semestre ─────────────────────────────
     {
       id: "matriculas-1sem",
       label: "Matrículas e inscrições — 1º semestre",
@@ -175,8 +174,6 @@ const CALENDAR_2026_2027: AcademicCalendarYear = {
       alertDaysBefore: 14,
       icon: "📝",
     },
-
-    // ── 2º Semestre ─────────────────────────────
     {
       id: "matriculas-2sem",
       label: "Matrículas e inscrições — 2º semestre",
@@ -259,31 +256,30 @@ const CALENDAR_2026_2027: AcademicCalendarYear = {
 
 const ACADEMIC_CALENDAR_YEARS: AcademicCalendarYear[] = [CALENDAR_2026_2027];
 
-function getCurrentAcademicCalendarYear(referenceDate = new Date()): AcademicCalendarYear {
-  const today = startOfDay(referenceDate).getTime();
-  const active = ACADEMIC_CALENDAR_YEARS
-    .filter((calendar) => {
-      const from = parseYmd(calendar.activeFrom)?.getTime() ?? Number.NEGATIVE_INFINITY;
-      return from <= today;
-    })
-    .sort((a, b) => a.academicYear.localeCompare(b.academicYear, "pt-PT"));
+export const ACADEMIC_YEAR = getAcademicYearForDate();
 
-  // Escolhe automaticamente o calendário mais recente já publicado/ativo.
-  return active[active.length - 1] ?? ACADEMIC_CALENDAR_YEARS[ACADEMIC_CALENDAR_YEARS.length - 1];
-}
+const CURRENT_CALENDAR = ACADEMIC_CALENDAR_YEARS.find(
+  (calendar) => calendar.academicYear === ACADEMIC_YEAR,
+);
 
-const CURRENT_CALENDAR = getCurrentAcademicCalendarYear();
+/**
+ * Só são apresentadas datas específicas quando existe um calendário oficial
+ * configurado para o ano letivo atual. Na mudança de ano evita-se, assim,
+ * continuar a mostrar prazos do ano anterior como se fossem atuais.
+ */
+export const HAS_OFFICIAL_ACADEMIC_CALENDAR = Boolean(CURRENT_CALENDAR);
+export const ACADEMIC_CALENDAR: AcademicEvent[] = CURRENT_CALENDAR?.events ?? [];
 
-export const ACADEMIC_YEAR = CURRENT_CALENDAR.academicYear;
-export const ACADEMIC_CALENDAR: AcademicEvent[] = CURRENT_CALENDAR.events;
-
-/** Links úteis do portal UAb */
+/**
+ * Estes endereços apontam para páginas permanentes da UAb, não para um PDF de um
+ * ano específico. Por isso continuam válidos quando muda o semestre ou o ano letivo.
+ */
 export const UAB_LINKS = {
   calendarioLetivo: "https://portal.uab.pt/calendario-letivo/",
   avaliacao: "https://portal.uab.pt/avaliacao/",
   calendarioProvas: "https://portal.uab.pt/avaliacao/",
   candidaturas: "https://portal.uab.pt/candidaturas/",
-  despachoCalendario: CURRENT_CALENDAR.officialSource,
+  despachoCalendario: CURRENT_CALENDAR?.officialSource ?? "https://portal.uab.pt/calendario-letivo/",
 };
 
 export type CalendarAlert = {
@@ -293,12 +289,9 @@ export type CalendarAlert = {
   daysLeft: number;
   icon: string;
   category: AcademicEvent["category"];
-  /** Whether the event is currently ongoing */
   isOngoing: boolean;
-  /** Link to portal */
   link?: string;
 };
-
 
 function buildCalendarAlert(event: AcademicEvent, isOngoing: boolean, daysLeft: number): CalendarAlert {
   let link: string | undefined;
@@ -320,7 +313,6 @@ function buildCalendarAlert(event: AcademicEvent, isOngoing: boolean, daysLeft: 
   };
 }
 
-/** Cards permanentes para o Dashboard: mostra eventos académicos em curso ou os próximos eventos relevantes, mesmo fora da janela de alerta. */
 export function getAcademicDashboardCards(limit = 2): CalendarAlert[] {
   const cards: CalendarAlert[] = [];
 
@@ -346,7 +338,6 @@ export function getAcademicDashboardCards(limit = 2): CalendarAlert[] {
     .slice(0, Math.max(1, limit));
 }
 
-/** Build alerts for upcoming academic events */
 export function getAcademicAlerts(): CalendarAlert[] {
   const alerts: CalendarAlert[] = [];
 
@@ -358,8 +349,6 @@ export function getAcademicAlerts(): CalendarAlert[] {
     const alertWindow = event.alertDaysBefore ?? 7;
     const isOngoing = daysToStart <= 0 && daysToEnd >= 0;
     const isUpcoming = daysToStart > 0 && daysToStart <= alertWindow;
-
-    // Alert for deadline events when approaching end date
     const isDeadlineApproaching =
       event.category === "deadline" && daysToEnd >= 0 && daysToEnd <= alertWindow;
 
@@ -369,7 +358,6 @@ export function getAcademicAlerts(): CalendarAlert[] {
   }
 
   return alerts.sort((a, b) => {
-    // Ongoing first, then by days left
     if (a.isOngoing && !b.isOngoing) return -1;
     if (!a.isOngoing && b.isOngoing) return 1;
     return a.daysLeft - b.daysLeft;

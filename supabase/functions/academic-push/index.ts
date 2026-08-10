@@ -5,6 +5,16 @@ type Pref = { user_id:string; deadlines_enabled:boolean; exams_enabled:boolean; 
 type Sub = { id:string; user_id:string; endpoint:string; p256dh:string; auth:string; enabled:boolean };
 type Due = { key:string; title:string; body:string; url:string };
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+});
+
 const UAB_URL = "https://portal.uab.pt/calendario-letivo/";
 const UAB_PERIODS = [
   { id:"2026-s1", label:"Inscrições do 1.º semestre", open:"2026-08-18", close:"2026-09-01" },
@@ -56,23 +66,26 @@ function buildDue(state:any,pref:Pref,now:Date):Due[]{
 
 export default {
   async fetch(req:Request){
+    if(req.method==="OPTIONS") return new Response(null,{status:204,headers:CORS_HEADERS});
+    if(req.method!=="POST") return jsonResponse({error:"Method not allowed"},405);
+
     const url=Deno.env.get("SUPABASE_URL")!, service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const db=createClient(url,service,{auth:{persistSession:false}});
     const {data:cfg}=await db.from("push_server_config").select("key,value").in("key",["vapid_public","vapid_private","cron_secret"]);
     const config=Object.fromEntries((cfg??[]).map((r:any)=>[r.key,r.value]));
-    if(!config.vapid_public||!config.vapid_private) return new Response("Push not configured",{status:503});
+    if(!config.vapid_public||!config.vapid_private) return jsonResponse({error:"Push not configured"},503);
     webpush.setVapidDetails("mailto:sergioneto78@gmail.com",config.vapid_public,config.vapid_private);
     const cronOk=req.headers.get("x-cron-secret")===config.cron_secret;
     const auth=req.headers.get("authorization")??"";
     let onlyUser:string|null=null;
     if(!cronOk){
-      if(!auth.startsWith("Bearer ")) return new Response("Unauthorized",{status:401});
+      if(!auth.startsWith("Bearer ")) return jsonResponse({error:"Unauthorized"},401);
       const token=auth.slice(7); const {data}=await db.auth.getUser(token); onlyUser=data.user?.id??null;
-      if(!onlyUser) return new Response("Unauthorized",{status:401});
+      if(!onlyUser) return jsonResponse({error:"Unauthorized"},401);
     }
     const body=await req.json().catch(()=>({}));
     let prefQ=db.from("push_preferences").select("*"); if(onlyUser) prefQ=prefQ.eq("user_id",onlyUser);
-    const {data:prefs}=await prefQ; if(!prefs?.length) return Response.json({sent:0});
+    const {data:prefs}=await prefQ; if(!prefs?.length) return jsonResponse({sent:0});
     const ids=prefs.map((p:any)=>p.user_id);
     const [{data:states},{data:subs},{data:logs}]=await Promise.all([
       db.from("user_state").select("user_id,state").in("user_id",ids),
@@ -96,6 +109,6 @@ export default {
         if(ok && body.mode!=="test") await db.from("push_delivery_log").insert({user_id:pref.user_id,event_key:event.key});
       }
     }
-    return Response.json({sent});
+    return jsonResponse({sent});
   }
 };

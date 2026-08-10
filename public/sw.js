@@ -1,4 +1,4 @@
-const SW_VERSION = "1.1.0-install14";
+const SW_VERSION = "1.2.0-push1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -26,6 +26,39 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event?.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch { data = { title: "Academic Hub", body: event.data?.text() || "Novo alerta académico." }; }
+  const title = data.title || "Academic Hub";
+  event.waitUntil(self.registration.showNotification(title, {
+    body: data.body || "Tens um novo alerta académico.",
+    icon: data.icon || "./academic-hub-icon-v10-192.png",
+    badge: data.badge || "./academic-hub-icon-v10-192.png",
+    data: { url: data.url || "./#/calendario" },
+    tag: data.tag || undefined,
+    renotify: false,
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = event.notification?.data?.url || "./#/calendario";
+  event.waitUntil((async () => {
+    if (/^https?:\/\//i.test(target) && !target.startsWith(self.location.origin)) {
+      return self.clients.openWindow(target);
+    }
+    const absolute = new URL(target, self.location.origin).href;
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of windows) {
+      if ("focus" in client) {
+        try { if ("navigate" in client) await client.navigate(absolute); } catch {}
+        return client.focus();
+      }
+    }
+    return self.clients.openWindow(absolute);
+  })());
 });
 
 function putInCache(req, res) {

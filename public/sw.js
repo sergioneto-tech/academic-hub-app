@@ -53,6 +53,7 @@ self.addEventListener("fetch", (event) => {
   const mustBeFresh =
     url.pathname.endsWith("/sw.js") ||
     url.pathname.includes("manifest.webmanifest") ||
+    url.pathname.endsWith("/release-notes.json") ||
     url.pathname.endsWith(".html") ||
     isReleaseNotes ||
     isNavigation ||

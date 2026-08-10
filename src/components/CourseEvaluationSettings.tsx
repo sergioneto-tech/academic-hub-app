@@ -24,6 +24,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useAppStore } from "@/lib/AppStore";
 import { getAssessments, getRegulationOutcome } from "@/lib/calculations";
+import { formatPtDateTime } from "@/lib/date";
 import type {
   Assessment,
   AssessmentMode,
@@ -40,40 +41,40 @@ const MODEL_OPTIONS: Array<{
   whenToUse: string;
 }> = [
   {
+    value: "custom",
+    label: "A aguardar tipologia do PUC",
+    description: "Estado provisório: o regime 2026 já está confirmado, mas ainda falta registar a tipologia indicada no PUC da unidade curricular.",
+    whenToUse: "Mantém apenas até confirmares o PUC.",
+  },
+  {
     value: "type1",
-    label: "Modelo 1",
-    description: "Combina elementos assíncronos e síncronos, com mínimos definidos em ambas as componentes e classificação global mínima de 10/20.",
-    whenToUse: "Seleciona quando o PUC indicar Modelo 1.",
+    label: "Tipologia 1",
+    description: "2 a 3 elementos assíncronos (6–8 valores no total) e 1 elemento síncrono (12–14 valores), com mínimo de 50% em cada componente e nota final mínima de 10/20.",
+    whenToUse: "Seleciona quando o PUC indicar Tipologia 1.",
   },
   {
     value: "type2",
-    label: "Modelo 2",
-    description: "Usa atividades obrigatórias. Pelo menos N−1 atividades devem cumprir a percentagem mínima e a soma final deve atingir 10/20.",
-    whenToUse: "Seleciona quando o PUC indicar Modelo 2.",
+    label: "Tipologia 2",
+    description: "2 a 4 atividades assíncronas articuladas. Pelo menos N−1 têm de atingir 40% da respetiva cotação e a classificação final tem de atingir 10/20.",
+    whenToUse: "Seleciona quando o PUC indicar Tipologia 2.",
   },
   {
     value: "type3",
-    label: "Modelo 3",
-    description: "Também verifica as atividades obrigatórias pela regra N−1; o número, formato e ponderação concretos são os definidos no PUC.",
-    whenToUse: "Seleciona quando o PUC indicar Modelo 3.",
+    label: "Tipologia 3",
+    description: "2 a 4 atividades assíncronas autónomas. Pelo menos N−1 têm de atingir 40% da respetiva cotação e a classificação final tem de atingir 10/20.",
+    whenToUse: "Seleciona quando o PUC indicar Tipologia 3.",
   },
   {
     value: "type4",
-    label: "Modelo 4",
-    description: "Combina componentes assíncrona e síncrona, com mínimos em ambas; as ponderações concretas são as indicadas no PUC.",
-    whenToUse: "Seleciona quando o PUC indicar Modelo 4.",
+    label: "Tipologia 4",
+    description: "Exatamente 1 elemento assíncrono (6–8 valores) e 1 elemento síncrono (12–14 valores), com mínimo de 50% em cada componente e nota final mínima de 10/20.",
+    whenToUse: "Seleciona quando o PUC indicar Tipologia 4.",
   },
   {
     value: "exam-only",
-    label: "Avaliação final",
-    description: "Classificação obtida exclusivamente numa prova final de 20 valores.",
-    whenToUse: "Seleciona quando a avaliação for exclusivamente por prova final.",
-  },
-  {
-    value: "custom",
-    label: "Personalizado",
-    description: "Elementos obrigatórios configurados manualmente, totalizando 20 valores.",
-    whenToUse: "Usa apenas quando o PUC não corresponder aos modelos predefinidos.",
+    label: "Avaliação por exame",
+    description: "Classificação obtida numa prova final síncrona cotada para 20 valores, apenas quando esta modalidade estiver prevista para a UC.",
+    whenToUse: "Seleciona apenas quando o Guia/PUC disponibilizar avaliação por exame.",
   },
 ];
 
@@ -142,7 +143,7 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
   } = useAppStore();
   const course = state.courses.find((item) => item.id === courseId);
   const assessments = useMemo(
-    () => getAssessments(state, courseId).filter((assessment) => assessment.type !== "resit"),
+    () => getAssessments(state, courseId).filter((assessment) => assessment.type !== "resit" && assessment.type !== "special"),
     [state, courseId],
   );
   const outcome = useMemo(() => getRegulationOutcome(state, courseId), [state, courseId]);
@@ -152,10 +153,13 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
   const regime: EvaluationRegime = course.evaluationRegime ?? "legacy";
   const model: EvaluationModel = course.evaluationModel ?? "custom";
   const requiredMaximum = totalMaximum(assessments);
+  const officialRegime = course.evaluationRegimeSource === "official";
 
   const setRegime = (next: EvaluationRegime) => {
+    if (officialRegime) return;
     updateCourse(courseId, {
       evaluationRegime: next,
+      evaluationRegimeSource: "manual",
       evaluationModel: course.evaluationModel ?? "custom",
     });
   };
@@ -163,35 +167,47 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
   const setModel = (next: EvaluationModel) => {
     updateCourse(courseId, { evaluationRegime: "regulation-2026", evaluationModel: next });
 
-    if (next !== "exam-only") return;
-    const existingExam = assessments.find((assessment) => assessment.type === "exam");
-    if (existingExam) {
-      updateAssessment(existingExam.id, {
+    if (next === "exam-only") {
+      assessments.forEach((assessment) => {
+        if (assessment.type !== "exam" && assessment.required !== false) {
+          updateAssessment(assessment.id, { required: false });
+        }
+      });
+      const existingExam = assessments.find((assessment) => assessment.type === "exam");
+      if (existingExam) {
+        updateAssessment(existingExam.id, {
+          name: "Exame",
+          maxPoints: 20,
+          mode: "synchronous",
+          required: true,
+        });
+        return;
+      }
+      addAssessment(courseId, {
+        type: "exam",
+        name: "Exame",
         maxPoints: 20,
+        grade: null,
         mode: "synchronous",
         required: true,
       });
       return;
     }
 
-    addAssessment(courseId, {
-      type: "exam",
-      name: "Prova final",
-      maxPoints: 20,
-      grade: null,
-      mode: "synchronous",
-      required: true,
-    });
+    if (next === "type2" || next === "type3") {
+      assessments.forEach((assessment) => {
+        if (assessment.required !== false) updateAssessment(assessment.id, { mode: "asynchronous" });
+      });
+    }
   };
 
   const addElement = () => {
-    const splitModel = model === "type1" || model === "type4";
     addAssessment(courseId, {
       type: "activity",
       name: `Atividade ${assessments.length + 1}`,
       maxPoints: 0,
       grade: null,
-      mode: splitModel ? "asynchronous" : "asynchronous",
+      mode: "asynchronous",
       required: true,
     });
   };
@@ -202,14 +218,14 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
         <div className="space-y-1">
           <CardTitle className="flex items-center gap-2">
             <Scale className="h-5 w-5 text-[hsl(var(--gold))]" />
-            Modelo de avaliação
+            Tipologia de avaliação
           </CardTitle>
           <p className="text-xs text-muted-foreground">
-            A escolha é feita por cadeira. Alterar o regime não elimina notas, datas ou elementos existentes.
+            O regime é aplicado automaticamente quando a UC consta do anexo oficial. A tipologia concreta é a indicada no PUC.
           </p>
         </div>
         <div className="rounded-full border bg-muted/35 px-3 py-1 text-[11px] font-medium text-muted-foreground">
-          {regime === "legacy" ? "Regime anterior" : "Regulamento 2026"}
+          {regime === "legacy" ? "Regime anterior" : officialRegime ? "Regulamento 2026 · UAb" : "Regulamento 2026"}
         </div>
       </CardHeader>
 
@@ -217,30 +233,26 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
         <div className="grid gap-4 md:grid-cols-2">
           <div className="grid content-start gap-2">
             <Label>Regime aplicável</Label>
-            <Select value={regime} onValueChange={(value) => setRegime(value as EvaluationRegime)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+            <Select value={regime} disabled={officialRegime} onValueChange={(value) => setRegime(value as EvaluationRegime)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="legacy">Regime anterior — e-fólios + g-fólio</SelectItem>
+                <SelectItem value="legacy">Regime anterior</SelectItem>
                 <SelectItem value="regulation-2026">Regulamento de avaliação 2026</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-[11px] text-muted-foreground">
-              Seleciona o regime indicado no PUC da cadeira.
+              {officialRegime ? "Aplicado automaticamente a partir do Despacho n.º 9792/2026." : "Usa o regime oficialmente aplicável à UC."}
             </p>
           </div>
 
           <div className="grid content-start gap-2">
-            <Label>Modelo</Label>
+            <Label>Tipologia / modalidade</Label>
             <Select
               value={model}
               disabled={regime !== "regulation-2026"}
               onValueChange={(value) => setModel(value as EvaluationModel)}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Seleciona o modelo" />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Seleciona a tipologia" /></SelectTrigger>
               <SelectContent>
                 {MODEL_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
@@ -249,7 +261,7 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
             </Select>
             <p className="text-[11px] text-muted-foreground">
               {regime === "legacy"
-                ? "O cálculo atual permanece exatamente como estava."
+                ? "O cálculo histórico permanece inalterado."
                 : MODEL_OPTIONS.find((option) => option.value === model)?.description}
             </p>
           </div>
@@ -258,9 +270,9 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
         {regime === "regulation-2026" && (
           <div className="space-y-3 rounded-2xl border bg-muted/15 p-4">
             <div className="text-center">
-              <div className="text-sm font-semibold">Como escolher o modelo</div>
+              <div className="text-sm font-semibold">Como escolher a tipologia</div>
               <p className="mt-1 text-xs text-muted-foreground">
-                A escolha não é pessoal: usa o modelo indicado no PUC. Estes resumos explicam a lógica aplicada pela app.
+                A escolha não é pessoal: confirma o PUC. O Academic Hub valida depois a estrutura, as cotações e os mínimos do regulamento.
               </p>
             </div>
             <div className="grid gap-3 md:grid-cols-2">
@@ -287,12 +299,12 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
               })}
             </div>
             <p className="text-center text-[11px] text-muted-foreground">
-              Confirma no PUC os elementos, as ponderações e os mínimos antes de registares as avaliações.
+              As datas das provas normal e de recurso são obtidas do calendário oficial da UAb; aqui registas sobretudo os trabalhos e atividades definidos no PUC.
             </p>
           </div>
         )}
 
-        {regime === "regulation-2026" && (
+        {regime === "regulation-2026" && model !== "custom" && (
           <>
             <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-stretch">
               <div className={`flex min-h-24 flex-col items-center justify-center rounded-xl border p-4 text-center ${requiredMaximum === 20
@@ -300,9 +312,7 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
                 : "border-warning/40 bg-warning/10"}`}
               >
                 <div className="flex flex-wrap items-center justify-center gap-2">
-                  <span className="text-sm font-semibold">
-                    {requiredMaximum === 20 ? "Escala correta" : "Escala inválida"}
-                  </span>
+                  <span className="text-sm font-semibold">{requiredMaximum === 20 ? "Escala correta" : "Escala inválida"}</span>
                   <span className={requiredMaximum === 20 ? "text-emerald-700 dark:text-emerald-400" : "font-semibold text-warning"}>
                     {formatPtNumber(requiredMaximum)} / 20 valores
                   </span>
@@ -310,7 +320,7 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
                 <p className="mt-1 max-w-2xl text-xs text-muted-foreground">
                   {requiredMaximum === 20
                     ? "Os elementos obrigatórios totalizam corretamente 20 valores."
-                    : `Os elementos obrigatórios somam ${formatPtNumber(requiredMaximum)} valores. Ajusta os valores máximos para totalizarem exatamente 20; os dados antigos foram preservados e não são alterados automaticamente.`}
+                    : `Os elementos obrigatórios somam ${formatPtNumber(requiredMaximum)} valores. Ajusta-os de acordo com o PUC.`}
                 </p>
               </div>
               <Button className="h-full min-h-24" type="button" variant="outline" onClick={addElement} disabled={model === "exam-only"}>
@@ -321,9 +331,7 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
 
             <div className="space-y-3">
               {assessments.length === 0 ? (
-                <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                  Ainda não existem elementos de avaliação configurados.
-                </div>
+                <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Ainda não existem elementos de avaliação configurados.</div>
               ) : assessments.map((assessment) => (
                 <AssessmentEditor
                   key={assessment.id}
@@ -331,77 +339,58 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
                   model={model}
                   onChange={(patch) => updateAssessment(assessment.id, patch)}
                   onRemove={() => {
-                    if (window.confirm(`Remover ${assessment.name}? As datas e a classificação também serão eliminadas.`)) {
-                      removeAssessment(assessment.id);
-                    }
+                    if (window.confirm(`Remover ${assessment.name}? As datas e a classificação também serão eliminadas.`)) removeAssessment(assessment.id);
                   }}
                 />
               ))}
             </div>
+          </>
+        )}
 
-            {outcome && (
-              <div className="rounded-2xl border bg-muted/20 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold">Verificação do modelo</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {outcome.modelLabel}{outcome.rounded === null ? "" : ` · resultado atual ${outcome.rounded}/20`}
-                    </div>
-                  </div>
-                  <OutcomeBadge kind={outcome.kind} />
+        {outcome && (
+          <div className="rounded-2xl border bg-muted/20 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-sm font-semibold">Verificação do regulamento</div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  {outcome.modelLabel}{outcome.rounded === null ? "" : ` · resultado atual ${outcome.rounded}/20`}
                 </div>
+              </div>
+              <OutcomeBadge kind={outcome.kind} />
+            </div>
 
-                <div className="mt-4 grid gap-2 md:grid-cols-2">
-                  {outcome.requirements.map((entry) => {
-                    const invalidScale = entry.key === "total-scale" && !entry.met;
-                    return (
-                      <div
-                        key={entry.key}
-                        className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center ${invalidScale
-                          ? "border-warning/40 bg-warning/10"
-                          : "bg-card"}`}
-                      >
-                        {entry.met
-                          ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                          : invalidScale
-                            ? <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
-                            : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
-                        <div className="min-w-0 text-center">
-                          <div className="text-xs font-medium">
-                            {invalidScale ? "Escala total inválida" : entry.label}
-                          </div>
-                          <div className="mt-0.5 text-[11px] text-muted-foreground">{entry.detail}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {outcome.issues.length > 0 && (
-                  <div className="mt-3 rounded-xl border border-warning/35 bg-warning/10 p-3">
-                    <div className="flex gap-2">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
-                      <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-                        {outcome.issues.map((issue) => <li key={issue}>{issue}</li>)}
-                      </ul>
-                    </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {outcome.requirements.map((entry) => (
+                <div key={entry.key} className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center ${!entry.met ? "bg-warning/5" : "bg-card"}`}>
+                  {entry.met
+                    ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    : <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                  <div className="min-w-0 text-center">
+                    <div className="text-xs font-medium">{entry.label}</div>
+                    <div className="mt-0.5 text-[11px] text-muted-foreground">{entry.detail}</div>
                   </div>
-                )}
+                </div>
+              ))}
+            </div>
+
+            {outcome.issues.length > 0 && (
+              <div className="mt-3 rounded-xl border border-warning/35 bg-warning/10 p-3">
+                <div className="flex gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+                  <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
+                    {outcome.issues.map((issue) => <li key={issue}>{issue}</li>)}
+                  </ul>
+                </div>
               </div>
             )}
-          </>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-function AssessmentEditor({
-  assessment,
-  model,
-  onChange,
-  onRemove,
-}: {
+function AssessmentEditor({ assessment, model, onChange, onRemove }: {
   assessment: Assessment;
   model: EvaluationModel;
   onChange: (patch: Partial<Assessment>) => void;
@@ -409,6 +398,7 @@ function AssessmentEditor({
 }) {
   const splitModel = model === "type1" || model === "type4";
   const timed = isTimedAssessment(assessment.type);
+  const officialDate = timed && assessment.dateSource === "official" && Boolean(assessment.date);
 
   return (
     <div className="rounded-2xl border bg-card p-3 md:p-4">
@@ -417,24 +407,18 @@ function AssessmentEditor({
           <Label className="text-[11px] text-muted-foreground">Designação</Label>
           <Input value={assessment.name} onChange={(event) => onChange({ name: event.target.value })} />
         </div>
-
         <div className="grid gap-1">
           <Label className="text-[11px] text-muted-foreground">Tipo</Label>
           <Select value={assessment.type} onValueChange={(value) => onChange({ type: value as AssessmentType })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-              ))}
-            </SelectContent>
+            <SelectContent>{TYPE_OPTIONS.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-
         <div className="grid gap-1">
           <Label className="text-[11px] text-muted-foreground">Modalidade</Label>
           <Select
             value={assessment.mode ?? "asynchronous"}
-            disabled={!splitModel && model !== "custom"}
+            disabled={!splitModel}
             onValueChange={(value) => onChange({ mode: value as AssessmentMode })}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -444,51 +428,24 @@ function AssessmentEditor({
             </SelectContent>
           </Select>
         </div>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="text-muted-foreground hover:text-destructive"
-          onClick={onRemove}
-          aria-label={`Remover ${assessment.name}`}
-        >
+        <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={onRemove} aria-label={`Remover ${assessment.name}`}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <NumberEditor
-          label="Valor máximo"
-          value={assessment.maxPoints}
-          placeholder="0,00"
-          onCommit={(value) => {
-            if (value !== null) onChange({ maxPoints: value });
-          }}
-        />
-        <NumberEditor
-          label="Nota obtida"
-          value={assessment.grade}
-          placeholder="0,00"
-          onCommit={(value) => onChange({ grade: value, status: value === null ? assessment.status : "graded" })}
-        />
-
+        <NumberEditor label="Valor máximo" value={assessment.maxPoints} placeholder="0,00" onCommit={(value) => { if (value !== null) onChange({ maxPoints: value }); }} />
+        <NumberEditor label="Nota obtida" value={assessment.grade} placeholder="0,00" onCommit={(value) => onChange({ grade: value, status: value === null ? assessment.status : "graded" })} />
         <div className="flex items-end">
           <div className="flex w-full items-center justify-between rounded-xl border px-3 py-2.5">
-            <div>
-              <div className="text-xs font-medium">Obrigatório</div>
-              <div className="text-[10px] text-muted-foreground">Incluído no cálculo</div>
-            </div>
+            <div><div className="text-xs font-medium">Obrigatório</div><div className="text-[10px] text-muted-foreground">Incluído no cálculo</div></div>
             <Switch checked={assessment.required !== false} onCheckedChange={(checked) => onChange({ required: checked })} />
           </div>
         </div>
-
         <div className="flex items-end">
           <div className="w-full rounded-xl border px-3 py-2.5 text-xs">
             <div className="text-muted-foreground">Resultado</div>
-            <div className="mt-0.5 font-semibold">
-              {assessment.grade === null ? "Por classificar" : `${formatPtNumber(assessment.grade)} / ${formatPtNumber(assessment.maxPoints)}`}
-            </div>
+            <div className="mt-0.5 font-semibold">{assessment.grade === null ? "Por classificar" : `${formatPtNumber(assessment.grade)} / ${formatPtNumber(assessment.maxPoints)}`}</div>
           </div>
         </div>
       </div>
@@ -497,24 +454,22 @@ function AssessmentEditor({
         {timed ? (
           <div className="sm:col-span-2">
             <Label className="mb-1 block text-[11px] text-muted-foreground">Data e hora</Label>
-            <PtDateTimeInput value={assessment.date} onChange={(value) => onChange({ date: value })} />
+            {officialDate ? (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 text-sm">
+                <div className="font-medium">{formatPtDateTime(assessment.date!)}</div>
+                <div className="mt-0.5 text-[10px] text-muted-foreground">Data oficial UAb · atualização automática</div>
+              </div>
+            ) : (
+              <PtDateTimeInput value={assessment.date} onChange={(value) => onChange({ date: value, dateSource: "manual" })} />
+            )}
           </div>
         ) : (
           <>
-            <div>
-              <Label className="mb-1 block text-[11px] text-muted-foreground">Início</Label>
-              <PtDateInput value={assessment.startDate} onChange={(value) => onChange({ startDate: value })} />
-            </div>
-            <div>
-              <Label className="mb-1 block text-[11px] text-muted-foreground">Fim</Label>
-              <PtDateInput value={assessment.endDate} onChange={(value) => onChange({ endDate: value })} />
-            </div>
+            <div><Label className="mb-1 block text-[11px] text-muted-foreground">Início</Label><PtDateInput value={assessment.startDate} onChange={(value) => onChange({ startDate: value })} /></div>
+            <div><Label className="mb-1 block text-[11px] text-muted-foreground">Fim</Label><PtDateInput value={assessment.endDate} onChange={(value) => onChange({ endDate: value })} /></div>
           </>
         )}
-        <div>
-          <Label className="mb-1 block text-[11px] text-muted-foreground">Publicação da nota</Label>
-          <PtDateInput value={assessment.gradeReleaseDate} onChange={(value) => onChange({ gradeReleaseDate: value })} />
-        </div>
+        <div><Label className="mb-1 block text-[11px] text-muted-foreground">Publicação da nota</Label><PtDateInput value={assessment.gradeReleaseDate} onChange={(value) => onChange({ gradeReleaseDate: value })} /></div>
       </div>
     </div>
   );
@@ -528,7 +483,6 @@ function OutcomeBadge({ kind }: { kind: "in-progress" | "incomplete" | "passed" 
     resit: "Recurso",
     failed: "Reprovado",
   } as const;
-
   const className = kind === "passed"
     ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-300"
     : kind === "resit" || kind === "failed"
@@ -536,10 +490,5 @@ function OutcomeBadge({ kind }: { kind: "in-progress" | "incomplete" | "passed" 
       : kind === "incomplete"
         ? "border-warning/35 bg-warning/10 text-warning"
         : "border-border bg-muted text-muted-foreground";
-
-  return (
-    <span className={`w-fit rounded-full border px-3 py-1 text-[11px] font-semibold ${className}`}>
-      {labels[kind]}
-    </span>
-  );
+  return <span className={`w-fit rounded-full border px-3 py-1 text-[11px] font-semibold ${className}`}>{labels[kind]}</span>;
 }

@@ -12,6 +12,7 @@ import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
+import { useUabOfficialAssessmentSync } from "./hooks/useUabOfficialAssessmentSync";
 
 const CalendarPage = lazy(() => import("./pages/Calendar"));
 const HistoryPage = lazy(() => import("./pages/History"));
@@ -38,6 +39,7 @@ function ExplorePage({ children }: { children: ReactNode }) { return <GuestReadO
 function AcademicHubApp() {
   useAutoSync();
   useRealtimeSync();
+  useUabOfficialAssessmentSync();
   return (
     <>
       <MigrationNotice />

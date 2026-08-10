@@ -19,7 +19,7 @@ async function clearAcademicHubCaches() {
         .map((key) => window.caches.delete(key))
     );
   } catch {
-    // ignore: a atualização não deve falhar só porque a limpeza de cache falhou
+    // A atualização não deve falhar só porque a limpeza de cache falhou.
   }
 }
 
@@ -34,58 +34,56 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const regRef = useRef<ServiceWorkerRegistration | null>(null);
   const refreshingRef = useRef(false);
+  const applyingRef = useRef(false);
 
   const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
 
   useEffect(() => {
     if (!isSupported) return;
-
-    // Em desenvolvimento isto costuma atrapalhar (cache), por isso só registamos em PROD.
     if (!import.meta.env.PROD) return;
 
     const swUrl = `${import.meta.env.BASE_URL ?? "./"}sw.js`;
+    let disposed = false;
+    let registered: ServiceWorkerRegistration | null = null;
+
+    const checkForUpdate = () => {
+      const reg = regRef.current;
+      if (!reg || applyingRef.current) return;
+      void reg.update().catch(() => {});
+    };
+
+    const onFocus = () => checkForUpdate();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") checkForUpdate();
+    };
 
     navigator.serviceWorker
       .register(swUrl)
       .then((reg) => {
+        if (disposed) return;
+        registered = reg;
         regRef.current = reg;
 
-        const checkForUpdate = () => reg.update().catch(() => {});
-
-        // Forçar verificação de atualização logo após o registo.
-        checkForUpdate();
-
-        // Se já há uma versão nova em "waiting", mostrar já o aviso.
-        if (reg.waiting) setUpdateAvailable(true);
+        void reg.update().catch(() => {});
+        if (reg.waiting && !applyingRef.current) setUpdateAvailable(true);
 
         reg.addEventListener("updatefound", () => {
           const installing = reg.installing;
           if (!installing) return;
 
           installing.addEventListener("statechange", () => {
-            if (installing.state !== "installed") return;
-            // Se já existe controller, então isto é update (não 1ª instalação).
+            if (installing.state !== "installed" || applyingRef.current) return;
             if (navigator.serviceWorker.controller && reg.waiting) {
               setUpdateAvailable(true);
             }
           });
         });
 
-        const onFocus = () => checkForUpdate();
-        const onVisibility = () => {
-          if (document.visibilityState === "visible") checkForUpdate();
-        };
-
         window.addEventListener("focus", onFocus);
         document.addEventListener("visibilitychange", onVisibility);
-
-        return () => {
-          window.removeEventListener("focus", onFocus);
-          document.removeEventListener("visibilitychange", onVisibility);
-        };
       })
       .catch(() => {
-        // ignore
+        // Sem Service Worker não há atualização automática, mas a app continua utilizável.
       });
 
     const onControllerChange = () => {
@@ -97,35 +95,52 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
     return () => {
+      disposed = true;
+      if (registered) {
+        window.removeEventListener("focus", onFocus);
+        document.removeEventListener("visibilitychange", onVisibility);
+      }
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };
   }, [isSupported]);
 
   const applyUpdate = async () => {
+    if (applyingRef.current) return;
+    applyingRef.current = true;
+
+    // O utilizador acabou de aceitar a atualização: o aviso deve desaparecer logo,
+    // em vez de ficar preso no ecrã enquanto o navegador troca o Service Worker.
+    setUpdateAvailable(false);
     const reg = regRef.current;
 
-    // Limpa apenas caches da PWA. Não apaga localStorage/IndexedDB/Supabase.
     await clearAcademicHubCaches();
 
     if (reg) {
       try {
         await reg.update();
       } catch {
-        // ignore
+        // O reload com cache-buster abaixo continua a ser um fallback válido.
       }
 
-      // Se existir SW à espera, ativar e fazer reload quando mudar o controller.
       if (reg.waiting) {
         try {
           reg.waiting.postMessage({ type: "SKIP_WAITING" });
+
+          // Alguns PWAs móveis não disparam controllerchange de forma previsível.
+          // Se isso acontecer, força a recarga pouco depois sem tocar nos dados locais.
+          window.setTimeout(() => {
+            if (refreshingRef.current) return;
+            refreshingRef.current = true;
+            hardReload();
+          }, 1400);
           return;
         } catch {
-          // fallback abaixo
+          // Segue para o fallback abaixo.
         }
       }
     }
 
-    // Fallback para casos em que o browser/PWA ficou preso na cache mas não reportou SW waiting.
+    refreshingRef.current = true;
     hardReload();
   };
 

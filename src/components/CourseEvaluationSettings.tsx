@@ -55,8 +55,8 @@ const MODEL_OPTIONS: Array<{
   {
     value: "type2",
     label: "Tipologia 2",
-    description: "2 a 4 atividades assíncronas articuladas. Pelo menos N−1 têm de atingir 40% da respetiva cotação e a classificação final tem de atingir 10/20.",
-    whenToUse: "Seleciona quando o PUC indicar Tipologia 2.",
+    description: "2 a 4 atividades assíncronas articuladas. Excecionalmente, quando o PUC o indicar, pode incluir atividade síncrona; em Língua Estrangeira a produção oral exige pelo menos 50%.",
+    whenToUse: "Seleciona quando o PUC indicar Tipologia 2 e replica qualquer exceção síncrona e respetivo mínimo exatamente como publicados.",
   },
   {
     value: "type3",
@@ -194,9 +194,9 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
       return;
     }
 
-    if (next === "type2" || next === "type3") {
+    if (next === "type3") {
       assessments.forEach((assessment) => {
-        if (assessment.required !== false) updateAssessment(assessment.id, { mode: "asynchronous" });
+        if (assessment.required !== false) updateAssessment(assessment.id, { mode: "asynchronous", minimumPercent: undefined });
       });
     }
   };
@@ -397,8 +397,10 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   const splitModel = model === "type1" || model === "type4";
+  const type2 = model === "type2";
   const timed = isTimedAssessment(assessment.type);
   const officialDate = timed && assessment.dateSource === "official" && Boolean(assessment.date);
+  const type2Synchronous = type2 && assessment.mode === "synchronous";
 
   return (
     <div className="rounded-2xl border bg-card p-3 md:p-4">
@@ -418,8 +420,14 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
           <Label className="text-[11px] text-muted-foreground">Modalidade</Label>
           <Select
             value={assessment.mode ?? "asynchronous"}
-            disabled={!splitModel}
-            onValueChange={(value) => onChange({ mode: value as AssessmentMode })}
+            disabled={!splitModel && !type2}
+            onValueChange={(value) => {
+              const mode = value as AssessmentMode;
+              onChange({
+                mode,
+                minimumPercent: mode === "synchronous" ? assessment.minimumPercent : undefined,
+              });
+            }}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -427,15 +435,28 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
               <SelectItem value="synchronous">Síncrona</SelectItem>
             </SelectContent>
           </Select>
+          {type2Synchronous && (
+            <p className="text-[10px] leading-4 text-muted-foreground">
+              Usa apenas se o PUC indicar uma exceção síncrona autorizada. O mínimo não é presumido pela app.
+            </p>
+          )}
         </div>
         <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={onRemove} aria-label={`Remover ${assessment.name}`}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`mt-3 grid gap-3 sm:grid-cols-2 ${type2Synchronous ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
         <NumberEditor label="Valor máximo" value={assessment.maxPoints} placeholder="0,00" onCommit={(value) => { if (value !== null) onChange({ maxPoints: value }); }} />
         <NumberEditor label="Nota obtida" value={assessment.grade} placeholder="0,00" onCommit={(value) => onChange({ grade: value, status: value === null ? assessment.status : "graded" })} />
+        {type2Synchronous && (
+          <NumberEditor
+            label="Mínimo específico do PUC (%)"
+            value={typeof assessment.minimumPercent === "number" ? assessment.minimumPercent : null}
+            placeholder="ex.: 50"
+            onCommit={(value) => onChange({ minimumPercent: value ?? undefined })}
+          />
+        )}
         <div className="flex items-end">
           <div className="flex w-full items-center justify-between rounded-xl border px-3 py-2.5">
             <div><div className="text-xs font-medium">Obrigatório</div><div className="text-[10px] text-muted-foreground">Incluído no cálculo</div></div>
@@ -449,6 +470,12 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
           </div>
         </div>
       </div>
+
+      {type2Synchronous && (
+        <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
+          Em UC de Língua Estrangeira, a produção oral exige 50%. Noutras exceções síncronas, preenche este campo apenas se o PUC indicar um mínimo específico.
+        </p>
+      )}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         {timed ? (

@@ -39,7 +39,13 @@ function needsOfficialResit(state:any,course:any){
     const raw=total(required,grade);if(model==="type1"||model==="type4"){
       const async=required.filter((a:any)=>a.mode==="asynchronous"),sync=required.filter((a:any)=>a.mode==="synchronous");const am=total(async,max),sm=total(sync,max);if(am<=0||sm<=0)return false;const asyncMet=(total(async,grade)/am)*100>=50;const syncMet=(total(sync,grade)/sm)*100>=50;return !(asyncMet&&syncMet&&roundGrade(raw)>=10);
     }
-    if(model==="type2"||model==="type3"){const met=required.filter((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=40).length;return !(met>=Math.max(0,required.length-1)&&roundGrade(raw)>=10);}
+    if(model==="type2"){
+      const met=required.filter((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=40).length;
+      const syncWithMinimum=required.filter((a:any)=>a.mode==="synchronous"&&typeof a.minimumPercent==="number"&&Number.isFinite(a.minimumPercent));
+      const specialMinimumMet=syncWithMinimum.every((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=a.minimumPercent);
+      return !(met>=Math.max(0,required.length-1)&&specialMinimumMet&&roundGrade(raw)>=10);
+    }
+    if(model==="type3"){const met=required.filter((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=40).length;return !(met>=Math.max(0,required.length-1)&&roundGrade(raw)>=10);}
     return false;
   }
   const exam=items.find((a:any)=>a.type==="exam");if(!exam||!validGrade(exam))return false;const efolios=items.filter((a:any)=>a.type==="efolio");const ef=total(efolios,grade);const rules=(state.rules??[]).find((r:any)=>r.courseId===course.id)??{};return ef<(rules.minAptoExame??3.5)||grade(exam)<(rules.minExame??5.5)||roundGrade(ef+grade(exam))<10;

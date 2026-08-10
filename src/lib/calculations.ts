@@ -305,10 +305,12 @@ function evaluateActivityModel(state: AppState, courseId: string, model: "type2"
   )).length;
   const requiredCount = Math.max(0, assessments.length - 1);
   const nMinusOneMet = activitiesMeetingMinimum >= requiredCount;
-  const exceptionalSyncMinimumMet = model !== "type2" || synchronous.every((assessment) => {
-    const minimum = assessment.minimumPercent ?? 50;
-    return percentage(safeGrade(assessment), safeMaximum(assessment)) + EPSILON >= minimum;
-  });
+  const synchronousWithExplicitMinimum = model === "type2"
+    ? synchronous.filter((assessment) => typeof assessment.minimumPercent === "number" && Number.isFinite(assessment.minimumPercent))
+    : [];
+  const exceptionalSyncMinimumMet = synchronousWithExplicitMinimum.every((assessment) => (
+    percentage(safeGrade(assessment), safeMaximum(assessment)) + EPSILON >= (assessment.minimumPercent as number)
+  ));
   const issues = [...common.issues];
 
   if (!countValid) {
@@ -366,12 +368,12 @@ function evaluateActivityModel(state: AppState, courseId: string, model: "type2"
         nMinusOneMet,
         `${activitiesMeetingMinimum} de ${assessments.length} atividades com pelo menos ${formatPtNumber(activityMinimum)}%`,
       ),
-      ...(model === "type2" && synchronous.length > 0 ? [requirement(
+      ...(model === "type2" && synchronousWithExplicitMinimum.length > 0 ? [requirement(
         "type2-sync-minimum",
-        "Mínimo na atividade síncrona excecional",
+        "Mínimo específico indicado no PUC",
         exceptionalSyncMinimumMet,
-        synchronous.map((assessment) => {
-          const minimum = assessment.minimumPercent ?? 50;
+        synchronousWithExplicitMinimum.map((assessment) => {
+          const minimum = assessment.minimumPercent as number;
           const current = percentage(safeGrade(assessment), safeMaximum(assessment));
           return `${assessment.name}: ${formatPtNumber(current)}% · mínimo ${formatPtNumber(minimum)}%`;
         }).join(" · "),

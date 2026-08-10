@@ -100,6 +100,30 @@ describe("motor de avaliação de 2026", () => {
     expect(getRegulationOutcome(state, "course-2026")?.kind).toBe("passed");
   });
 
+  it("permite atividade síncrona excecional na Tipologia 2 quando o PUC a prevê", () => {
+    const state = baseState("type2", [
+      item({ id: "a1", name: "Etapa 1", maxPoints: 5, grade: 4, mode: "asynchronous" }),
+      item({ id: "a2", name: "Etapa 2", maxPoints: 5, grade: 4, mode: "asynchronous" }),
+      item({ id: "oral", name: "Produção oral", maxPoints: 10, grade: 6, mode: "synchronous", minimumPercent: 50 }),
+    ]);
+
+    const outcome = getRegulationOutcome(state, "course-2026");
+    expect(outcome).toMatchObject({ kind: "passed", raw: 14, rounded: 14 });
+    expect(outcome?.requirements.find((entry) => entry.key === "type2-sync-minimum")?.met).toBe(true);
+  });
+
+  it("exige 50% na atividade síncrona excecional da Tipologia 2", () => {
+    const state = baseState("type2", [
+      item({ id: "a1", name: "Etapa 1", maxPoints: 5, grade: 5, mode: "asynchronous" }),
+      item({ id: "a2", name: "Etapa 2", maxPoints: 5, grade: 5, mode: "asynchronous" }),
+      item({ id: "oral", name: "Produção oral", maxPoints: 10, grade: 4, mode: "synchronous", minimumPercent: 50 }),
+    ]);
+
+    const outcome = getRegulationOutcome(state, "course-2026");
+    expect(outcome?.kind).toBe("resit");
+    expect(outcome?.requirements.find((entry) => entry.key === "type2-sync-minimum")?.met).toBe(false);
+  });
+
   it("calcula avaliação por exame em escala de 20 valores", () => {
     const state = baseState("exam-only", [
       item({ id: "exam", name: "Exame", maxPoints: 20, grade: 9.5, type: "exam", mode: "synchronous" }),

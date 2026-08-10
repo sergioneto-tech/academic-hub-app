@@ -1,6 +1,20 @@
 {
-  "latest": "1.1.0",
+  "latest": "1.2.0",
   "versions": [
+    {
+      "version": "1.2.0",
+      "date": "2026-08-10",
+      "changes": [
+        "Novas notificações Push no dispositivo para acompanhar prazos académicos mesmo com o Academic Hub fechado.",
+        "E-fólios passam a poder gerar alertas no dia de início, alguns dias antes do fim e no próprio último dia de entrega.",
+        "Exames e recursos passam a gerar alertas com antecedência configurável e no próprio dia, incluindo a hora quando estiver registada.",
+        "Novos alertas para os períodos oficiais de matrícula e inscrição da Universidade Aberta, incluindo abertura, aproximação do fecho e último dia.",
+        "Nova área em Definições para ativar ou desativar notificações neste dispositivo, escolher a antecedência e enviar uma notificação de teste.",
+        "No iPhone e iPad, a aplicação explica quando é necessário adicioná-la primeiro ao ecrã principal para permitir notificações Push.",
+        "Ajuda & Guia atualizado com um novo passo dedicado à configuração dos alertas e notificações.",
+        "Infraestrutura de notificações protegida no Supabase, com preferências por utilizador, subscrições por dispositivo, deduplicação e envio agendado."
+      ]
+    },
     {
       "version": "1.1.0",
       "date": "2026-08-09",

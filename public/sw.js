@@ -1,11 +1,11 @@
-const SW_VERSION = "1.2.0-push1";
+const SW_VERSION = "1.2.0-push2";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
   "./academic-hub-icon-v10-192.png",
   "./academic-hub-icon-v10-512.png",
-  "./release-notes.json?v=1.1.0",
+  "./release-notes.json?v=1.2.0",
 ];
 
 self.addEventListener("install", (event) => {

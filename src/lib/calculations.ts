@@ -1,7 +1,6 @@
 import type {
   AppState,
   Assessment,
-  AssessmentMode,
   AssessmentType,
   Course,
   EvaluationModel,
@@ -55,7 +54,7 @@ function hasGrade(assessment: Assessment): boolean {
 
 function requiredAssessments(state: AppState, courseId: string): Assessment[] {
   return getAssessments(state, courseId)
-    .filter((assessment) => assessment.type !== "resit")
+    .filter((assessment) => assessment.type !== "resit" && assessment.type !== "special")
     .filter((assessment) => assessment.required !== false);
 }
 
@@ -75,14 +74,18 @@ function approximately(value: number, expected: number): boolean {
   return Math.abs(value - expected) < EPSILON;
 }
 
+function between(value: number, minimum: number, maximum: number): boolean {
+  return value + EPSILON >= minimum && value - EPSILON <= maximum;
+}
+
 function modelLabel(model: EvaluationModel): string {
   const labels: Record<EvaluationModel, string> = {
-    type1: "Modelo 1",
-    type2: "Modelo 2",
-    type3: "Modelo 3",
-    type4: "Modelo 4",
-    "exam-only": "Avaliação final",
-    custom: "Modelo personalizado",
+    type1: "Tipologia 1",
+    type2: "Tipologia 2",
+    type3: "Tipologia 3",
+    type4: "Tipologia 4",
+    "exam-only": "Avaliação por exame",
+    custom: "Tipologia por definir no PUC",
   };
   return labels[model];
 }
@@ -108,51 +111,18 @@ export type RegulationOutcome = {
   requirements: RegulationRequirement[];
 };
 
-function requirement(
-  key: string,
-  label: string,
-  met: boolean,
-  detail: string,
-): RegulationRequirement {
+export type RegulationResitPlan = {
+  kind: "repeat-synchronous" | "final-20";
+  maxPoints: number;
+  label: string;
+  description: string;
+};
+
+function requirement(key: string, label: string, met: boolean, detail: string): RegulationRequirement {
   return { key, label, met, detail };
 }
 
-function evaluateResit(item: Assessment, model: EvaluationModel): RegulationOutcome {
-  const maximum = safeMaximum(item);
-  const raw = safeGrade(item);
-  const rounded = roundHalfUpInt(raw);
-  const validScale = approximately(maximum, 20);
-  const issues = validScale
-    ? []
-    : [`O recurso está configurado para ${formatPtNumber(maximum)} pontos, em vez de 20.`];
-
-  return {
-    regime: "regulation-2026",
-    model,
-    modelLabel: modelLabel(model),
-    source: "resit",
-    kind: issues.length > 0 ? "incomplete" : rounded >= 10 ? "passed" : "failed",
-    raw,
-    rounded,
-    issues,
-    requirements: [
-      requirement("resit-scale", "Escala do recurso", validScale, `${formatPtNumber(maximum)} / 20 pontos`),
-      requirement("resit-final", "Classificação final", rounded >= 10, `${rounded} valores`),
-    ],
-  };
-}
-
-function commonConfiguration(
-  assessments: Assessment[],
-  minimumFinalGrade: number,
-): {
-  raw: number;
-  rounded: number;
-  missing: Assessment[];
-  scaleValid: boolean;
-  issues: string[];
-  requirements: RegulationRequirement[];
-} {
+function commonConfiguration(assessments: Assessment[], minimumFinalGrade: number) {
   const maximum = totalMaximum(assessments);
   const raw = totalGrade(assessments);
   const rounded = roundHalfUpInt(raw);
@@ -183,17 +153,9 @@ function commonConfiguration(
   };
 }
 
-function evaluateSplitModel(
-  state: AppState,
-  courseId: string,
-  model: "type1" | "type4",
-): RegulationOutcome {
+function splitSnapshot(state: AppState, courseId: string, model: "type1" | "type4") {
   const rules = getRules(state, courseId);
-  const minimumFinalGrade = rules.minimumFinalGrade ?? 10;
-  const asyncMinimum = rules.asyncMinimumPercent ?? 50;
-  const syncMinimum = rules.syncMinimumPercent ?? 50;
   const assessments = requiredAssessments(state, courseId);
-  const common = commonConfiguration(assessments, minimumFinalGrade);
   const asynchronous = assessments.filter((assessment) => assessment.mode === "asynchronous");
   const synchronous = assessments.filter((assessment) => assessment.mode === "synchronous");
   const unspecified = assessments.filter((assessment) => !assessment.mode);
@@ -203,23 +165,62 @@ function evaluateSplitModel(
   const syncGrade = totalGrade(synchronous);
   const asyncPercent = percentage(asyncGrade, asyncMaximum);
   const syncPercent = percentage(syncGrade, syncMaximum);
-  const asyncConfigured = asynchronous.length > 0 && asyncMaximum > 0;
-  const syncConfigured = synchronous.length > 0 && syncMaximum > 0;
-  const asyncMet = asyncConfigured && asyncPercent + EPSILON >= asyncMinimum;
-  const syncMet = syncConfigured && syncPercent + EPSILON >= syncMinimum;
+  const asyncMinimum = rules.asyncMinimumPercent ?? 50;
+  const syncMinimum = rules.syncMinimumPercent ?? 50;
+  const expectedAsyncCount = model === "type4" ? { min: 1, max: 1 } : { min: 2, max: 3 };
+  const asyncCountValid = asynchronous.length >= expectedAsyncCount.min && asynchronous.length <= expectedAsyncCount.max;
+  const syncCountValid = synchronous.length === 1;
+  const asyncWeightValid = between(asyncMaximum, 6, 8);
+  const syncWeightValid = between(syncMaximum, 12, 14);
+  const asyncMet = asyncMaximum > 0 && asyncPercent + EPSILON >= asyncMinimum;
+  const syncMet = syncMaximum > 0 && syncPercent + EPSILON >= syncMinimum;
+
+  return {
+    rules,
+    assessments,
+    asynchronous,
+    synchronous,
+    unspecified,
+    asyncMaximum,
+    syncMaximum,
+    asyncGrade,
+    syncGrade,
+    asyncPercent,
+    syncPercent,
+    asyncMinimum,
+    syncMinimum,
+    asyncCountValid,
+    syncCountValid,
+    asyncWeightValid,
+    syncWeightValid,
+    asyncMet,
+    syncMet,
+  };
+}
+
+function evaluateSplitModel(state: AppState, courseId: string, model: "type1" | "type4"): RegulationOutcome {
+  const snapshot = splitSnapshot(state, courseId, model);
+  const minimumFinalGrade = snapshot.rules.minimumFinalGrade ?? 10;
+  const common = commonConfiguration(snapshot.assessments, minimumFinalGrade);
   const issues = [...common.issues];
 
-  if (unspecified.length > 0) {
-    issues.push(`Falta indicar se são síncronos ou assíncronos: ${unspecified.map((item) => item.name).join(", ")}.`);
+  if (snapshot.unspecified.length > 0) {
+    issues.push(`Falta indicar se são síncronos ou assíncronos: ${snapshot.unspecified.map((item) => item.name).join(", ")}.`);
   }
-  if (!asyncConfigured) issues.push("Falta configurar pelo menos um elemento assíncrono com cotação.");
-  if (!syncConfigured) issues.push("Falta configurar pelo menos um elemento síncrono com cotação.");
+  if (!snapshot.asyncCountValid) {
+    issues.push(model === "type4"
+      ? "A Tipologia 4 exige exatamente 1 elemento assíncrono."
+      : "A Tipologia 1 exige 2 ou 3 elementos assíncronos.");
+  }
+  if (!snapshot.syncCountValid) issues.push("Esta tipologia exige exatamente 1 elemento síncrono.");
+  if (!snapshot.asyncWeightValid) issues.push("A componente assíncrona deve valer, no total, entre 6 e 8 valores.");
+  if (!snapshot.syncWeightValid) issues.push("A componente síncrona deve valer entre 12 e 14 valores.");
 
-  const hasAnyGrade = assessments.some(hasGrade);
+  const hasAnyGrade = snapshot.assessments.some(hasGrade);
   const configurationComplete = issues.length === 0;
   const passed = configurationComplete
-    && asyncMet
-    && syncMet
+    && snapshot.asyncMet
+    && snapshot.syncMet
     && common.rounded >= minimumFinalGrade;
 
   return {
@@ -240,47 +241,72 @@ function evaluateSplitModel(
     requirements: [
       ...common.requirements,
       requirement(
+        "async-count",
+        "Elementos assíncronos",
+        snapshot.asyncCountValid,
+        model === "type4" ? `${snapshot.asynchronous.length} · exigido 1` : `${snapshot.asynchronous.length} · exigidos 2 a 3`,
+      ),
+      requirement(
+        "async-weight",
+        "Cotação assíncrona",
+        snapshot.asyncWeightValid,
+        `${formatPtNumber(snapshot.asyncMaximum)} / 20 · exigidos 6 a 8`,
+      ),
+      requirement(
+        "sync-count",
+        "Elemento síncrono",
+        snapshot.syncCountValid,
+        `${snapshot.synchronous.length} · exigido 1`,
+      ),
+      requirement(
+        "sync-weight",
+        "Cotação síncrona",
+        snapshot.syncWeightValid,
+        `${formatPtNumber(snapshot.syncMaximum)} / 20 · exigidos 12 a 14`,
+      ),
+      requirement(
         "async-minimum",
-        "Componente assíncrona",
-        asyncMet,
-        asyncConfigured ? `${formatPtNumber(asyncPercent)}% · mínimo ${formatPtNumber(asyncMinimum)}%` : "Não configurada",
+        "Mínimo na componente assíncrona",
+        snapshot.asyncMet,
+        `${formatPtNumber(snapshot.asyncPercent)}% · mínimo ${formatPtNumber(snapshot.asyncMinimum)}%`,
       ),
       requirement(
         "sync-minimum",
-        "Componente síncrona",
-        syncMet,
-        syncConfigured ? `${formatPtNumber(syncPercent)}% · mínimo ${formatPtNumber(syncMinimum)}%` : "Não configurada",
+        "Mínimo na componente síncrona",
+        snapshot.syncMet,
+        `${formatPtNumber(snapshot.syncPercent)}% · mínimo ${formatPtNumber(snapshot.syncMinimum)}%`,
       ),
       requirement(
         "assessment-mode",
         "Modalidade dos elementos",
-        unspecified.length === 0,
-        unspecified.length === 0 ? "Todas definidas" : `${unspecified.length} por definir`,
+        snapshot.unspecified.length === 0,
+        snapshot.unspecified.length === 0 ? "Todas definidas" : `${snapshot.unspecified.length} por definir`,
       ),
     ],
   };
 }
 
-function evaluateActivityModel(
-  state: AppState,
-  courseId: string,
-  model: "type2" | "type3",
-): RegulationOutcome {
+function evaluateActivityModel(state: AppState, courseId: string, model: "type2" | "type3"): RegulationOutcome {
   const rules = getRules(state, courseId);
   const minimumFinalGrade = rules.minimumFinalGrade ?? 10;
   const activityMinimum = rules.nMinusOneMinimumPercent ?? 40;
   const assessments = requiredAssessments(state, courseId);
   const common = commonConfiguration(assessments, minimumFinalGrade);
+  const countValid = assessments.length >= 2 && assessments.length <= 4;
+  const allAsync = assessments.every((assessment) => assessment.mode === "asynchronous");
   const activitiesMeetingMinimum = assessments.filter((assessment) => (
     percentage(safeGrade(assessment), safeMaximum(assessment)) + EPSILON >= activityMinimum
   )).length;
   const requiredCount = Math.max(0, assessments.length - 1);
-  const nMinusOneMet = activitiesMeetingMinimum >= requiredCount;
+  const nMinusOneMet = countValid && activitiesMeetingMinimum >= requiredCount;
+  const issues = [...common.issues];
+
+  if (!countValid) issues.push(`A ${modelLabel(model)} exige entre 2 e 4 atividades.`);
+  if (!allAsync && assessments.length > 0) issues.push(`Na ${modelLabel(model)}, os elementos de avaliação são assíncronos.`);
+
   const hasAnyGrade = assessments.some(hasGrade);
-  const configurationComplete = common.issues.length === 0;
-  const passed = configurationComplete
-    && nMinusOneMet
-    && common.rounded >= minimumFinalGrade;
+  const configurationComplete = issues.length === 0;
+  const passed = configurationComplete && nMinusOneMet && common.rounded >= minimumFinalGrade;
 
   return {
     regime: "regulation-2026",
@@ -296,14 +322,22 @@ function evaluateActivityModel(
           : "resit",
     raw: common.raw,
     rounded: common.rounded,
-    issues: common.issues,
+    issues,
     requirements: [
       ...common.requirements,
+      requirement("activity-count", "Número de atividades", countValid, `${assessments.length} · exigidas 2 a 4`),
+      requirement("activity-mode", "Modalidade", allAsync, allAsync ? "Atividades assíncronas" : "Existem elementos não assíncronos"),
       requirement(
         "n-minus-one",
         "Regra N−1",
         nMinusOneMet,
         `${activitiesMeetingMinimum} de ${assessments.length} atividades com pelo menos ${formatPtNumber(activityMinimum)}%`,
+      ),
+      requirement(
+        "activity-relationship",
+        model === "type2" ? "Articulação das atividades" : "Autonomia das atividades",
+        true,
+        model === "type2" ? "As atividades devem estar articuladas conforme o PUC." : "As atividades são autónomas conforme o PUC.",
       ),
     ],
   };
@@ -323,10 +357,8 @@ function evaluateExamOnly(state: AppState, courseId: string): RegulationOutcome 
       kind: "in-progress",
       raw: null,
       rounded: null,
-      issues: ["Falta configurar a prova de avaliação final."],
-      requirements: [
-        requirement("exam-configured", "Prova final configurada", false, "Não configurada"),
-      ],
+      issues: ["Falta configurar a prova de avaliação por exame."],
+      requirements: [requirement("exam-configured", "Exame configurado", false, "Não configurado")],
     };
   }
 
@@ -338,7 +370,7 @@ function evaluateExamOnly(state: AppState, courseId: string): RegulationOutcome 
   const issues: string[] = [];
 
   if (!graded) issues.push(`Falta a nota de: ${examAssessment.name}.`);
-  if (!validScale) issues.push(`A prova está configurada para ${formatPtNumber(maximum)} pontos, em vez de 20.`);
+  if (!validScale) issues.push(`O exame está configurado para ${formatPtNumber(maximum)} pontos, em vez de 20.`);
 
   return {
     regime: "regulation-2026",
@@ -356,8 +388,8 @@ function evaluateExamOnly(state: AppState, courseId: string): RegulationOutcome 
     rounded,
     issues,
     requirements: [
-      requirement("exam-graded", "Prova final classificada", graded, graded ? "Classificada" : "Por classificar"),
-      requirement("exam-scale", "Escala da prova", validScale, `${formatPtNumber(maximum)} / 20 pontos`),
+      requirement("exam-graded", "Exame classificado", graded, graded ? "Classificado" : "Por classificar"),
+      requirement("exam-scale", "Escala do exame", validScale, `${formatPtNumber(maximum)} / 20 pontos`),
       requirement(
         "exam-final",
         "Classificação final",
@@ -369,44 +401,145 @@ function evaluateExamOnly(state: AppState, courseId: string): RegulationOutcome 
 }
 
 function evaluateCustomModel(state: AppState, courseId: string): RegulationOutcome {
-  const rules = getRules(state, courseId);
-  const minimumFinalGrade = rules.minimumFinalGrade ?? 10;
   const assessments = requiredAssessments(state, courseId);
-  const common = commonConfiguration(assessments, minimumFinalGrade);
   const hasAnyGrade = assessments.some(hasGrade);
-  const configurationComplete = common.issues.length === 0;
-  const passed = configurationComplete && common.rounded >= minimumFinalGrade;
-
   return {
     regime: "regulation-2026",
     model: "custom",
     modelLabel: modelLabel("custom"),
     source: "assessment",
-    kind: !hasAnyGrade
-      ? "in-progress"
-      : !configurationComplete
-        ? "incomplete"
-        : passed
-          ? "passed"
-          : "resit",
-    raw: common.raw,
-    rounded: common.rounded,
-    issues: common.issues,
-    requirements: common.requirements,
+    kind: hasAnyGrade ? "incomplete" : "in-progress",
+    raw: null,
+    rounded: null,
+    issues: ["Seleciona a Tipologia 1, 2, 3 ou 4 (ou avaliação por exame) exatamente como estiver indicada no PUC."],
+    requirements: [requirement("official-model", "Tipologia indicada no PUC", false, "Por selecionar")],
   };
 }
 
-/**
- * Calcula apenas cadeiras explicitamente configuradas com o regime de 2026.
- * As cadeiras antigas continuam a usar integralmente o motor legado.
- */
+export function getRegulationResitPlan(state: AppState, courseId: string): RegulationResitPlan | null {
+  const course = getCourse(state, courseId);
+  if (!course || course.evaluationRegime !== "regulation-2026") return null;
+  const model = course.evaluationModel ?? "custom";
+
+  if (model === "type1" || model === "type4") {
+    const snapshot = splitSnapshot(state, courseId, model);
+    if (snapshot.asyncMet && !snapshot.syncMet && snapshot.syncMaximum > 0) {
+      return {
+        kind: "repeat-synchronous",
+        maxPoints: snapshot.syncMaximum,
+        label: "Recurso — componente síncrona",
+        description: `A componente assíncrona está cumprida. O recurso repete a componente síncrona com a mesma cotação (${formatPtNumber(snapshot.syncMaximum)} valores).`,
+      };
+    }
+    return {
+      kind: "final-20",
+      maxPoints: 20,
+      label: "Recurso — prova síncrona final",
+      description: "Como a componente assíncrona não ficou cumprida, o recurso é uma prova síncrona final de 20 valores.",
+    };
+  }
+
+  if (model === "type2") {
+    return {
+      kind: "final-20",
+      maxPoints: 20,
+      label: "Recurso — discussão online",
+      description: "Na Tipologia 2, o recurso é uma discussão online cotada para 20 valores.",
+    };
+  }
+  if (model === "type3") {
+    return {
+      kind: "final-20",
+      maxPoints: 20,
+      label: "Recurso — atividade síncrona / discussão online",
+      description: "Na Tipologia 3, o recurso é uma atividade síncrona ou discussão online cotada para 20 valores, conforme o PUC.",
+    };
+  }
+  if (model === "exam-only") {
+    return {
+      kind: "final-20",
+      maxPoints: 20,
+      label: "Recurso — exame",
+      description: "O recurso da avaliação por exame é classificado na escala de 20 valores.",
+    };
+  }
+  return null;
+}
+
+function evaluateResit(state: AppState, courseId: string, item: Assessment, model: EvaluationModel): RegulationOutcome {
+  const plan = getRegulationResitPlan(state, courseId);
+  const maximum = safeMaximum(item);
+  const grade = safeGrade(item);
+
+  if (!plan) {
+    return {
+      regime: "regulation-2026",
+      model,
+      modelLabel: modelLabel(model),
+      source: "resit",
+      kind: "incomplete",
+      raw: null,
+      rounded: null,
+      issues: ["Não é possível determinar o recurso sem a tipologia indicada no PUC."],
+      requirements: [requirement("resit-plan", "Regra de recurso", false, "Tipologia por definir")],
+    };
+  }
+
+  const validScale = approximately(maximum, plan.maxPoints);
+  const issues = validScale
+    ? []
+    : [`O recurso está configurado para ${formatPtNumber(maximum)} pontos, mas nesta situação deve valer ${formatPtNumber(plan.maxPoints)}.`];
+
+  if (plan.kind === "repeat-synchronous") {
+    const snapshot = splitSnapshot(state, courseId, model as "type1" | "type4");
+    const resourcePercent = percentage(grade, maximum);
+    const resourceMinimumMet = resourcePercent + EPSILON >= snapshot.syncMinimum;
+    const raw = snapshot.asyncGrade + grade;
+    const rounded = roundHalfUpInt(raw);
+    const passed = issues.length === 0 && resourceMinimumMet && rounded >= (snapshot.rules.minimumFinalGrade ?? 10);
+    return {
+      regime: "regulation-2026",
+      model,
+      modelLabel: modelLabel(model),
+      source: "resit",
+      kind: issues.length > 0 ? "incomplete" : passed ? "passed" : "failed",
+      raw,
+      rounded,
+      issues,
+      requirements: [
+        requirement("resit-scale", "Cotação do recurso", validScale, `${formatPtNumber(maximum)} / ${formatPtNumber(plan.maxPoints)} valores`),
+        requirement("resit-sync-minimum", "Mínimo na componente síncrona", resourceMinimumMet, `${formatPtNumber(resourcePercent)}% · mínimo ${formatPtNumber(snapshot.syncMinimum)}%`),
+        requirement("resit-final", "Classificação final", rounded >= 10, `${rounded} valores`),
+      ],
+    };
+  }
+
+  const raw = grade;
+  const rounded = roundHalfUpInt(raw);
+  return {
+    regime: "regulation-2026",
+    model,
+    modelLabel: modelLabel(model),
+    source: "resit",
+    kind: issues.length > 0 ? "incomplete" : rounded >= 10 ? "passed" : "failed",
+    raw,
+    rounded,
+    issues,
+    requirements: [
+      requirement("resit-scale", "Escala do recurso", validScale, `${formatPtNumber(maximum)} / 20 pontos`),
+      requirement("resit-final", "Classificação final", rounded >= 10, `${rounded} valores`),
+    ],
+  };
+}
+
+/** Calcula apenas cadeiras explicitamente configuradas com o regime de 2026. */
 export function getRegulationOutcome(state: AppState, courseId: string): RegulationOutcome | null {
   const course = getCourse(state, courseId);
   if (!course || course.evaluationRegime !== "regulation-2026") return null;
 
   const model = course.evaluationModel ?? "custom";
   const resource = resit(state, courseId);
-  if (resource && hasGrade(resource)) return evaluateResit(resource, model);
+  if (resource && hasGrade(resource)) return evaluateResit(state, courseId, resource, model);
 
   if (model === "type1" || model === "type4") return evaluateSplitModel(state, courseId, model);
   if (model === "type2" || model === "type3") return evaluateActivityModel(state, courseId, model);
@@ -447,7 +580,6 @@ function legacyFinalGradeRaw(state: AppState, courseId: string): number | null {
   return totalEFolios(state, courseId) + safeGrade(examAssessment);
 }
 
-/** Nota final bruta, encaminhada para o motor aplicável à cadeira. */
 export function finalGradeRaw(state: AppState, courseId: string): number | null {
   const regulation = getRegulationOutcome(state, courseId);
   return regulation ? regulation.raw : legacyFinalGradeRaw(state, courseId);
@@ -492,7 +624,6 @@ export type AssessmentOutcome = {
   issues: string[];
 };
 
-/** Resultado imediato após registar uma nota de exame ou prova síncrona. */
 export function getExamOutcome(state: AppState, courseId: string): AssessmentOutcome | null {
   const course = getCourse(state, courseId);
   const examAssessment = exam(state, courseId);
@@ -511,16 +642,12 @@ export function getExamOutcome(state: AppState, courseId: string): AssessmentOut
   }
 
   const efolios = getAssessments(state, courseId, "efolio");
-  const missingGrades = efolios
-    .filter((item) => item.maxPoints > 0 && item.grade === null)
-    .map((item) => item.name);
+  const missingGrades = efolios.filter((item) => item.maxPoints > 0 && item.grade === null).map((item) => item.name);
   const configuredMax = totalEFoliosMax(state, courseId) + safeMaximum(examAssessment);
   const issues: string[] = [];
 
   if (missingGrades.length > 0) issues.push(`Faltam as notas de: ${missingGrades.join(", ")}.`);
-  if (!approximately(configuredMax, 20)) {
-    issues.push(`A avaliação configurada soma ${formatPtNumber(configuredMax)} pontos, em vez de 20.`);
-  }
+  if (!approximately(configuredMax, 20)) issues.push(`A avaliação configurada soma ${formatPtNumber(configuredMax)} pontos, em vez de 20.`);
 
   const efolioTotal = totalEFolios(state, courseId);
   const examValue = safeGrade(examAssessment);
@@ -534,15 +661,25 @@ export function getExamOutcome(state: AppState, courseId: string): AssessmentOut
   return { source: "exam", kind: passed ? "passed" : "resit", raw, rounded, issues: [] };
 }
 
-/** Resultado imediato após registar a nota de recurso. */
 export function getResitOutcome(state: AppState, courseId: string): AssessmentOutcome | null {
   const item = resit(state, courseId);
   if (!item || item.grade === null) return null;
+  const course = getCourse(state, courseId);
+
+  if (course?.evaluationRegime === "regulation-2026") {
+    const outcome = getRegulationOutcome(state, courseId);
+    if (!outcome || outcome.source !== "resit" || outcome.raw === null || outcome.rounded === null) return null;
+    return {
+      source: "resit",
+      kind: outcome.kind === "passed" ? "passed" : outcome.kind === "incomplete" ? "incomplete" : "failed",
+      raw: outcome.raw,
+      rounded: outcome.rounded,
+      issues: outcome.issues,
+    };
+  }
 
   const maximum = safeMaximum(item);
-  const issues = approximately(maximum, 20)
-    ? []
-    : [`O recurso está configurado para ${formatPtNumber(maximum)} pontos, em vez de 20.`];
+  const issues = approximately(maximum, 20) ? [] : [`O recurso está configurado para ${formatPtNumber(maximum)} pontos, em vez de 20.`];
   const raw = safeGrade(item);
   const rounded = roundHalfUpInt(raw);
 
@@ -571,9 +708,7 @@ export function getCourseStatus(state: AppState, courseId: string): { label: str
   const resourceGrade = resitGrade(state, courseId);
   if (resourceGrade !== null) {
     const final = finalGradeRounded(state, courseId);
-    return final !== null && final >= 10
-      ? { label: "Aprovado", badge: "success" }
-      : { label: "Recurso", badge: "danger" };
+    return final !== null && final >= 10 ? { label: "Aprovado", badge: "success" } : { label: "Recurso", badge: "danger" };
   }
 
   const rules = getRules(state, courseId);
@@ -585,9 +720,7 @@ export function getCourseStatus(state: AppState, courseId: string): { label: str
   if (examValue < rules.minExame) return { label: "Recurso", badge: "danger" };
 
   const final = finalGradeRounded(state, courseId);
-  return final !== null && final >= 10
-    ? { label: "Aprovado", badge: "success" }
-    : { label: "Recurso", badge: "danger" };
+  return final !== null && final >= 10 ? { label: "Aprovado", badge: "success" } : { label: "Recurso", badge: "danger" };
 }
 
 export function courseStatusLabel(state: AppState, courseId: string): { label: string; badge: CourseStatus } {
@@ -625,7 +758,6 @@ export function globalStats(state: AppState) {
   };
 }
 
-/** Calcula os ECTS concluídos usando o plano da licenciatura. */
 export function totalEctsCompleted(state: AppState, planCourses: { code: string; ects?: number }[]): number {
   const completedCodes = new Set(state.courses.filter((course) => course.isCompleted).map((course) => course.code));
   return planCourses
@@ -633,12 +765,10 @@ export function totalEctsCompleted(state: AppState, planCourses: { code: string;
     .reduce((total, planCourse) => total + (planCourse.ects ?? 6), 0);
 }
 
-/** Calcula o total de ECTS da licenciatura. */
 export function totalEctsDegree(planCourses: { ects?: number }[]): number {
   return planCourses.reduce((total, planCourse) => total + (planCourse.ects ?? 6), 0);
 }
 
-// Compatibilidade: código antigo importava `finalGrade`.
 export function finalGrade(state: AppState, courseId: string): number | null {
   return finalGradeRounded(state, courseId);
 }

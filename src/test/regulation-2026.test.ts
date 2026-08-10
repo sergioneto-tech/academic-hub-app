@@ -112,7 +112,19 @@ describe("motor de avaliação de 2026", () => {
     expect(outcome?.requirements.find((entry) => entry.key === "type2-sync-minimum")?.met).toBe(true);
   });
 
-  it("exige 50% na atividade síncrona excecional da Tipologia 2", () => {
+  it("não presume 50% numa atividade síncrona excecional da Tipologia 2 quando o PUC não define mínimo", () => {
+    const state = baseState("type2", [
+      item({ id: "a1", name: "Etapa 1", maxPoints: 5, grade: 5, mode: "asynchronous" }),
+      item({ id: "a2", name: "Etapa 2", maxPoints: 5, grade: 5, mode: "asynchronous" }),
+      item({ id: "sync", name: "Atividade síncrona autorizada", maxPoints: 10, grade: 4.5, mode: "synchronous" }),
+    ]);
+
+    const outcome = getRegulationOutcome(state, "course-2026");
+    expect(outcome).toMatchObject({ kind: "passed", raw: 14.5, rounded: 15 });
+    expect(outcome?.requirements.find((entry) => entry.key === "type2-sync-minimum")).toBeUndefined();
+  });
+
+  it("exige o mínimo específico da atividade síncrona da Tipologia 2 quando o PUC o define", () => {
     const state = baseState("type2", [
       item({ id: "a1", name: "Etapa 1", maxPoints: 5, grade: 5, mode: "asynchronous" }),
       item({ id: "a2", name: "Etapa 2", maxPoints: 5, grade: 5, mode: "asynchronous" }),

@@ -23,7 +23,9 @@ export type Course = {
 
   /** Regime aplicável à UC. O valor legacy preserva todos os dados antigos. */
   evaluationRegime?: EvaluationRegime;
-  /** Modelo flexível configurado pelo aluno de acordo com o PUC da cadeira. */
+  /** Indica quando o regime foi aplicado automaticamente a partir da publicação oficial da UAb. */
+  evaluationRegimeSource?: "official" | "manual";
+  /** Tipologia/configuração indicada no PUC da cadeira. */
   evaluationModel?: EvaluationModel;
   /** Estrutura utilizada em cadeiras do regime anterior/histórico. Ausente = e-fólios + g-fólio. */
   legacyEvaluationMode?: LegacyEvaluationMode;
@@ -42,7 +44,7 @@ export type CourseSession = {
   dateTime: string;
 };
 
-export type AssessmentType = "efolio" | "exam" | "resit" | "activity" | "project" | "presentation" | "discussion" | "other";
+export type AssessmentType = "efolio" | "exam" | "resit" | "special" | "activity" | "project" | "presentation" | "discussion" | "other";
 export type AssessmentMode = "asynchronous" | "synchronous";
 export type AssessmentStatus = "todo" | "submitted" | "graded" | "not-completed";
 
@@ -71,6 +73,9 @@ export type Assessment = {
   endDate?: string;
   gradeReleaseDate?: string;
   date?: string;
+  /** Origem da data da prova. Datas oficiais são repostas pela sincronização UAb quando necessário. */
+  dateSource?: "official" | "manual";
+  officialCheckedAt?: string;
 };
 
 export type Rules = {
@@ -78,7 +83,7 @@ export type Rules = {
   minAptoExame: number; // default legado 3.5
   minExame: number;     // default legado 5.5
 
-  /** Regras configuráveis para o modelo flexível. */
+  /** Regras configuráveis para o regime de 2026. */
   minimumFinalGrade?: number;
   asyncMinimumPercent?: number;
   syncMinimumPercent?: number;

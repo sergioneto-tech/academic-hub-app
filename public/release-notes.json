@@ -1,6 +1,17 @@
 {
-  "latest": "1.2.2",
+  "latest": "1.2.3",
   "versions": [
+    {
+      "version": "1.2.3",
+      "date": "2026-08-10",
+      "changes": [
+        "Melhorada a recuperação da sessão Cloud no iPad ao testar notificações, reduzindo conflitos entre processos da PWA.",
+        "Quando o refresh token de um dispositivo já não pode ser recuperado, a app indica claramente que é necessária uma nova autenticação sem apagar dados locais.",
+        "Novo badge monocromático AH específico para notificações Android, substituindo o quadrado branco na barra de estado.",
+        "O logótipo normal do Academic Hub continua a ser usado no corpo da notificação, mantendo a identidade visual completa.",
+        "Mantida sem alterações a lógica de alertas para e-fólios, exames, recursos e prazos oficiais da UAb."
+      ]
+    },
     {
       "version": "1.2.2",
       "date": "2026-08-10",

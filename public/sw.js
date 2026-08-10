@@ -1,11 +1,12 @@
-const SW_VERSION = "1.2.2-push3";
+const SW_VERSION = "1.2.3-push4";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
   "./academic-hub-icon-v10-192.png",
   "./academic-hub-icon-v10-512.png",
-  "./release-notes.json?v=1.2.2",
+  "./academic-hub-notification-badge.png",
+  "./release-notes.json?v=1.2.3",
 ];
 
 self.addEventListener("install", (event) => {
@@ -35,7 +36,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(title, {
     body: data.body || "Tens um novo alerta académico.",
     icon: data.icon || "./academic-hub-icon-v10-192.png",
-    badge: data.badge || "./academic-hub-icon-v10-192.png",
+    badge: data.badge || "./academic-hub-notification-badge.png",
     data: { url: data.url || "./#/calendario" },
     tag: data.tag || undefined,
     renotify: false,

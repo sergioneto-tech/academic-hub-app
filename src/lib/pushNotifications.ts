@@ -1,6 +1,7 @@
 import {
   getStoredSession,
   refreshSession,
+  storeSession,
   type AuthSession,
   type CloudConfig,
 } from "@/lib/cloudSync";
@@ -66,25 +67,42 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 }
 
+function getNewerStoredSession(context: CloudAuthContext): AuthSession | null {
+  const latest = getStoredSession(context.config);
+  if (
+    latest?.user.id === context.session.user.id &&
+    (latest.access_token !== context.session.access_token || latest.refresh_token !== context.session.refresh_token)
+  ) {
+    return latest;
+  }
+  return null;
+}
+
 async function recoverConcurrentRefresh(context: CloudAuthContext, error: unknown): Promise<AuthSession> {
   const message = error instanceof Error ? error.message : String(error ?? "");
   if (!/refresh token.*already used|already used/i.test(message)) throw error;
 
-  for (const wait of [120, 250, 500]) {
+  for (const wait of [150, 300, 600, 1000]) {
     await delay(wait);
-    const latest = getStoredSession(context.config);
-    if (
-      latest?.user.id === context.session.user.id &&
-      (latest.access_token !== context.session.access_token || latest.refresh_token !== context.session.refresh_token)
-    ) {
-      return latest;
-    }
+    const latest = getNewerStoredSession(context);
+    if (latest) return latest;
   }
 
-  throw new Error("A sessão da cloud foi renovada noutro processo, mas a nova sessão ainda não ficou disponível. Fecha e volta a abrir o Academic Hub e tenta novamente.");
+  storeSession(context.config, null);
+  throw new Error(
+    "A sessão Cloud deste dispositivo expirou e já não pode ser renovada. Os dados locais não foram afetados. Vai a Conta e Perfil, inicia sessão novamente uma vez e repete o teste.",
+  );
 }
 
 async function refreshForRequest(context: CloudAuthContext): Promise<AuthSession> {
+  // Dá oportunidade a AutoSync/Realtime ou a outra janela da PWA de concluir
+  // uma renovação que já esteja em curso antes de reutilizar o refresh token.
+  for (const wait of [120, 280]) {
+    await delay(wait);
+    const latest = getNewerStoredSession(context);
+    if (latest) return latest;
+  }
+
   try {
     return await refreshSession(context.config, context.session);
   } catch (error) {
@@ -107,7 +125,8 @@ async function cloudFetch(
   });
 
   if (response.status === 401 && retry) {
-    const fresh = await refreshForRequest(context);
+    const latest = getNewerStoredSession(context);
+    const fresh = latest ?? await refreshForRequest(context);
     return cloudFetch({ config: context.config, session: fresh }, url, init, false);
   }
   return response;

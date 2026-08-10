@@ -101,7 +101,7 @@ export default {
       for(const event of events){
         if(body.mode!=="test" && sentKeys.has(`${pref.user_id}|${event.key}`)) continue;
         let ok=false;
-        const payload=JSON.stringify({title:event.title,body:event.body,url:event.url,icon:"/academic-hub-icon-v10-192.png",badge:"/academic-hub-icon-v10-192.png"});
+        const payload=JSON.stringify({title:event.title,body:event.body,url:event.url,icon:"/academic-hub-icon-v10-192.png",badge:"/academic-hub-notification-badge.png"});
         for(const s of userSubs){
           try{ await webpush.sendNotification({endpoint:s.endpoint,keys:{p256dh:s.p256dh,auth:s.auth}},payload,{TTL:86400}); ok=true; sent++; }
           catch(err:any){ if(err?.statusCode===404||err?.statusCode===410) await db.from("push_subscriptions").delete().eq("id",s.id); else console.error("push",err?.statusCode??err); }

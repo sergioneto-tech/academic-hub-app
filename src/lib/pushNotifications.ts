@@ -22,6 +22,8 @@ export const DEFAULT_PUSH_PREFERENCES: PushPreferences = {
   timezone: "Europe/Lisbon",
 };
 
+const db = supabase as any;
+
 function urlBase64ToUint8Array(value:string){
   const padding="=".repeat((4-(value.length%4))%4);
   const base64=(value+padding).replace(/-/g,"+").replace(/_/g,"/");
@@ -34,14 +36,14 @@ export function isStandalonePwa(){ return window.matchMedia?.("(display-mode: st
 
 export async function loadPushPreferences(){
   const {data:{user}}=await supabase.auth.getUser(); if(!user) return null;
-  const {data,error}=await supabase.from("push_preferences").select("*").eq("user_id",user.id).maybeSingle();
+  const {data,error}=await db.from("push_preferences").select("*").eq("user_id",user.id).maybeSingle();
   if(error) throw error;
   return data ? ({...DEFAULT_PUSH_PREFERENCES,...data} as PushPreferences) : DEFAULT_PUSH_PREFERENCES;
 }
 
 export async function savePushPreferences(prefs:PushPreferences){
   const {data:{user}}=await supabase.auth.getUser(); if(!user) throw new Error("Inicia sessão para ativar notificações.");
-  const {error}=await supabase.from("push_preferences").upsert({user_id:user.id,...prefs},{onConflict:"user_id"});
+  const {error}=await db.from("push_preferences").upsert({user_id:user.id,...prefs},{onConflict:"user_id"});
   if(error) throw error;
 }
 
@@ -62,7 +64,7 @@ export async function enablePushOnThisDevice(deviceLabel:string){
     subscription=await registration.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)});
   }
   const json=subscription.toJSON();
-  const {error}=await supabase.from("push_subscriptions").upsert({
+  const {error}=await db.from("push_subscriptions").upsert({
     user_id:user.id, endpoint:subscription.endpoint, p256dh:json.keys?.p256dh??"", auth:json.keys?.auth??"",
     device_label:deviceLabel, user_agent:navigator.userAgent, enabled:true,
   },{onConflict:"endpoint"});
@@ -73,7 +75,7 @@ export async function enablePushOnThisDevice(deviceLabel:string){
 
 export async function disablePushOnThisDevice(){
   const subscription=await currentPushSubscription(); if(!subscription) return;
-  await supabase.from("push_subscriptions").delete().eq("endpoint",subscription.endpoint);
+  await db.from("push_subscriptions").delete().eq("endpoint",subscription.endpoint);
   await subscription.unsubscribe();
 }
 

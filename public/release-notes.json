@@ -1,6 +1,18 @@
 {
-  "latest": "1.2.5",
+  "latest": "1.2.6",
   "versions": [
+    {
+      "version": "1.2.6",
+      "date": "2026-08-10",
+      "changes": [
+        "O calendário académico passa a consultar automaticamente a fonte oficial da Universidade Aberta e a guardar apenas calendários validados.",
+        "A verificação do calendário oficial é feita semanalmente; novas versões do PDF ou novos anos letivos são detetados sem ser necessário alterar manualmente as datas na aplicação.",
+        "Dashboard e notificações Push passam a usar a mesma fonte dinâmica para os períodos oficiais de matrículas e inscrições.",
+        "Se o formato oficial mudar e não for possível validar todas as datas essenciais, o Academic Hub rejeita a atualização em vez de apresentar datas possivelmente erradas.",
+        "O ano letivo apresentado muda automaticamente em agosto e, enquanto ainda não existir um calendário oficial válido para esse ano, não são reutilizadas datas antigas.",
+        "Retirada das Definições a possibilidade de restaurar manualmente versões antigas dos dados da cloud, evitando substituições acidentais de dados atuais."
+      ]
+    },
     {
       "version": "1.2.5",
       "date": "2026-08-10",

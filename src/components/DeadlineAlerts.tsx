@@ -4,8 +4,8 @@ import { AlertTriangle, CalendarClock, Bell, ExternalLink, GraduationCap } from 
 import { toast } from "sonner";
 import type { AppState } from "@/lib/types";
 import { getAssessments } from "@/lib/calculations";
-import { getAcademicAlerts, getAcademicDashboardCards, UAB_LINKS, ACADEMIC_YEAR, type CalendarAlert } from "@/lib/uabAcademicCalendar";
-
+import { UAB_LINKS, type CalendarAlert } from "@/lib/uabAcademicCalendar";
+import { useRuntimeAcademicAlerts } from "@/lib/uabAcademicCalendarRemote";
 
 type AlertItem = {
   id: string;
@@ -39,8 +39,6 @@ function buildAlerts(state: AppState): AlertItem[] {
 
   for (const course of activeCourses) {
     const label = `${course.code} — ${course.name}`;
-
-    // E-fólios: alertar início (véspera/dia) e fim (véspera/dia) do período de entrega
     const efolios = getAssessments(state, course.id, "efolio");
     for (const ef of efolios) {
       if (ef.startDate) {
@@ -57,7 +55,6 @@ function buildAlerts(state: AppState): AlertItem[] {
       }
     }
 
-    // Exame
     const ex = getAssessments(state, course.id, "exam")[0];
     if (ex?.date) {
       const days = daysUntil(ex.date);
@@ -66,7 +63,6 @@ function buildAlerts(state: AppState): AlertItem[] {
       }
     }
 
-    // Recurso
     const rc = getAssessments(state, course.id, "resit")[0];
     if (rc?.date) {
       const days = daysUntil(rc.date);
@@ -76,7 +72,6 @@ function buildAlerts(state: AppState): AlertItem[] {
     }
   }
 
-  // Blocos de estudo pessoal prestes a iniciar (próximos 3 dias)
   const studyBlocks = state.studyBlocks ?? [];
   for (const block of studyBlocks) {
     if (block.status === "done") continue;
@@ -95,10 +90,10 @@ function buildAlerts(state: AppState): AlertItem[] {
       alerts.push({
         id: `study-${block.id}`,
         courseId: block.courseId,
-        courseName: courseName,
+        courseName,
         label: `${actLabel}: ${block.title}`,
         daysLeft: days,
-        type: "efolio", // reuse type for styling
+        type: "efolio",
       });
     }
   }
@@ -135,60 +130,44 @@ function markToastShown(): void {
   localStorage.setItem(TOAST_STORAGE_KEY, new Date().toISOString().slice(0, 10));
 }
 
-/** Toast diário ao abrir a app */
 export function useDeadlineToasts(state: AppState) {
   const alerts = useMemo(() => buildAlerts(state), [state]);
-  const academicAlerts = useMemo(() => getAcademicAlerts(), []);
+  const { alerts: academicAlerts } = useRuntimeAcademicAlerts();
 
   useEffect(() => {
     const hasAlerts = alerts.length > 0 || academicAlerts.length > 0;
     if (!hasAlerts || !shouldShowToast()) return;
     markToastShown();
 
-    // Pequeno atraso para a app carregar
     const t = setTimeout(() => {
-      // Academic alerts first
       for (const a of academicAlerts.slice(0, 3)) {
         const isUrgent = a.category === "enrollment" && a.daysLeft <= 3;
-        if (isUrgent) {
-          toast.warning(`${a.icon} ${a.label}`, { description: a.description, duration: 10000 });
-        } else {
-          toast.info(`${a.icon} ${a.label}`, { description: a.description, duration: 6000 });
-        }
+        if (isUrgent) toast.warning(`${a.icon} ${a.label}`, { description: a.description, duration: 10000 });
+        else toast.info(`${a.icon} ${a.label}`, { description: a.description, duration: 6000 });
       }
 
       const urgent = alerts.filter((a) => a.daysLeft <= 1);
       const upcoming = alerts.filter((a) => a.daysLeft > 1);
-
-      for (const a of urgent) {
-        toast.warning(`⚠️ ${a.courseName}`, { description: alertMessage(a), duration: 8000 });
-      }
-      for (const a of upcoming) {
-        toast.info(`📅 ${a.courseName}`, { description: alertMessage(a), duration: 6000 });
-      }
+      for (const a of urgent) toast.warning(`⚠️ ${a.courseName}`, { description: alertMessage(a), duration: 8000 });
+      for (const a of upcoming) toast.info(`📅 ${a.courseName}`, { description: alertMessage(a), duration: 6000 });
     }, 1200);
 
     return () => clearTimeout(t);
-  }, []); // só ao montar
+  }, [academicAlerts, alerts]);
 }
 
-/** Bloco fixo de alertas para o Dashboard */
 export default function DeadlineAlerts({ state }: { state: AppState }) {
   const alerts = useMemo(() => buildAlerts(state), [state]);
-  const academicAlerts = useMemo(() => getAcademicAlerts(), []);
-  const academicCards = useMemo(() => getAcademicDashboardCards(2), []);
-
-  const hasAny = alerts.length > 0 || academicCards.length > 0;
+  const { calendar, cards: academicCards } = useRuntimeAcademicAlerts();
 
   return (
     <div className="space-y-3">
-      {/* Calendário académico UAb — mostra sempre eventos em curso ou próximos eventos relevantes. */}
-      {academicCards.length > 0 && (
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <GraduationCap className="h-4 w-4 text-primary" />
-            Calendário Académico {ACADEMIC_YEAR}
-          </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <GraduationCap className="h-4 w-4 text-primary" />
+          Calendário Académico {calendar.academicYear}
+        </div>
+        {academicCards.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {academicCards.map((a) => (
               <a
@@ -205,29 +184,31 @@ export default function DeadlineAlerts({ state }: { state: AppState }) {
               </a>
             ))}
           </div>
-          {/* Links rápidos UAb inline */}
-          <div className="flex items-center gap-1.5 pt-0.5">
-            {[
-              { href: UAB_LINKS.calendarioLetivo, icon: "📅", label: "Letivo" },
-              { href: UAB_LINKS.avaliacao, icon: "📝", label: "Provas" },
-              { href: UAB_LINKS.candidaturas, icon: "📋", label: "Candidaturas" },
-            ].map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-              >
-                {l.icon} {l.label}
-                <ExternalLink className="h-2.5 w-2.5" />
-              </a>
-            ))}
+        ) : (
+          <div className="rounded-lg border bg-muted/25 px-3 py-2 text-[11px] text-muted-foreground">
+            A aguardar calendário oficial com datas para este ano letivo. Os links oficiais continuam disponíveis abaixo.
           </div>
+        )}
+        <div className="flex items-center gap-1.5 pt-0.5">
+          {[
+            { href: UAB_LINKS.calendarioLetivo, icon: "📅", label: "Letivo" },
+            { href: UAB_LINKS.avaliacao, icon: "📝", label: "Provas" },
+            { href: UAB_LINKS.candidaturas, icon: "📋", label: "Candidaturas" },
+          ].map((l) => (
+            <a
+              key={l.label}
+              href={l.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              {l.icon} {l.label}
+              <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          ))}
         </div>
-      )}
+      </div>
 
-      {/* Alertas de prazos de cadeiras */}
       {alerts.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-semibold">

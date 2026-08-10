@@ -1,7 +1,7 @@
 // Versão da aplicação (incrementar quando publicares uma atualização)
 // A série 1.x corresponde à versão estável do Academic Hub renovado.
-export const APP_VERSION = "1.2.6";
+export const APP_VERSION = "1.3.0";
 
-// Versão do esquema de dados. A v5 acrescenta perfil, aparência, notificações
-// e metadados do modelo flexível, preservando integralmente o formato anterior.
+// Versão do esquema de dados. Os novos campos de avaliação oficial são opcionais,
+// por isso mantêm compatibilidade integral com o esquema v5 e backups anteriores.
 export const SCHEMA_VERSION = 5;

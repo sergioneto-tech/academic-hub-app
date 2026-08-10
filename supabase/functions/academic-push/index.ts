@@ -84,6 +84,7 @@ export default {
       if(!onlyUser) return jsonResponse({error:"Unauthorized"},401);
     }
     const body=await req.json().catch(()=>({}));
+    const targetEndpoint = body.mode === "test" && typeof body.targetEndpoint === "string" ? body.targetEndpoint : null;
     let prefQ=db.from("push_preferences").select("*"); if(onlyUser) prefQ=prefQ.eq("user_id",onlyUser);
     const {data:prefs}=await prefQ; if(!prefs?.length) return jsonResponse({sent:0});
     const ids=prefs.map((p:any)=>p.user_id);
@@ -96,7 +97,11 @@ export default {
     const sentKeys=new Set((logs??[]).map((r:any)=>`${r.user_id}|${r.event_key}`));
     let sent=0;
     for(const pref of prefs as Pref[]){
-      const userSubs=(subs??[]).filter((s:any)=>s.user_id===pref.user_id) as Sub[]; if(!userSubs.length) continue;
+      let userSubs=(subs??[]).filter((s:any)=>s.user_id===pref.user_id) as Sub[];
+      if(body.mode==="test" && onlyUser===pref.user_id && targetEndpoint){
+        userSubs=userSubs.filter((s)=>s.endpoint===targetEndpoint);
+      }
+      if(!userSubs.length) continue;
       const events=body.mode==="test"&&onlyUser===pref.user_id ? [{key:`test:${Date.now()}`,title:"Academic Hub",body:"Notificações ativadas com sucesso neste dispositivo.",url:"/#/definicoes"}] : buildDue(stateMap.get(pref.user_id)??{},pref,new Date());
       for(const event of events){
         if(body.mode!=="test" && sentKeys.has(`${pref.user_id}|${event.key}`)) continue;

@@ -1,4 +1,4 @@
-const SW_VERSION = "1.2.3-push4";
+const SW_VERSION = "1.2.4-push5";
 const CACHE = `academic-hub-${SW_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -6,7 +6,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-192.png",
   "./academic-hub-icon-v10-512.png",
   "./academic-hub-notification-badge.png",
-  "./release-notes.json?v=1.2.3",
+  "./release-notes.json?v=1.2.4",
 ];
 
 self.addEventListener("install", (event) => {
@@ -50,12 +50,20 @@ self.addEventListener("notificationclick", (event) => {
     if (/^https?:\/\//i.test(target) && !target.startsWith(self.location.origin)) {
       return self.clients.openWindow(target);
     }
-    const absolute = new URL(target, self.location.origin).href;
+
+    const absolute = new URL(target, self.registration.scope).href;
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const client of windows) {
-      if ("focus" in client) {
-        try { if ("navigate" in client) await client.navigate(absolute); } catch {}
-        return client.focus();
+    const client = windows.find((item) => item.visibilityState === "visible") || windows[0];
+
+    if (client) {
+      try {
+        await client.focus();
+        if ("navigate" in client) {
+          const navigated = await client.navigate(absolute);
+          if (navigated) return navigated;
+        }
+      } catch {
+        // Se o cliente existente não aceitar navegação, abre uma nova janela PWA.
       }
     }
     return self.clients.openWindow(absolute);

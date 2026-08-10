@@ -1,6 +1,18 @@
 {
-  "latest": "1.2.3",
+  "latest": "1.2.4",
   "versions": [
+    {
+      "version": "1.2.4",
+      "date": "2026-08-10",
+      "changes": [
+        "Corrigido o caso em que um iPad tinha autorização Push local mas a subscrição não tinha ficado registada no Supabase após um erro de sessão anterior.",
+        "Ao abrir Definições, o Academic Hub passa a reconciliar automaticamente a subscrição Push deste dispositivo com o servidor.",
+        "O botão Teste envia agora a notificação apenas para o dispositivo onde foi acionado, evitando que um teste no iPad seja entregue no Android.",
+        "Ao tocar numa notificação do Academic Hub, a aplicação volta a abrir diretamente o destino associado, incluindo Definições nos testes.",
+        "O badge Android foi simplificado para uma silhueta AH branca e transparente, com melhor legibilidade na barra de estado.",
+        "A lógica de alertas académicos, agendamento e sincronização de dados permanece inalterada."
+      ]
+    },
     {
       "version": "1.2.3",
       "date": "2026-08-10",

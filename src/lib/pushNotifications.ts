@@ -95,8 +95,6 @@ async function recoverConcurrentRefresh(context: CloudAuthContext, error: unknow
 }
 
 async function refreshForRequest(context: CloudAuthContext): Promise<AuthSession> {
-  // Dá oportunidade a AutoSync/Realtime ou a outra janela da PWA de concluir
-  // uma renovação que já esteja em curso antes de reutilizar o refresh token.
   for (const wait of [120, 280]) {
     await delay(wait);
     const latest = getNewerStoredSession(context);
@@ -145,6 +143,14 @@ function urlBase64ToUint8Array(value: string) {
   return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
 }
 
+function defaultDeviceLabel() {
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent)
+    ? "iPhone/iPad"
+    : /Android/i.test(navigator.userAgent)
+      ? "Android"
+      : "Computador";
+}
+
 export function pushSupported() {
   return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
@@ -187,22 +193,11 @@ export async function currentPushSubscription() {
   return registration.pushManager.getSubscription();
 }
 
-export async function enablePushOnThisDevice(deviceLabel: string) {
-  if (!pushSupported()) throw new Error("Este dispositivo/navegador não suporta notificações Push.");
-  const context = await getCloudAuthContext();
-
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") throw new Error("A autorização de notificações não foi concedida.");
-
-  const registration = await navigator.serviceWorker.ready;
-  let subscription = await registration.pushManager.getSubscription();
-  if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-  }
-
+async function registerSubscription(
+  context: CloudAuthContext,
+  subscription: PushSubscription,
+  deviceLabel = defaultDeviceLabel(),
+) {
   const json = subscription.toJSON();
   const url = `${context.config.supabaseUrl}/rest/v1/push_subscriptions?on_conflict=endpoint`;
   const response = await cloudFetch(context, url, {
@@ -220,7 +215,34 @@ export async function enablePushOnThisDevice(deviceLabel: string) {
     }),
   });
   await assertOk(response, "Não foi possível registar este dispositivo para notificações.");
+}
 
+export async function reconcilePushOnThisDevice(deviceLabel = defaultDeviceLabel()) {
+  if (!pushSupported() || Notification.permission !== "granted") return null;
+  const subscription = await currentPushSubscription();
+  if (!subscription) return null;
+  const context = await getCloudAuthContext();
+  await registerSubscription(context, subscription, deviceLabel);
+  return subscription;
+}
+
+export async function enablePushOnThisDevice(deviceLabel: string) {
+  if (!pushSupported()) throw new Error("Este dispositivo/navegador não suporta notificações Push.");
+  const context = await getCloudAuthContext();
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") throw new Error("A autorização de notificações não foi concedida.");
+
+  const registration = await navigator.serviceWorker.ready;
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+
+  await registerSubscription(context, subscription, deviceLabel);
   const preferences = await loadPushPreferences() ?? DEFAULT_PUSH_PREFERENCES;
   await savePushPreferences(preferences);
   return subscription;
@@ -239,10 +261,24 @@ export async function disablePushOnThisDevice() {
 
 export async function sendPushTest() {
   const context = await getCloudAuthContext();
+  let subscription = await currentPushSubscription();
+  if (!subscription && Notification.permission === "granted") {
+    const registration = await navigator.serviceWorker.ready;
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  }
+  if (!subscription) throw new Error("Este dispositivo ainda não tem uma subscrição Push ativa.");
+
+  // Repara automaticamente casos em que o navegador tem a subscrição local,
+  // mas ela não chegou a ser gravada no Supabase (ex.: falha de sessão anterior).
+  await registerSubscription(context, subscription);
+
   const response = await cloudFetch(context, `${context.config.supabaseUrl}/functions/v1/academic-push`, {
     method: "POST",
     cache: "no-store",
-    body: JSON.stringify({ mode: "test" }),
+    body: JSON.stringify({ mode: "test", targetEndpoint: subscription.endpoint }),
   });
   await assertOk(response, "Não foi possível enviar a notificação de teste.");
 }

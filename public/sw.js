@@ -1,4 +1,4 @@
-const SW_VERSION = "1.2.5-push1";
+const SW_VERSION = "1.2.6-calendar1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
 const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
@@ -10,7 +10,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.2.5",
+  "./release-notes.json?v=1.2.6",
 ];
 
 self.addEventListener("install", (event) => {

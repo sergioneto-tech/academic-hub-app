@@ -1,6 +1,21 @@
 {
-  "latest": "1.2.6",
+  "latest": "1.3.0",
   "versions": [
+    {
+      "version": "1.3.0",
+      "date": "2026-08-10",
+      "changes": [
+        "O Regulamento de Avaliação 2026/2027 passa a ser aplicado automaticamente às unidades curriculares do 1.º ciclo que constam do anexo do Despacho n.º 9792/2026, sem alterar cadeiras concluídas ou históricas.",
+        "A nomenclatura e as validações passam a seguir as Tipologias 1, 2, 3 e 4 oficiais, incluindo número de elementos, cotações, mínimos por componente e regra N−1.",
+        "Corrigida a lógica de recurso: nas Tipologias 1 e 4 pode repetir apenas a componente síncrona com a mesma cotação quando a assíncrona já estiver cumprida; nos restantes casos previstos é aplicada a prova de recurso correspondente de 20 valores.",
+        "O calendário detalhado de provas da UAb passa a ser sincronizado automaticamente por código de UC, distinguindo avaliação contínua normal/recurso de exame normal/recurso.",
+        "Datas e horas oficiais das provas são preenchidas automaticamente; quando a UAb ainda não publicou uma prova ou indica que não existe data, o Academic Hub não inventa nem reutiliza datas antigas.",
+        "O cartão de recurso passa a aparecer apenas quando as classificações mostram que o recurso é realmente necessário, apresentando automaticamente a data e hora oficial quando publicada.",
+        "A fonte oficial de provas é verificada diariamente no servidor; os alertas Push consultam diretamente a versão oficial sincronizada antes de avisar sobre prova ou recurso.",
+        "Removido o antigo fallback estático do calendário de provas 2025/2026, evitando confundir datas de anos letivos diferentes.",
+        "E-fólios, trabalhos, projetos e restantes atividades do semestre continuam a ser registados manualmente pelo aluno de acordo com o PUC."
+      ]
+    },
     {
       "version": "1.2.6",
       "date": "2026-08-10",

@@ -55,8 +55,8 @@ const MODEL_OPTIONS: Array<{
   {
     value: "type2",
     label: "Tipologia 2",
-    description: "2 a 4 atividades assíncronas articuladas. Pelo menos N−1 têm de atingir 40% da respetiva cotação e a classificação final tem de atingir 10/20.",
-    whenToUse: "Seleciona quando o PUC indicar Tipologia 2.",
+    description: "2 a 4 atividades assíncronas articuladas. Excecionalmente, quando o PUC o indicar, pode incluir atividade síncrona; em Língua Estrangeira a produção oral exige pelo menos 50%.",
+    whenToUse: "Seleciona quando o PUC indicar Tipologia 2 e replica qualquer exceção síncrona exatamente como publicada.",
   },
   {
     value: "type3",
@@ -194,9 +194,9 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
       return;
     }
 
-    if (next === "type2" || next === "type3") {
+    if (next === "type3") {
       assessments.forEach((assessment) => {
-        if (assessment.required !== false) updateAssessment(assessment.id, { mode: "asynchronous" });
+        if (assessment.required !== false) updateAssessment(assessment.id, { mode: "asynchronous", minimumPercent: undefined });
       });
     }
   };
@@ -397,6 +397,7 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
   onRemove: () => void;
 }) {
   const splitModel = model === "type1" || model === "type4";
+  const type2 = model === "type2";
   const timed = isTimedAssessment(assessment.type);
   const officialDate = timed && assessment.dateSource === "official" && Boolean(assessment.date);
 
@@ -418,8 +419,14 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
           <Label className="text-[11px] text-muted-foreground">Modalidade</Label>
           <Select
             value={assessment.mode ?? "asynchronous"}
-            disabled={!splitModel}
-            onValueChange={(value) => onChange({ mode: value as AssessmentMode })}
+            disabled={!splitModel && !type2}
+            onValueChange={(value) => {
+              const mode = value as AssessmentMode;
+              onChange({
+                mode,
+                minimumPercent: type2 && mode === "synchronous" ? 50 : undefined,
+              });
+            }}
           >
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
@@ -427,6 +434,11 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
               <SelectItem value="synchronous">Síncrona</SelectItem>
             </SelectContent>
           </Select>
+          {type2 && assessment.mode === "synchronous" && (
+            <p className="text-[10px] leading-4 text-muted-foreground">
+              Usa apenas se o PUC indicar a exceção autorizada. O Academic Hub aplica mínimo de 50% a esta atividade síncrona.
+            </p>
+          )}
         </div>
         <Button type="button" variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive" onClick={onRemove} aria-label={`Remover ${assessment.name}`}>
           <Trash2 className="h-4 w-4" />

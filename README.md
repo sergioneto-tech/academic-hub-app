@@ -6,10 +6,11 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 
 ## Estado atual
 
-- **Versão da aplicação:** 1.0.0
+- **Versão da aplicação:** 1.2.6
 - **Interface:** responsiva, com modo claro/escuro
 - **Instalação:** PWA em computador, tablet e telemóvel
 - **Sincronização:** cloud entre dispositivos, com atualização automática e resolução de conflitos
+- **Notificações:** alertas Push por dispositivo para e-fólios, exames/recursos e prazos oficiais da UAb
 - **Desempenho:** otimizado para desktop e dispositivos móveis
 
 ## Funcionalidades principais
@@ -19,6 +20,7 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 - Registo de e-fólios, avaliações, exames, recursos e notas finais.
 - Modelos de avaliação compatíveis com o regime anterior e com o regulamento de avaliação de 2026.
 - Calendário académico e agenda pessoal.
+- Alertas Push configuráveis por dispositivo para prazos académicos.
 - Histórico académico.
 - Relatório das cadeiras concluídas, preparado para impressão/PDF.
 - Critérios e pré-requisitos específicos de inscrição quando publicados pela UAb.
@@ -45,10 +47,13 @@ Informações institucionais, planos de estudos, calendário e requisitos espec�
 - Supabase
 - Cloudflare Pages
 - PWA / Service Worker
+- GitHub para controlo de versões, revisão e validação das alterações
 
-## Validação do projeto
+## Manutenção e validação
 
-O repositório executa verificações automáticas no GitHub antes de considerar uma alteração validada:
+O projeto é mantido no GitHub. As alterações são desenvolvidas em branches próprias e revistas através de Pull Requests antes de serem integradas no `main`.
+
+O repositório executa verificações automáticas antes de considerar uma alteração validada:
 
 - verificação TypeScript;
 - build de produção;

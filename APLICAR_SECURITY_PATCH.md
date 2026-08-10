@@ -18,11 +18,9 @@ Este patch faz 3 coisas principais:
 
 ---
 
-## 1) Aplicar ficheiros no Lovable / GitHub
+## 1) Aplicar ficheiros através do GitHub
 
-Copia/cola (substitui) os ficheiros incluídos no ZIP para os mesmos caminhos no teu projeto.
-
-Depois faz **Publish**.
+Atualiza os ficheiros necessários numa branch própria, abre um Pull Request para `main` e só integra depois de passarem TypeScript, build, testes e lint.
 
 ---
 
@@ -62,6 +60,5 @@ E garante que o **Site URL** está correto (o teu domínio principal).
 
 ## 5) Check rápido de segurança
 
-- **NUNCA** coloques a `service_role key` no frontend. Este patch bloqueia automaticamente se detetar `role=service_role`.
+- **NUNCA** coloques a `service_role key` no frontend.
 - Se o CSP Report-Only reportar violações na consola, ajusta o CSP antes de o tornares mais restrito.
-

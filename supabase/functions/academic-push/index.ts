@@ -41,8 +41,9 @@ function needsOfficialResit(state:any,course:any){
     }
     if(model==="type2"){
       const met=required.filter((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=40).length;
-      const oralMet=required.filter((a:any)=>a.mode==="synchronous").every((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=(Number(a.minimumPercent)||50));
-      return !(met>=Math.max(0,required.length-1)&&oralMet&&roundGrade(raw)>=10);
+      const syncWithMinimum=required.filter((a:any)=>a.mode==="synchronous"&&typeof a.minimumPercent==="number"&&Number.isFinite(a.minimumPercent));
+      const specialMinimumMet=syncWithMinimum.every((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=a.minimumPercent);
+      return !(met>=Math.max(0,required.length-1)&&specialMinimumMet&&roundGrade(raw)>=10);
     }
     if(model==="type3"){const met=required.filter((a:any)=>max(a)>0&&(grade(a)/max(a))*100>=40).length;return !(met>=Math.max(0,required.length-1)&&roundGrade(raw)>=10);}
     return false;

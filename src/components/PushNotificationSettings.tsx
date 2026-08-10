@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { DEFAULT_PUSH_PREFERENCES, currentPushSubscription, disablePushOnThisDevice, enablePushOnThisDevice, isStandalonePwa, loadPushPreferences, pushSupported, savePushPreferences, sendPushTest, type PushPreferences } from "@/lib/pushNotifications";
+import { DEFAULT_PUSH_PREFERENCES, currentPushSubscription, disablePushOnThisDevice, enablePushOnThisDevice, isStandalonePwa, loadPushPreferences, pushSupported, reconcilePushOnThisDevice, savePushPreferences, sendPushTest, type PushPreferences } from "@/lib/pushNotifications";
 
 const DAY_OPTIONS=[1,2,3,5,7,10,14];
 
@@ -17,11 +17,11 @@ export default function PushNotificationSettings(){
   const supported=pushSupported();
   const standalone=typeof window!=="undefined"?isStandalonePwa():false;
 
-  useEffect(()=>{void (async()=>{try{setSubscribed(Boolean(await currentPushSubscription())); const p=await loadPushPreferences(); if(p)setPrefs(p);}catch{}})()},[]);
+  useEffect(()=>{void (async()=>{try{const sub=await currentPushSubscription();setSubscribed(Boolean(sub));if(sub&&Notification.permission==="granted")await reconcilePushOnThisDevice();const p=await loadPushPreferences();if(p)setPrefs(p);}catch{}})()},[]);
   async function persist(next:PushPreferences){setPrefs(next);try{await savePushPreferences(next);}catch(error){toast({title:"Não foi possível guardar",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"})}}
   async function enable(){setBusy(true);try{await enablePushOnThisDevice(/iPhone|iPad|iPod/i.test(navigator.userAgent)?"iPhone/iPad":/Android/i.test(navigator.userAgent)?"Android":"Computador");setSubscribed(true);toast({title:"Notificações ativadas",description:"Este dispositivo já pode receber alertas do Academic Hub."});}catch(error){toast({title:"Não foi possível ativar",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"})}finally{setBusy(false)}}
   async function disable(){setBusy(true);try{await disablePushOnThisDevice();setSubscribed(false);toast({title:"Notificações desativadas neste dispositivo"});}finally{setBusy(false)}}
-  async function test(){setBusy(true);try{await sendPushTest();toast({title:"Teste enviado",description:"A notificação deverá aparecer dentro de alguns segundos."});}catch(error){toast({title:"Falha no teste",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"})}finally{setBusy(false)}}
+  async function test(){setBusy(true);try{await sendPushTest();toast({title:"Teste enviado",description:"A notificação deverá aparecer dentro de alguns segundos neste dispositivo."});}catch(error){toast({title:"Falha no teste",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"})}finally{setBusy(false)}}
 
   return <Card className="premium-card border-primary/25"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BellRing className="h-4 w-4 text-primary"/>Notificações no dispositivo</CardTitle></CardHeader><CardContent className="space-y-4">
     {!supported?<div className="flex gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-xs"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0"/><div>Este navegador não disponibiliza Web Push.</div></div>:(!standalone&&/iPhone|iPad|iPod/i.test(navigator.userAgent))?<div className="flex gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-xs"><Smartphone className="mt-0.5 h-4 w-4 shrink-0"/><div>No iPhone/iPad, adiciona primeiro o Academic Hub ao ecrã principal e abre-o como aplicação para ativar notificações.</div></div>:null}

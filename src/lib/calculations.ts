@@ -292,21 +292,42 @@ function evaluateActivityModel(state: AppState, courseId: string, model: "type2"
   const activityMinimum = rules.nMinusOneMinimumPercent ?? 40;
   const assessments = requiredAssessments(state, courseId);
   const common = commonConfiguration(assessments, minimumFinalGrade);
-  const countValid = assessments.length >= 2 && assessments.length <= 4;
-  const allAsync = assessments.every((assessment) => assessment.mode === "asynchronous");
+  const asynchronous = assessments.filter((assessment) => assessment.mode === "asynchronous");
+  const synchronous = assessments.filter((assessment) => assessment.mode === "synchronous");
+  const unspecified = assessments.filter((assessment) => !assessment.mode);
+  const standardCount = model === "type2" ? asynchronous.length : assessments.length;
+  const countValid = standardCount >= 2 && standardCount <= 4;
+  const modeValid = model === "type3"
+    ? synchronous.length === 0 && unspecified.length === 0
+    : unspecified.length === 0;
   const activitiesMeetingMinimum = assessments.filter((assessment) => (
     percentage(safeGrade(assessment), safeMaximum(assessment)) + EPSILON >= activityMinimum
   )).length;
   const requiredCount = Math.max(0, assessments.length - 1);
-  const nMinusOneMet = countValid && activitiesMeetingMinimum >= requiredCount;
+  const nMinusOneMet = activitiesMeetingMinimum >= requiredCount;
+  const exceptionalSyncMinimumMet = model !== "type2" || synchronous.every((assessment) => {
+    const minimum = assessment.minimumPercent ?? 50;
+    return percentage(safeGrade(assessment), safeMaximum(assessment)) + EPSILON >= minimum;
+  });
   const issues = [...common.issues];
 
-  if (!countValid) issues.push(`A ${modelLabel(model)} exige entre 2 e 4 atividades.`);
-  if (!allAsync && assessments.length > 0) issues.push(`Na ${modelLabel(model)}, os elementos de avaliação são assíncronos.`);
+  if (!countValid) {
+    issues.push(model === "type2"
+      ? "A Tipologia 2 exige entre 2 e 4 atividades assíncronas; uma atividade síncrona excecional só deve ser acrescentada quando o PUC o indicar."
+      : "A Tipologia 3 exige entre 2 e 4 atividades assíncronas.");
+  }
+  if (!modeValid) {
+    issues.push(model === "type3"
+      ? "Na Tipologia 3, os elementos de avaliação são assíncronos."
+      : "Falta indicar a modalidade de um ou mais elementos da Tipologia 2.");
+  }
 
   const hasAnyGrade = assessments.some(hasGrade);
   const configurationComplete = issues.length === 0;
-  const passed = configurationComplete && nMinusOneMet && common.rounded >= minimumFinalGrade;
+  const passed = configurationComplete
+    && nMinusOneMet
+    && exceptionalSyncMinimumMet
+    && common.rounded >= minimumFinalGrade;
 
   return {
     regime: "regulation-2026",
@@ -325,14 +346,36 @@ function evaluateActivityModel(state: AppState, courseId: string, model: "type2"
     issues,
     requirements: [
       ...common.requirements,
-      requirement("activity-count", "Número de atividades", countValid, `${assessments.length} · exigidas 2 a 4`),
-      requirement("activity-mode", "Modalidade", allAsync, allAsync ? "Atividades assíncronas" : "Existem elementos não assíncronos"),
+      requirement(
+        "activity-count",
+        model === "type2" ? "Atividades assíncronas" : "Número de atividades",
+        countValid,
+        `${standardCount} · exigidas 2 a 4`,
+      ),
+      requirement(
+        "activity-mode",
+        "Modalidade",
+        modeValid,
+        model === "type2"
+          ? (synchronous.length > 0 ? `${synchronous.length} atividade(s) síncrona(s) excecional(is) indicada(s) no PUC` : "Atividades assíncronas")
+          : (modeValid ? "Atividades assíncronas" : "Existem elementos não assíncronos"),
+      ),
       requirement(
         "n-minus-one",
         "Regra N−1",
         nMinusOneMet,
         `${activitiesMeetingMinimum} de ${assessments.length} atividades com pelo menos ${formatPtNumber(activityMinimum)}%`,
       ),
+      ...(model === "type2" && synchronous.length > 0 ? [requirement(
+        "type2-sync-minimum",
+        "Mínimo na atividade síncrona excecional",
+        exceptionalSyncMinimumMet,
+        synchronous.map((assessment) => {
+          const minimum = assessment.minimumPercent ?? 50;
+          const current = percentage(safeGrade(assessment), safeMaximum(assessment));
+          return `${assessment.name}: ${formatPtNumber(current)}% · mínimo ${formatPtNumber(minimum)}%`;
+        }).join(" · "),
+      )] : []),
       requirement(
         "activity-relationship",
         model === "type2" ? "Articulação das atividades" : "Autonomia das atividades",
@@ -444,7 +487,7 @@ export function getRegulationResitPlan(state: AppState, courseId: string): Regul
       kind: "final-20",
       maxPoints: 20,
       label: "Recurso — discussão online",
-      description: "Na Tipologia 2, o recurso é uma discussão online cotada para 20 valores.",
+      description: "Na Tipologia 2, o recurso é uma discussão online cotada para 20 valores; em Língua Estrangeira pode integrar as competências linguísticas previstas no PUC.",
     };
   }
   if (model === "type3") {

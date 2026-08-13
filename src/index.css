@@ -259,6 +259,59 @@
     overflow-wrap: anywhere;
   }
 
+  /*
+     Editor do plano académico: cada campo pertence sempre ao cartão da respetiva cadeira.
+     O componente Input inclui `w-full` por defeito; por isso os campos numéricos de Ano/Sem
+     precisam de uma largura física explícita para nunca crescerem por cima de outras cadeiras.
+  */
+  .settings-legacy input[inputmode="numeric"] {
+    width: 3rem !important;
+    min-width: 3rem !important;
+    max-width: 3rem !important;
+    flex: 0 0 3rem !important;
+  }
+
+  .settings-legacy .flex.items-center.gap-1:has(> input[inputmode="numeric"]) {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: max-content !important;
+    flex: 0 0 auto !important;
+  }
+
+  /* A linha de metadados de uma cadeira nunca pode sair do respetivo cartão. */
+  .settings-legacy .flex.flex-wrap.items-center.gap-2:has(input[inputmode="numeric"]) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    align-content: center;
+  }
+
+  .settings-legacy .flex.flex-wrap.items-center.gap-2:has(input[inputmode="numeric"]) > * {
+    max-width: 100%;
+    flex-shrink: 0;
+  }
+
+  /* Código e nome permanecem dentro do cartão; o nome é o único campo que pode ocupar o resto. */
+  .settings-legacy .flex.gap-2:has(> .w-20.shrink-0) {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .settings-legacy .flex.gap-2:has(> .w-20.shrink-0) > .flex-1 {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  @media (max-width: 1279px) {
+    /* Em tablets, duas colunas tornam cada semestre demasiado estreito depois da sidebar.
+       Os semestres passam a uma coluna, mantendo todos os campos legíveis e separados. */
+    .settings-legacy .mt-3.grid.grid-cols-1.gap-3.md\:grid-cols-2 {
+      grid-template-columns: minmax(0, 1fr) !important;
+    }
+  }
+
   @media (max-width: 639px) {
     /* Quatro métricas em duas linhas, evitando uma página excessivamente comprida. */
     .grid:has(> .premium-card .dashboard-metric-card) {
@@ -349,6 +402,21 @@
     .settings-premium .w-20.shrink-0 {
       width: min(5rem, 28%);
     }
+
+    /* No telemóvel os controlos secundários ficam organizados em linhas próprias,
+       mas continuam todos dentro do mesmo cartão da cadeira. */
+    .settings-legacy .flex.flex-wrap.items-center.gap-2:has(input[inputmode="numeric"]) {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, max-content));
+      justify-content: start;
+      gap: 0.5rem 0.75rem;
+      overflow: visible;
+    }
+
+    .settings-legacy .flex.flex-wrap.items-center.gap-2:has(input[inputmode="numeric"]) > .ml-auto {
+      margin-left: 0;
+      justify-self: start;
+    }
   }
 
   @media (max-width: 359px) {
@@ -370,6 +438,10 @@
 
     .settings-premium .flex.items-center.gap-4 {
       flex-wrap: wrap;
+    }
+
+    .settings-legacy .flex.flex-wrap.items-center.gap-2:has(input[inputmode="numeric"]) {
+      grid-template-columns: minmax(0, 1fr);
     }
   }
 }

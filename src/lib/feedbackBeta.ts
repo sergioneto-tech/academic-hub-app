@@ -44,7 +44,9 @@ function cloudConfig(): CloudConfig | null {
 function isPreviewHost(): boolean {
   if (typeof window === "undefined") return false;
   const host = window.location.hostname.toLowerCase();
-  return host === "feature-feedback-beta.academic-hub-app.pages.dev" || host.startsWith("feature-feedback-beta.");
+  if (host === "localhost" || host === "127.0.0.1") return true;
+  if (host === "feature-feedback-beta.academic-hub-app.pages.dev") return true;
+  return host.endsWith(".academic-hub-app.pages.dev") && host !== "academic-hub-app.pages.dev";
 }
 
 export function currentFeedbackUserId(): string | null {

@@ -1,24 +1,77 @@
-@media (min-width: 768px) {
-  /* Course catalog cards: keep short labels readable and use the available width. */
-  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 {
-    flex-wrap: nowrap;
-    column-gap: 0.75rem;
+/*
+ * Plano académico — comportamento responsivo do editor de cadeiras.
+ * Este ficheiro é carregado depois de index.css e serve para manter cada
+ * cadeira autocontida, sem esconder controlos em tablet/telemóvel.
+ */
+
+/* A linha de Ano/Sem/ECTS/estado pode sempre quebrar quando faltar espaço. */
+.settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: wrap !important;
+  overflow: visible !important;
+  column-gap: 0.75rem;
+  row-gap: 0.45rem;
+}
+
+.settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > div,
+.settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > span,
+.settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > button {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+/* Área/ECTS não força a linha a crescer para fora do cartão. */
+.settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > span.italic {
+  min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* O botão de remover permanece no cartão e pode passar para a linha seguinte. */
+.settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > button.ml-auto {
+  margin-left: auto;
+}
+
+/*
+ * Tablet em posição vertical: há menos largura útil por causa da navegação.
+ * Usa um semestre por linha e dá toda a largura ao cartão. Assim os estados
+ * Ativa/Concluída ficam sempre visíveis.
+ */
+@media (min-width: 640px) and (max-width: 1199px) and (orientation: portrait) {
+  .settings-legacy .mt-3.grid.grid-cols-1.gap-3.md\:grid-cols-2 {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > div {
-    flex-shrink: 0;
+  .settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 {
+    justify-content: flex-start;
+  }
+}
+
+/*
+ * Tablet em posição horizontal: quando existe largura útil, recupera as duas
+ * colunas — 1.º semestre à esquerda e 2.º semestre à direita.
+ */
+@media (min-width: 900px) and (orientation: landscape) {
+  .settings-legacy .mt-3.grid.grid-cols-1.gap-3.md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Telemóvel: cada cadeira continua independente e os estados ficam em linhas
+   naturais, sem qualquer conteúdo cortado. */
+@media (max-width: 639px) {
+  .settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    overflow: visible !important;
+    align-items: center;
   }
 
-  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > span {
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-
-  .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > span.italic {
-    min-width: 0;
-    flex: 1 1 auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .settings-legacy .flex.gap-2:has(input[placeholder="Código"]) + .flex.flex-wrap.items-center.gap-2 > button.ml-auto {
+    margin-left: 0;
   }
 }

@@ -24,6 +24,7 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const StudyPlan = lazy(() => import("./pages/StudyPlan"));
 const PersonalStudyPlan = lazy(() => import("./pages/PersonalStudyPlan"));
 const HelpPage = lazy(() => import("./pages/Help"));
+const FeedbackBetaPage = lazy(() => import("./pages/FeedbackBeta"));
 const LegalPage = lazy(() => import("./pages/Legal"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
@@ -62,6 +63,7 @@ function AcademicHubApp() {
           <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
           <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
           <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
+          <Route path="/feedback" element={<LazyPage><FeedbackBetaPage /></LazyPage>} />
           <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

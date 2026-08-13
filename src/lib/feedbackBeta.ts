@@ -15,6 +15,7 @@ export type FeedbackEntry = {
   reference: string;
   userId: string;
   kind: FeedbackKind;
+  area?: string;
   title: string;
   body: string;
   steps?: string;

@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { FEEDBACK_BETA_EVENT, loadFeedbackStore, unreadFeedbackCount } from "@/lib/feedbackBeta";
 
 const STYLE_ID = "academic-hub-feedback-beta-enhancements";
-const NOTE_ID = "academic-hub-feedback-sound-note";
 const FILTER_ID = "academic-hub-feedback-filters";
 
 let activeType = "all";
@@ -57,7 +56,6 @@ function ensureStyles() {
     #${FILTER_ID} { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; margin: 0 1.5rem .8rem; padding: .7rem; border: 1px solid hsl(var(--border)); border-radius: .85rem; background: hsl(var(--muted) / .22); }
     #${FILTER_ID} label { display: grid; gap: .3rem; min-width: 0; font-size: .68rem; font-weight: 700; color: hsl(var(--muted-foreground)); }
     #${FILTER_ID} select { width: 100%; min-width: 0; height: 2.35rem; border: 1px solid hsl(var(--input)); border-radius: .7rem; padding: 0 .65rem; background: hsl(var(--background)); color: hsl(var(--foreground)); font-size: .78rem; }
-    #${NOTE_ID} { max-width: 31rem; margin-top: .45rem; font-size: .72rem; line-height: 1.35; color: hsl(var(--muted-foreground)); }
     @keyframes ah-feedback-pulse { 0%,100% { box-shadow: 0 0 0 1px hsl(var(--gold) / .18), 0 0 0 hsl(var(--gold) / 0); } 50% { box-shadow: 0 0 0 1px hsl(var(--gold) / .42), 0 0 20px hsl(var(--gold) / .22); } }
     @media (max-width: 639px) { #${FILTER_ID} { grid-template-columns: minmax(0, 1fr); margin-inline: 1rem; } .ah-feedback-kind-counts { gap: .18rem; } }
     @media (prefers-reduced-motion: reduce) { a[href$="/feedback"][data-feedback-unread="true"] { animation: none; } }
@@ -74,14 +72,10 @@ function enhanceMenu() {
     suggestion: unread.filter((entry) => entry.kind === "suggestion").length,
     bug: unread.filter((entry) => entry.kind === "bug").length,
   };
-
   document.querySelectorAll<HTMLAnchorElement>('a[href$="/feedback"]').forEach((link) => {
     link.dataset.feedbackUnread = count > 0 ? "true" : "false";
     link.dataset.feedbackCount = String(count);
-    const desired = (Object.keys(KIND_META) as Array<keyof typeof KIND_META>)
-      .filter((kind) => byKind[kind] > 0)
-      .map((kind) => `${kind}:${byKind[kind]}`)
-      .join("|");
+    const desired = (Object.keys(KIND_META) as Array<keyof typeof KIND_META>).filter((kind) => byKind[kind] > 0).map((kind) => `${kind}:${byKind[kind]}`).join("|");
     const current = link.dataset.feedbackKinds || "";
     if (current === desired) return;
     link.dataset.feedbackKinds = desired;
@@ -156,15 +150,7 @@ function enhanceFeedbackPage() {
     if (text === "Sugestão") button.dataset.feedbackKind = "suggestion";
     if (text === "Problema") button.dataset.feedbackKind = "bug";
     if (button.dataset.feedbackKind) button.dataset.selected = button.className.includes("bg-primary/10") ? "true" : "false";
-    if (text.startsWith("Som interno")) {
-      button.setAttribute("title", "Som geral do Academic Hub para confirmações e avisos enquanto a aplicação está aberta");
-      if (!document.getElementById(NOTE_ID)) {
-        const note = document.createElement("div");
-        note.id = NOTE_ID;
-        note.textContent = "Esta preferência passará a ser geral para os sons da aplicação. As notificações push no telemóvel/tablet continuam a usar o som e as permissões definidos pelo sistema operativo.";
-        button.insertAdjacentElement("afterend", note);
-      }
-    }
+    if (text.startsWith("Som interno")) button.hidden = true;
   });
   enhanceInbox();
 }

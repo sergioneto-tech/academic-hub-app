@@ -33,7 +33,9 @@ export type FeedbackEntry = {
   history: FeedbackHistoryItem[];
 };
 
+export type AcademicHubSoundKind = "confirm" | "warning" | "error" | "notification";
 type FeedbackStore = { entries: FeedbackEntry[]; counter: number };
+let lastSoundAt = 0;
 
 function cloudConfig(): CloudConfig | null {
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
@@ -147,26 +149,41 @@ export function setNotificationSoundEnabled(enabled: boolean) {
   try { localStorage.setItem(SOUND_KEY, enabled ? "on" : "off"); } catch {}
 }
 
-export function playAcademicHubNotificationSound() {
-  if (!notificationSoundEnabled()) return;
+const SOUND_PROFILES: Record<AcademicHubSoundKind, { start: number; end: number; duration: number; volume: number; type: OscillatorType }> = {
+  confirm: { start: 620, end: 820, duration: 0.18, volume: 0.042, type: "sine" },
+  warning: { start: 430, end: 330, duration: 0.22, volume: 0.047, type: "sine" },
+  error: { start: 290, end: 185, duration: 0.25, volume: 0.052, type: "triangle" },
+  notification: { start: 740, end: 980, duration: 0.24, volume: 0.056, type: "sine" },
+};
+
+export function playAcademicHubAppSound(kind: AcademicHubSoundKind = "confirm") {
+  if (!notificationSoundEnabled() || typeof window === "undefined") return;
+  const now = Date.now();
+  if (now - lastSoundAt < 140) return;
+  lastSoundAt = now;
   try {
     const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioContextClass) return;
+    const profile = SOUND_PROFILES[kind];
     const context = new AudioContextClass();
     const oscillator = context.createOscillator();
     const gain = context.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(740, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(980, context.currentTime + 0.12);
+    oscillator.type = profile.type;
+    oscillator.frequency.setValueAtTime(profile.start, context.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(profile.end, context.currentTime + profile.duration * 0.62);
     gain.gain.setValueAtTime(0.0001, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.07, context.currentTime + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.24);
+    gain.gain.exponentialRampToValueAtTime(profile.volume, context.currentTime + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + profile.duration);
     oscillator.connect(gain);
     gain.connect(context.destination);
     oscillator.start();
-    oscillator.stop(context.currentTime + 0.25);
+    oscillator.stop(context.currentTime + profile.duration + 0.02);
     oscillator.addEventListener("ended", () => void context.close());
   } catch {}
+}
+
+export function playAcademicHubNotificationSound() {
+  playAcademicHubAppSound("notification");
 }
 
 export const FEEDBACK_STATUS_LABELS: Record<FeedbackStatus, string> = {

@@ -86,21 +86,11 @@ function normUrl(u: string) {
 function validateCredentials(email: string, password: string, options?: { creatingAccount?: boolean }) {
   const normalizedEmail = email.trim().toLowerCase();
 
-  if (!normalizedEmail) {
-    throw new Error("Indica o email antes de continuar.");
-  }
-  if (!EMAIL_PATTERN.test(normalizedEmail)) {
-    throw new Error("Indica um endereço de email válido.");
-  }
-  if (options?.creatingAccount && !isUabStudentEmail(normalizedEmail)) {
-    throw new Error(`A criação de conta é exclusiva a estudantes da UAb. Utiliza o teu email @${UAB_STUDENT_EMAIL_DOMAIN}.`);
-  }
-  if (!password) {
-    throw new Error("Indica a password antes de continuar.");
-  }
-  if (options?.creatingAccount && password.length < 8) {
-    throw new Error("A password deve ter pelo menos 8 caracteres.");
-  }
+  if (!normalizedEmail) throw new Error("Indica o email antes de continuar.");
+  if (!EMAIL_PATTERN.test(normalizedEmail)) throw new Error("Indica um endereço de email válido.");
+  if (options?.creatingAccount && !isUabStudentEmail(normalizedEmail)) throw new Error(`A criação de conta é exclusiva a estudantes da UAb. Utiliza o teu email @${UAB_STUDENT_EMAIL_DOMAIN}.`);
+  if (!password) throw new Error("Indica a password antes de continuar.");
+  if (options?.creatingAccount && password.length < 8) throw new Error("A password deve ter pelo menos 8 caracteres.");
 
   return { email: normalizedEmail, password };
 }
@@ -108,44 +98,14 @@ function validateCredentials(email: string, password: string, options?: { creati
 function friendlyAuthError(json: unknown, fallback: string): string {
   const code = (getStringField(json, "code", "error_code") ?? "").toLowerCase();
   const rawMessage = (getStringField(json, "msg", "message", "error_description", "error") ?? fallback ?? "").toLowerCase();
-
-  if (
-    code === "over_request_rate_limit" ||
-    code === "over_email_send_rate_limit" ||
-    code === "rate_limit_exceeded" ||
-    rawMessage.includes("request rate limit reached") ||
-    rawMessage.includes("rate limit") ||
-    rawMessage.includes("too many requests")
-  ) {
-    return "Foram efetuadas demasiadas tentativas num curto espaço de tempo. Aguarda alguns minutos antes de tentar novamente.";
-  }
-  if (
-    code === "pgrst303" ||
-    code === "bad_jwt" ||
-    rawMessage.includes("jwt expired") ||
-    rawMessage.includes("token has expired")
-  ) {
-    return "A sessão da cloud expirou. A aplicação tentou renová-la automaticamente. Se o problema continuar, sai da conta e volta a entrar; os dados locais serão mantidos.";
-  }
-  if (code === "anonymous_provider_disabled") {
-    return "Indica um email e uma password válidos. A aplicação não cria contas anónimas.";
-  }
-  if (code === "email_provider_disabled") {
-    return "A criação de contas por email está desativada no Supabase.";
-  }
-  if (code === "signup_disabled") {
-    return "A criação de novas contas está desativada no Supabase.";
-  }
-  if (code === "email_exists" || code === "user_already_exists") {
-    return "Já existe uma conta associada a este email.";
-  }
-  if (code === "email_not_confirmed") {
-    return "O email ainda não foi confirmado. Abre o link enviado pelo Supabase.";
-  }
-  if (code === "invalid_credentials") {
-    return "Email ou password incorretos.";
-  }
-
+  if (code === "over_request_rate_limit" || code === "over_email_send_rate_limit" || code === "rate_limit_exceeded" || rawMessage.includes("request rate limit reached") || rawMessage.includes("rate limit") || rawMessage.includes("too many requests")) return "Foram efetuadas demasiadas tentativas num curto espaço de tempo. Aguarda alguns minutos antes de tentar novamente.";
+  if (code === "pgrst303" || code === "bad_jwt" || rawMessage.includes("jwt expired") || rawMessage.includes("token has expired")) return "A sessão da cloud expirou. A aplicação tentou renová-la automaticamente. Se o problema continuar, sai da conta e volta a entrar; os dados locais serão mantidos.";
+  if (code === "anonymous_provider_disabled") return "Indica um email e uma password válidos. A aplicação não cria contas anónimas.";
+  if (code === "email_provider_disabled") return "A criação de contas por email está desativada no Supabase.";
+  if (code === "signup_disabled") return "A criação de novas contas está desativada no Supabase.";
+  if (code === "email_exists" || code === "user_already_exists") return "Já existe uma conta associada a este email.";
+  if (code === "email_not_confirmed") return "O email ainda não foi confirmado. Abre o link enviado pelo Supabase.";
+  if (code === "invalid_credentials") return "Email ou password incorretos.";
   return getStringField(json, "msg", "message", "error_description", "error") ?? fallback ?? "Erro";
 }
 
@@ -164,22 +124,20 @@ export function getStoredSession(config: CloudConfig): AuthSession | null {
 
 export function storeSession(config: CloudConfig, session: AuthSession | null) {
   try {
-    if (!session) {
-      localStorage.removeItem(AUTH_KEY);
-      return;
-    }
-    localStorage.setItem(AUTH_KEY, JSON.stringify({ url: normUrl(config.supabaseUrl), session }));
+    if (!session) localStorage.removeItem(AUTH_KEY);
+    else localStorage.setItem(AUTH_KEY, JSON.stringify({ url: normUrl(config.supabaseUrl), session }));
   } catch {
     // Sem impacto funcional quando o armazenamento local não está disponível.
+  } finally {
+    // `storage` só é emitido noutras abas. Este evento atualiza imediatamente
+    // componentes da própria aba (por exemplo, o aviso de modo exploração).
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("academic-hub-auth-changed"));
   }
 }
 
 function headers(config: CloudConfig, session?: AuthSession | null) {
   assertNotServiceRoleKey(config.supabaseAnonKey);
-  const h: Record<string, string> = {
-    apikey: config.supabaseAnonKey,
-    "Content-Type": "application/json",
-  };
+  const h: Record<string, string> = { apikey: config.supabaseAnonKey, "Content-Type": "application/json" };
   if (session?.access_token) h.Authorization = `Bearer ${session.access_token}`;
   return h;
 }
@@ -187,14 +145,8 @@ function headers(config: CloudConfig, session?: AuthSession | null) {
 async function parseResponse(res: Response): Promise<unknown> {
   const text = await res.text();
   let json: unknown = null;
-  try {
-    json = text ? (JSON.parse(text) as unknown) : null;
-  } catch {
-    // A resposta pode não ser JSON; o status HTTP continua a ser tratado.
-  }
-  if (!res.ok) {
-    throw new Error(friendlyAuthError(json, res.statusText));
-  }
+  try { json = text ? (JSON.parse(text) as unknown) : null; } catch { /* resposta não JSON */ }
+  if (!res.ok) throw new Error(friendlyAuthError(json, res.statusText));
   return json;
 }
 
@@ -206,181 +158,65 @@ async function postJson<T>(url: string, init: RequestInit): Promise<T> {
 async function parseRestError(res: Response, fallback: string): Promise<Error> {
   const text = await res.text();
   let json: unknown = null;
-  try {
-    json = text ? (JSON.parse(text) as unknown) : null;
-  } catch {
-    // Mantém o texto bruto como fallback.
-  }
+  try { json = text ? (JSON.parse(text) as unknown) : null; } catch { /* texto bruto como fallback */ }
   return new Error(friendlyAuthError(json, text || res.statusText || fallback));
 }
 
-export type SignUpResult = {
-  session: AuthSession | null;
-  confirmationRequired: boolean;
-};
+export type SignUpResult = { session: AuthSession | null; confirmationRequired: boolean };
 
 export async function signUp(config: CloudConfig, email: string, password: string): Promise<SignUpResult> {
   const credentials = validateCredentials(email, password, { creatingAccount: true });
-  const signupUrl = new URL(`${normUrl(config.supabaseUrl)}/auth/v1/signup`);
-
-  if (typeof window !== "undefined" && window.location?.origin) {
-    signupUrl.searchParams.set("redirect_to", window.location.origin);
-  }
-
-  const data = await postJson<Partial<AuthSession>>(signupUrl.toString(), {
-    method: "POST",
-    headers: headers(config),
-    body: JSON.stringify(credentials),
-  });
-
-  if (!data?.access_token) {
-    return { session: null, confirmationRequired: true };
-  }
-  return { session: data as AuthSession, confirmationRequired: false };
+  const data = await postJson<{ access_token?: string; refresh_token?: string; token_type?: string; expires_in?: number; expires_at?: number; user?: AuthSession["user"] }>(`${normUrl(config.supabaseUrl)}/auth/v1/signup`, { method: "POST", headers: headers(config), body: JSON.stringify(credentials) });
+  if (data.access_token && data.refresh_token && data.user) return { session: data as AuthSession, confirmationRequired: false };
+  return { session: null, confirmationRequired: true };
 }
 
 export async function signIn(config: CloudConfig, email: string, password: string): Promise<AuthSession> {
   const credentials = validateCredentials(email, password);
-  const url = `${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=password`;
-  const session = await postJson<AuthSession>(url, {
-    method: "POST",
-    headers: headers(config),
-    body: JSON.stringify(credentials),
-  });
-  storeSession(config, session);
-  return session;
+  return await postJson<AuthSession>(`${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=password`, { method: "POST", headers: headers(config), body: JSON.stringify(credentials) });
 }
 
 export async function refreshSession(config: CloudConfig, session: AuthSession): Promise<AuthSession> {
   if (refreshInFlight) return refreshInFlight;
-
-  const latestStored = getStoredSession(config);
-  const source = latestStored?.user.id === session.user.id ? latestStored : session;
-  const url = `${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=refresh_token`;
-
-  refreshInFlight = (async () => {
-    const fresh = await postJson<AuthSession>(url, {
-      method: "POST",
-      headers: headers(config),
-      body: JSON.stringify({ refresh_token: source.refresh_token }),
-    });
-    storeSession(config, fresh);
-    return fresh;
-  })();
-
-  try {
-    return await refreshInFlight;
-  } finally {
-    refreshInFlight = null;
-  }
-}
-
-export async function requestAccountEmailChange(
-  config: CloudConfig,
-  session: AuthSession,
-  newEmail: string,
-): Promise<void> {
-  const normalizedEmail = newEmail.trim().toLowerCase();
-  if (!isUabStudentEmail(normalizedEmail)) {
-    throw new Error(`Indica o teu endereço institucional @${UAB_STUDENT_EMAIL_DOMAIN}.`);
-  }
-
-  const url = new URL(`${normUrl(config.supabaseUrl)}/auth/v1/user`);
-  if (typeof window !== "undefined" && window.location?.origin) {
-    url.searchParams.set("redirect_to", window.location.origin);
-  }
-
-  await postJson<unknown>(url.toString(), {
-    method: "PUT",
-    headers: headers(config, session),
-    body: JSON.stringify({ email: normalizedEmail }),
-  });
-}
-
-async function fetchMigrationStatus(config: CloudConfig, session: AuthSession): Promise<AccountMigrationStatus | null> {
-  const url = `${normUrl(config.supabaseUrl)}/rest/v1/account_email_migration?user_id=eq.${session.user.id}&select=user_id,first_detected_at,deadline&limit=1`;
-  const res = await fetch(url, { headers: headers(config, session), cache: "no-store" });
-  if (!res.ok) throw await parseRestError(res, "Erro ao consultar regularização da conta");
-  const rows = (await res.json()) as AccountMigrationStatus[];
-  return rows?.[0] ?? null;
-}
-
-export async function getOrCreateAccountMigrationStatus(
-  config: CloudConfig,
-  session: AuthSession,
-): Promise<AccountMigrationStatus | null> {
-  if (isUabStudentEmail(session.user.email)) return null;
-
-  const existing = await fetchMigrationStatus(config, session);
-  if (existing) return existing;
-
-  const url = `${normUrl(config.supabaseUrl)}/rest/v1/account_email_migration`;
-  const res = await fetch(url, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      ...headers(config, session),
-      Prefer: "return=representation",
-    },
-    body: JSON.stringify({ user_id: session.user.id }),
-  });
-
-  if (res.status === 409) {
-    return fetchMigrationStatus(config, session);
-  }
-
-  const json = await parseResponse(res);
-  const rows = Array.isArray(json) ? (json as AccountMigrationStatus[]) : [];
-  return rows[0] ?? fetchMigrationStatus(config, session);
+  refreshInFlight = postJson<AuthSession>(`${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=refresh_token`, { method: "POST", headers: headers(config), body: JSON.stringify({ refresh_token: session.refresh_token }) }).finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
 }
 
 export async function fetchRemoteState(config: CloudConfig, session: AuthSession): Promise<UserStateRow | null> {
-  const url = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?user_id=eq.${session.user.id}&select=state,updated_at,user_id&limit=1`;
-  const res = await fetch(url, { headers: headers(config, session), cache: "no-store" });
-  if (!res.ok) throw await parseRestError(res, "Erro ao carregar dados da cloud");
-  const data = (await res.json()) as UserStateRow[];
-  return data?.[0] ?? null;
+  const res = await fetch(`${normUrl(config.supabaseUrl)}/rest/v1/user_states?user_id=eq.${encodeURIComponent(session.user.id)}&select=user_id,state,updated_at&limit=1`, { headers: headers(config, session) });
+  if (!res.ok) throw await parseRestError(res, "Não foi possível carregar os dados da cloud.");
+  const rows = (await res.json()) as UserStateRow[];
+  return rows[0] ?? null;
 }
 
 export async function upsertRemoteState(config: CloudConfig, session: AuthSession, state: AppState): Promise<UserStateRow> {
-  const url = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?on_conflict=user_id`;
-  const payload = {
-    user_id: session.user.id,
-    state,
-    updated_at: new Date().toISOString(),
-  };
+  const res = await fetch(`${normUrl(config.supabaseUrl)}/rest/v1/user_states?on_conflict=user_id`, { method: "POST", headers: { ...headers(config, session), Prefer: "resolution=merge-duplicates,return=representation" }, body: JSON.stringify({ user_id: session.user.id, state }) });
+  if (!res.ok) throw await parseRestError(res, "Não foi possível guardar os dados na cloud.");
+  const rows = (await res.json()) as UserStateRow[];
+  if (!rows[0]) throw new Error("A cloud não devolveu confirmação da gravação.");
+  return rows[0];
+}
 
-  const res = await fetch(url, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      ...headers(config, session),
-      Prefer: "resolution=merge-duplicates,return=representation",
-    },
-    body: JSON.stringify(payload),
-  });
+export async function getOrCreateAccountMigrationStatus(config: CloudConfig, session: AuthSession): Promise<AccountMigrationStatus> {
+  const existing = await fetch(`${normUrl(config.supabaseUrl)}/rest/v1/account_migrations?user_id=eq.${encodeURIComponent(session.user.id)}&select=user_id,first_detected_at,deadline&limit=1`, { headers: headers(config, session) });
+  if (!existing.ok) throw await parseRestError(existing, "Não foi possível consultar o estado da conta.");
+  const rows = (await existing.json()) as AccountMigrationStatus[];
+  if (rows[0]) return rows[0];
+  const created = await fetch(`${normUrl(config.supabaseUrl)}/rest/v1/account_migrations`, { method: "POST", headers: { ...headers(config, session), Prefer: "return=representation" }, body: JSON.stringify({ user_id: session.user.id }) });
+  if (!created.ok) throw await parseRestError(created, "Não foi possível registar o estado da conta.");
+  const createdRows = (await created.json()) as AccountMigrationStatus[];
+  if (!createdRows[0]) throw new Error("Não foi possível confirmar o estado da conta.");
+  return createdRows[0];
+}
 
-  if (!res.ok) throw await parseRestError(res, "Erro ao guardar dados na cloud");
-
-  const json = (await res.json()) as unknown;
-  const rows = Array.isArray(json) ? (json as UserStateRow[]) : [];
-  return rows[0] ?? (payload as UserStateRow);
+export async function requestAccountEmailChange(config: CloudConfig, session: AuthSession, email: string): Promise<void> {
+  const normalized = email.trim().toLowerCase();
+  if (!isUabStudentEmail(normalized)) throw new Error(`Utiliza o teu email @${UAB_STUDENT_EMAIL_DOMAIN}.`);
+  const res = await fetch(`${normUrl(config.supabaseUrl)}/auth/v1/user`, { method: "PUT", headers: headers(config, session), body: JSON.stringify({ email: normalized }) });
+  if (!res.ok) throw await parseRestError(res, "Não foi possível iniciar a alteração de email.");
 }
 
 export async function deleteUserAccount(config: CloudConfig, session: AuthSession): Promise<void> {
-  const deleteStateUrl = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?user_id=eq.${session.user.id}`;
-  const deleteStateRes = await fetch(deleteStateUrl, {
-    method: "DELETE",
-    headers: headers(config, session),
-  });
-
-  if (!deleteStateRes.ok) throw await parseRestError(deleteStateRes, "Erro ao apagar dados");
-
-  const deleteAuthUrl = `${normUrl(config.supabaseUrl)}/auth/v1/user`;
-  const deleteAuthRes = await fetch(deleteAuthUrl, {
-    method: "DELETE",
-    headers: headers(config, session),
-  });
-
-  if (!deleteAuthRes.ok) throw await parseRestError(deleteAuthRes, "Erro ao apagar conta");
+  const res = await fetch(`${normUrl(config.supabaseUrl)}/functions/v1/delete-account`, { method: "POST", headers: headers(config, session) });
+  if (!res.ok) throw await parseRestError(res, "Não foi possível eliminar a conta.");
 }

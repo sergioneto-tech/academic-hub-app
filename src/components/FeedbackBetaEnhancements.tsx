@@ -58,13 +58,13 @@ function ensureStyles() {
     }
 
     [data-feedback-kind="suggestion"] {
-      border-color: hsl(var(--gold) / .52) !important;
+      border-color: rgb(34 197 94 / .48) !important;
     }
-    [data-feedback-kind="suggestion"] svg { color: hsl(var(--gold)) !important; }
+    [data-feedback-kind="suggestion"] svg { color: rgb(74 222 128) !important; }
     [data-feedback-kind="suggestion"][data-selected="true"] {
-      background: hsl(var(--gold-soft) / .7) !important;
-      border-color: hsl(var(--gold) / .95) !important;
-      box-shadow: 0 0 0 1px hsl(var(--gold) / .28);
+      background: rgb(34 197 94 / .13) !important;
+      border-color: rgb(74 222 128 / .92) !important;
+      box-shadow: 0 0 0 1px rgb(74 222 128 / .26);
     }
 
     [data-feedback-kind="bug"] {

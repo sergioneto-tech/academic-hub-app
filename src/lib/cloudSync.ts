@@ -171,6 +171,12 @@ export function storeSession(config: CloudConfig, session: AuthSession | null) {
     localStorage.setItem(AUTH_KEY, JSON.stringify({ url: normUrl(config.supabaseUrl), session }));
   } catch {
     // Sem impacto funcional quando o armazenamento local não está disponível.
+  } finally {
+    // O evento `storage` não é disparado na própria aba. Notifica imediatamente
+    // os componentes que dependem do estado de autenticação, como o modo exploração.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("academic-hub-auth-changed"));
+    }
   }
 }
 

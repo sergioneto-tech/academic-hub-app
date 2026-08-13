@@ -24,18 +24,40 @@ export default function GuestReadOnly({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const refresh = () => setAuthenticated(hasAccountSession(config));
+    refresh();
+
     window.addEventListener("academic-hub-auth-changed", refresh);
     window.addEventListener("storage", refresh);
     window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+
+    // O evento `storage` não é disparado na própria aba que altera o localStorage.
+    // Enquanto o utilizador estiver em modo convidado, esta verificação curta garante
+    // que a interface deixa de mostrar/bloquear o modo exploração assim que surgir
+    // uma sessão válida, sem exigir refresh manual da página.
+    const intervalId = window.setInterval(() => {
+      if (hasAccountSession(config)) {
+        setAuthenticated(true);
+      }
+    }, 750);
+
     return () => {
       window.removeEventListener("academic-hub-auth-changed", refresh);
       window.removeEventListener("storage", refresh);
       window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      window.clearInterval(intervalId);
     };
   }, [config]);
 
   const blockMutation = (event: SyntheticEvent<HTMLElement>) => {
-    if (authenticated) return;
+    // Confirma novamente a sessão no próprio momento da interação. Isto evita que
+    // uma conta acabada de autenticar seja tratada como convidado durante a pequena
+    // janela entre a autenticação e a atualização do estado React.
+    if (authenticated || hasAccountSession(config)) {
+      if (!authenticated) setAuthenticated(true);
+      return;
+    }
     const target = event.target as HTMLElement | null;
     if (!target) return;
     if (target.closest("[data-guest-allowed='true']")) return;

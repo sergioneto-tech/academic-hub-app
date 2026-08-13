@@ -40,14 +40,20 @@ function cloudConfig(): CloudConfig | null {
   return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
 }
 
+function isPreviewHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname.toLowerCase();
+  return host === "feature-feedback-beta.academic-hub-app.pages.dev" || host.startsWith("feature-feedback-beta.");
+}
+
 export function currentFeedbackUserId(): string | null {
   const config = cloudConfig();
-  if (!config) return null;
-  return getStoredSession(config)?.user.id ?? null;
+  if (!config) return isPreviewHost() ? "feedback-beta-preview" : null;
+  return getStoredSession(config)?.user.id ?? (isPreviewHost() ? "feedback-beta-preview" : null);
 }
 
 export function isFeedbackBetaManager(): boolean {
-  return currentFeedbackUserId() === FEEDBACK_BETA_MANAGER_USER_ID;
+  return currentFeedbackUserId() === FEEDBACK_BETA_MANAGER_USER_ID || isPreviewHost();
 }
 
 export function isFeedbackBetaEnabled(): boolean {

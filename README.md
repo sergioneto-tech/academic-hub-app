@@ -6,7 +6,7 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 
 ## Estado atual
 
-- **Versão da aplicação:** 1.2.6
+- **Versão da aplicação:** 1.4.0
 - **Interface:** responsiva, com modo claro/escuro
 - **Instalação:** PWA em computador, tablet e telemóvel
 - **Sincronização:** cloud entre dispositivos, com atualização automática e resolução de conflitos

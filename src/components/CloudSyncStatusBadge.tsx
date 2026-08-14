@@ -105,7 +105,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
   if (embedded) {
     return (
       <div
-        className={`mt-2 inline-flex w-20 min-w-0 items-center justify-center gap-1 rounded-full border bg-background/90 px-2 py-1.5 text-center text-[9px] font-medium leading-tight shadow-sm backdrop-blur sm:w-24 sm:text-[10px] md:hidden ${tone}`}
+        className={`mt-1 -translate-y-1 inline-flex w-20 min-w-0 items-center justify-center gap-1 rounded-full border bg-background/90 px-2 py-1.5 text-center text-[9px] font-medium leading-tight shadow-sm backdrop-blur sm:w-24 sm:text-[10px] md:hidden ${tone}`}
         role="status"
         aria-live="polite"
         aria-label={detail}

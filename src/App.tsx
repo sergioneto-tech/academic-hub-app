@@ -8,6 +8,7 @@ import CloudSyncStatusBadge from "./components/CloudSyncStatusBadge";
 import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
 import MobileExitGuard from "./components/MobileExitGuard";
+import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
@@ -24,6 +25,7 @@ const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const StudyPlan = lazy(() => import("./pages/StudyPlan"));
 const PersonalStudyPlan = lazy(() => import("./pages/PersonalStudyPlan"));
 const HelpPage = lazy(() => import("./pages/Help"));
+const FeedbackPage = lazy(() => import("./pages/Feedback"));
 const LegalPage = lazy(() => import("./pages/Legal"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
@@ -47,6 +49,7 @@ function AcademicHubApp() {
       <CloudSyncNotice />
       <CloudSyncStatusBadge />
       <MobileExitGuard />
+      <FeedbackCloudBridge />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<ExplorePage><Dashboard /></ExplorePage>} />
@@ -62,6 +65,7 @@ function AcademicHubApp() {
           <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
           <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
           <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
+          <Route path="/feedback" element={<LazyPage><FeedbackPage /></LazyPage>} />
           <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

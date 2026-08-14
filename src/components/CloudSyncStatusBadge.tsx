@@ -62,6 +62,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
     ? {
         Icon: CloudOff,
         label: "Sem conta · modo local",
+        compactLabel: "Modo local",
         detail: "Não existe uma sessão de conta ativa neste dispositivo.",
         tone: "border-border/80 text-muted-foreground",
       }
@@ -69,6 +70,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
       ? {
           Icon: CloudOff,
           label: "Conta ativa · dados locais",
+          compactLabel: "Cloud desligada",
           detail: "A conta está ativa, mas a sincronização cloud está desligada.",
           tone: "border-sky-500/40 text-sky-700 dark:text-sky-300",
         }
@@ -76,6 +78,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
         ? {
             Icon: ShieldAlert,
             label: "Conta ativa · conflito na cloud",
+            compactLabel: "Conflito cloud",
             detail: "A conta está ativa, mas existe um conflito de sincronização que precisa de atenção.",
             tone: "border-amber-500/50 text-amber-700 dark:text-amber-300",
           }
@@ -83,31 +86,33 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
           ? {
               Icon: CloudOff,
               label: "Conta ativa · offline",
+              compactLabel: "Offline",
               detail: "A conta está ativa. As alterações ficam locais até a ligação à Internet regressar.",
               tone: "border-amber-500/40 text-amber-700 dark:text-amber-300",
             }
           : {
               Icon: Cloud,
               label: lastSync ? `Conta ativa · Cloud ${lastSync}` : "Conta ativa · Cloud pronta",
+              compactLabel: lastSync ? `Cloud · ${lastSync}` : "Cloud pronta",
               detail: lastSync
                 ? `Conta ativa e sincronização cloud ligada. Última sincronização às ${lastSync}.`
                 : "Conta ativa e sincronização cloud ligada.",
               tone: "border-emerald-500/35 text-emerald-700 dark:text-emerald-300",
             };
 
-  const { Icon, label, detail, tone } = status;
+  const { Icon, label, compactLabel, detail, tone } = status;
 
   if (embedded) {
     return (
       <div
-        className={`mt-2 inline-flex max-w-[min(18rem,calc(100vw-2rem))] min-w-0 items-center justify-center gap-1.5 rounded-full border bg-background/90 px-2.5 py-1.5 text-center text-[10px] font-medium leading-tight shadow-sm backdrop-blur sm:text-[11px] md:hidden ${tone}`}
+        className={`mt-1 -translate-y-1 inline-flex w-20 min-w-0 items-center justify-center gap-1 rounded-full border bg-background/90 px-2 py-1.5 text-center text-[9px] font-medium leading-tight shadow-sm backdrop-blur sm:w-24 sm:text-[10px] md:hidden ${tone}`}
         role="status"
         aria-live="polite"
         aria-label={detail}
         title={detail}
       >
         <Icon className="h-3 w-3 shrink-0" />
-        <span className="min-w-0 break-words">{label}</span>
+        <span className="min-w-0 break-words">{compactLabel}</span>
       </div>
     );
   }

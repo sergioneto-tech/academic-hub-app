@@ -1,0 +1,12 @@
+/* Correções mobile específicas do Dashboard.
+   O cartão de progresso ficava com o espaço reservado mas podia não ser pintado
+   no primeiro carregamento em alguns browsers móveis quando usava backdrop-blur. */
+@media (max-width: 639px) {
+  .grid:has(> .premium-card .dashboard-metric-card) + .premium-surface {
+    background: hsl(var(--card));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    transform: translateZ(0);
+    will-change: transform;
+  }
+}

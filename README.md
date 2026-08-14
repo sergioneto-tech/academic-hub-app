@@ -6,11 +6,13 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 
 ## Estado atual
 
-- **Versão da aplicação:** 1.2.6
+- **Versão da aplicação:** 1.4.0
 - **Interface:** responsiva, com modo claro/escuro
 - **Instalação:** PWA em computador, tablet e telemóvel
 - **Sincronização:** cloud entre dispositivos, com atualização automática e resolução de conflitos
 - **Notificações:** alertas Push por dispositivo para e-fólios, exames/recursos e prazos oficiais da UAb
+- **Sons da aplicação:** opção geral para confirmações, avisos, erros e notificações enquanto o Academic Hub está aberto
+- **Feedback:** área integrada para opiniões, sugestões e reporte de problemas, com referência, estado e histórico
 - **Desempenho:** otimizado para desktop e dispositivos móveis
 
 ## Funcionalidades principais
@@ -18,7 +20,7 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 - Gestão das cadeiras ativas e concluídas.
 - Plano de estudos e cálculo do progresso da licenciatura por ECTS.
 - Registo de e-fólios, avaliações, exames, recursos e notas finais.
-- Modelos de avaliação compatíveis com o regime anterior e com o regulamento de avaliação de 2026.
+- Modelos de avaliação compatíveis com o regime anterior e com o Regulamento de Avaliação de 2026.
 - Calendário académico e agenda pessoal.
 - Alertas Push configuráveis por dispositivo para prazos académicos.
 - Histórico académico.
@@ -27,6 +29,19 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 - Perfil, fotografia, aparência, alertas e preferências pessoais.
 - Conta Academic Hub com email institucional UAb e recuperação de password.
 - Sincronização automática dos dados entre dispositivos, mantendo suporte a backup local.
+- Área **Feedback** para enviar uma opinião, sugerir uma melhoria ou reportar um problema.
+- Identificação visual do tipo de feedback: opinião a azul, sugestão a verde e problema a vermelho.
+- Caixa de feedback com filtros por tipo e estado, referências `AH-0001`, `AH-0002`, etc., histórico de alterações e respostas identificadas como **Academic Hub**.
+- Reporte de problemas com descrição do percurso, comportamento observado, resultado esperado e suporte a capturas de ecrã.
+- Sons opcionais da aplicação configuráveis em **Definições**, independentes do som das notificações Push controlado pelo sistema operativo.
+
+## Área de Feedback
+
+A área de Feedback foi integrada na navegação de apoio do Academic Hub e permite acompanhar cada pedido através dos estados **Novo**, **Em análise**, **A aguardar informação**, **Planeado**, **Em desenvolvimento**, **Concluído**, **Não previsto** e **Arquivado**.
+
+A interface adapta-se a computador, tablet e telemóvel. No telemóvel, os cartões de estado são apresentados numa grelha 2 × 2 para reduzir a extensão vertical da página.
+
+A implementação atualmente validada na branch de desenvolvimento utiliza armazenamento local para testar o fluxo e a experiência de utilização. Antes da disponibilização geral, a persistência de feedback, capturas e notificações associadas deverá ser ligada à infraestrutura protegida do Supabase com as respetivas políticas de acesso.
 
 ## Identidade visual
 
@@ -35,6 +50,8 @@ O Academic Hub utiliza uma identidade própria em azul-marinho, dourado e prata.
 ## Privacidade e segurança
 
 Os dados académicos pertencem ao utilizador. A aplicação mantém os dados locais disponíveis e, quando a conta e a sincronização estão ativas, utiliza a cloud para permitir continuidade entre dispositivos. A sincronização inclui mecanismos de comparação de versões para reduzir o risco de substituição silenciosa de alterações realizadas noutro dispositivo.
+
+Os feedbacks de cada aluno devem permanecer privados. Quando a persistência final estiver ligada ao Supabase, cada aluno deverá poder consultar apenas os próprios pedidos; a conta responsável pela gestão receberá os novos pedidos e o respetivo aluno receberá apenas respostas e alterações relacionadas com os seus próprios registos.
 
 ## Fontes académicas
 

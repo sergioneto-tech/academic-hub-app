@@ -20,58 +20,6 @@
     <meta property="og:description" content="Gestão académica pessoal para estudantes da Universidade Aberta." />
     <meta property="og:url" content="https://academichub.sergioneto.pt/" />
     <meta property="og:image" content="https://academichub.sergioneto.pt/academic-hub-icon-v10-512.png" />
-
-    <style>
-      /* Feedback beta — regras críticas no primeiro render. */
-      main:has(a[href="/ajuda"]) section.premium-surface button[type="button"] {
-        display: none !important;
-      }
-
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(1) {
-        border-color: rgb(59 130 246 / .58) !important;
-        background: rgb(59 130 246 / .04) !important;
-      }
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(1) svg { color: rgb(96 165 250) !important; }
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(1)[class*="bg-primary/10"] {
-        border-color: rgb(96 165 250) !important;
-        background: rgb(59 130 246 / .16) !important;
-        box-shadow: 0 0 0 1px rgb(96 165 250 / .30);
-      }
-
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(2) {
-        border-color: rgb(34 197 94 / .58) !important;
-        background: rgb(34 197 94 / .04) !important;
-      }
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(2) svg { color: rgb(74 222 128) !important; }
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(2)[class*="bg-primary/10"] {
-        border-color: rgb(74 222 128) !important;
-        background: rgb(34 197 94 / .15) !important;
-        box-shadow: 0 0 0 1px rgb(74 222 128 / .28);
-      }
-
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(3) {
-        border-color: rgb(239 68 68 / .58) !important;
-        background: rgb(239 68 68 / .04) !important;
-      }
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(3) svg { color: rgb(248 113 113) !important; }
-      main:has(a[href="/ajuda"]) .premium-card .sm\:grid-cols-3 > button:nth-child(3)[class*="bg-primary/10"] {
-        border-color: rgb(248 113 113) !important;
-        background: rgb(239 68 68 / .15) !important;
-        box-shadow: 0 0 0 1px rgb(248 113 113 / .28);
-      }
-
-      @media (max-width: 639px) {
-        main:has(a[href="/ajuda"]) .grid.gap-3.sm\:grid-cols-2.xl\:grid-cols-4 {
-          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        }
-        main:has(a[href="/ajuda"]) .grid.gap-3.sm\:grid-cols-2.xl\:grid-cols-4 .premium-card {
-          min-width: 0;
-        }
-        main:has(a[href="/ajuda"]) .grid.gap-3.sm\:grid-cols-2.xl\:grid-cols-4 .premium-card > div {
-          padding: .8rem !important;
-        }
-      }
-    </style>
   </head>
   <body>
     <div id="root"></div>

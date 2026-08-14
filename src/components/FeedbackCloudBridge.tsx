@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   FEEDBACK_BETA_EVENT,
-  FEEDBACK_BETA_MANAGER_USER_ID,
   currentFeedbackUserId,
   isFeedbackBetaManager,
   loadFeedbackStore,
@@ -11,7 +10,6 @@ import {
   type FeedbackEntry,
   type FeedbackHistoryItem,
   type FeedbackMessage,
-  type FeedbackStatus,
 } from "@/lib/feedbackBeta";
 
 const db = supabase as any;
@@ -118,8 +116,8 @@ async function pushLocalChanges(pendingFiles: File[]) {
           app_version: entry.appVersion,
           device: entry.device,
         }).select("id,reference").single();
-        if (!error && inserted) {
-          if (pendingFiles.length) await uploadFiles(userId, entry.id, pendingFiles.splice(0, pendingFiles.length));
+        if (!error && inserted && pendingFiles.length) {
+          await uploadFiles(userId, entry.id, pendingFiles.splice(0, pendingFiles.length));
         }
       } else if (manager) {
         const patch: Record<string, unknown> = {};

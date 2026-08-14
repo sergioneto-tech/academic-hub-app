@@ -1,6 +1,20 @@
 {
-  "latest": "1.3.1",
+  "latest": "1.4.0",
   "versions": [
+    {
+      "version": "1.4.0",
+      "date": "2026-08-14",
+      "changes": [
+        "Nova área Feedback integrada no menu de apoio para enviar opiniões, sugestões e problemas diretamente no Academic Hub.",
+        "Os três tipos de feedback passam a ter identificação visual própria: opinião a azul, sugestão a verde e problema a vermelho.",
+        "Problemas permitem registar o percurso até ao erro, o comportamento observado, o resultado esperado e até três capturas de ecrã.",
+        "Cada pedido recebe uma referência AH, mantém histórico de estados e pode receber respostas identificadas como Academic Hub.",
+        "A Caixa de feedback inclui filtros por tipo e estado; no telemóvel, os quatro cartões de acompanhamento são apresentados em grelha 2 × 2 para reduzir a extensão vertical.",
+        "A alteração de estado passa a ser confirmada através de Guardar estado, evitando alterações acidentais no histórico.",
+        "Nova preferência geral Sons da aplicação em Definições, com tons discretos para confirmações, avisos, erros e novas notificações enquanto o Academic Hub está aberto.",
+        "Melhorada a apresentação do estado Cloud no telemóvel para impedir sobreposição com o texto do resumo académico."
+      ]
+    },
     {
       "version": "1.3.1",
       "date": "2026-08-10",

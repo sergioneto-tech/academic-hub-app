@@ -58,11 +58,12 @@ export function currentFeedbackUserId(): string | null {
 }
 
 export function isFeedbackBetaManager(): boolean {
-  return currentFeedbackUserId() === FEEDBACK_BETA_MANAGER_USER_ID || isPreviewHost();
+  const userId = currentFeedbackUserId();
+  return userId === FEEDBACK_BETA_MANAGER_USER_ID || (isPreviewHost() && userId === "feedback-beta-preview");
 }
 
 export function isFeedbackBetaEnabled(): boolean {
-  return isFeedbackBetaManager();
+  return Boolean(currentFeedbackUserId());
 }
 
 function emptyStore(): FeedbackStore { return { entries: [], counter: 0 }; }

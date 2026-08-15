@@ -47,16 +47,40 @@ export default function LocalTimeIndicator() {
   const isPortugalZone = PORTUGAL_ZONES.has(localTimeZone);
 
   useEffect(() => {
-    const update = () => setNow(new Date());
-    const delay = 60_000 - (Date.now() % 60_000) + 50;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     let interval: ReturnType<typeof setInterval> | undefined;
-    const timeout = setTimeout(() => {
-      update();
-      interval = setInterval(update, 60_000);
-    }, delay);
-    return () => {
-      clearTimeout(timeout);
+
+    const stop = () => {
+      if (timeout) clearTimeout(timeout);
       if (interval) clearInterval(interval);
+      timeout = undefined;
+      interval = undefined;
+    };
+
+    const start = () => {
+      stop();
+      if (document.visibilityState !== "visible") return;
+      setNow(new Date());
+      const delay = 60_000 - (Date.now() % 60_000) + 50;
+      timeout = setTimeout(() => {
+        if (document.visibilityState !== "visible") return;
+        setNow(new Date());
+        interval = setInterval(() => {
+          if (document.visibilityState === "visible") setNow(new Date());
+        }, 60_000);
+      }, delay);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") start();
+      else stop();
+    };
+
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      stop();
     };
   }, []);
 

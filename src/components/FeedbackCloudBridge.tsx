@@ -14,6 +14,7 @@ import {
 
 const db = supabase as any;
 const SYNCING = new Set<string>();
+const ACTIVE_FEEDBACK_POLL_MS = 2 * 60_000;
 
 function rowToEntry(row: any, messages: FeedbackMessage[], history: FeedbackHistoryItem[], attachments: FeedbackAttachment[]): FeedbackEntry {
   return {
@@ -41,6 +42,7 @@ function rowToEntry(row: any, messages: FeedbackMessage[], history: FeedbackHist
 }
 
 async function pullFromCloud() {
+  if (document.visibilityState !== "visible" || !navigator.onLine) return;
   const userId = currentFeedbackUserId();
   if (!userId || userId === "feedback-beta-preview") return;
 
@@ -48,7 +50,7 @@ async function pullFromCloud() {
   if (error || !requests) return;
   const ids = requests.map((row: any) => row.id);
   if (!ids.length) {
-    saveFeedbackStore({ entries: [], counter: 0 });
+    saveFeedbackStore({ entries: [], counter: 0 }, false);
     return;
   }
 
@@ -69,7 +71,7 @@ async function pullFromCloud() {
     const parsed = Number(entry.reference.replace(/^AH-/, ""));
     return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
   }, 0);
-  saveFeedbackStore({ entries, counter });
+  saveFeedbackStore({ entries, counter }, false);
 }
 
 async function uploadFiles(userId: string, requestId: string, files: File[]) {
@@ -154,24 +156,30 @@ export default function FeedbackCloudBridge() {
       pendingFiles.current = Array.from(input.files ?? []).slice(0, 3);
     };
     const sync = async () => {
-      if (busy.current) return;
+      if (busy.current || document.visibilityState !== "visible") return;
       busy.current = true;
       try { await pushLocalChanges(pendingFiles.current); } finally { busy.current = false; }
     };
     const pull = () => { void pullFromCloud(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") pull();
+    };
 
     document.addEventListener("change", captureFiles, true);
     window.addEventListener(FEEDBACK_BETA_EVENT, sync);
-    window.addEventListener("focus", pull);
     window.addEventListener("online", pull);
+    document.addEventListener("visibilitychange", onVisible);
     void pullFromCloud();
-    const interval = window.setInterval(pull, 30000);
+
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible" && window.location.hash.includes("/feedback")) pull();
+    }, ACTIVE_FEEDBACK_POLL_MS);
 
     return () => {
       document.removeEventListener("change", captureFiles, true);
       window.removeEventListener(FEEDBACK_BETA_EVENT, sync);
-      window.removeEventListener("focus", pull);
       window.removeEventListener("online", pull);
+      document.removeEventListener("visibilitychange", onVisible);
       window.clearInterval(interval);
     };
   }, []);

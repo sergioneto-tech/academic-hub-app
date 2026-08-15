@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CLOUD_SYNC_NOTICE_EVENT } from "@/components/CloudSyncNotice";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +37,7 @@ export function useRealtimeSync() {
   const { state, setSync, replaceState } = useAppStore();
   const stateRef = useRef(state);
   stateRef.current = state;
+  const [visible, setVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
 
   const cloudConfig: CloudConfig | null = (() => {
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
@@ -56,7 +57,13 @@ export function useRealtimeSync() {
   }, [replaceState]);
 
   useEffect(() => {
-    if (!cloudConfig || !state.sync?.enabled || typeof navigator === "undefined" || !navigator.onLine) return;
+    const onVisibility = () => setVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!visible || !cloudConfig || !state.sync?.enabled || typeof navigator === "undefined" || !navigator.onLine) return;
     const session = getStoredSession(cloudConfig);
     if (!session || !isUabStudentEmail(session.user.email)) return;
 
@@ -111,5 +118,5 @@ export function useRealtimeSync() {
       cancelled = true;
       void supabase.removeChannel(channel);
     };
-  }, [applyRemote, cloudConfig?.supabaseUrl, state.sync?.enabled, setSync]);
+  }, [applyRemote, cloudConfig?.supabaseUrl, state.sync?.enabled, setSync, visible]);
 }

@@ -79,9 +79,9 @@ export function loadFeedbackStore(): FeedbackStore {
   }
 }
 
-export function saveFeedbackStore(store: FeedbackStore) {
+export function saveFeedbackStore(store: FeedbackStore, emitChange = true) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
-  window.dispatchEvent(new Event(FEEDBACK_BETA_EVENT));
+  if (emitChange) window.dispatchEvent(new Event(FEEDBACK_BETA_EVENT));
 }
 
 export function unreadFeedbackCount(): number {

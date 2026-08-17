@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, X } from "lucide-react";
 import { pt } from "date-fns/locale";
 
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,7 @@ export function PtDateInput({
   }, []);
 
   const selectedDate = React.useMemo(() => parseYmd(value), [value]);
+  const hasValue = Boolean(String(value ?? "").trim() || textValue.trim());
 
   const academicEventDates = React.useMemo(() => {
     const dates = new Set<string>();
@@ -118,37 +119,63 @@ export function PtDateInput({
     setOpen(false);
   }
 
+  function clearValue() {
+    setTextValue("");
+    onChange("");
+    setOpen(false);
+  }
+
   return (
     <div className={cn("flex min-w-0 items-stretch", className)}>
-      <Input
-        value={textValue}
-        placeholder={coarsePointer ? "Selecionar data" : placeholder}
-        inputMode={coarsePointer ? "none" : "numeric"}
-        autoComplete="off"
-        disabled={disabled}
-        readOnly={coarsePointer}
-        className="relative min-w-0 rounded-r-none border-r-0 focus-visible:z-10"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        onClick={() => {
-          if (coarsePointer && !disabled) setOpen(true);
-        }}
-        onChange={(event) => setTextValue(maskPtDateInput(event.target.value))}
-        onBlur={(event) => {
-          if (!coarsePointer) commit(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          if (coarsePointer && (event.key === "Enter" || event.key === " ")) {
-            event.preventDefault();
-            setOpen(true);
-            return;
-          }
-          if (!coarsePointer && event.key === "Enter") {
-            commit(textValue);
-            (event.target as HTMLInputElement).blur();
-          }
-        }}
-      />
+      <div className="relative min-w-0 flex-1">
+        <Input
+          value={textValue}
+          placeholder={coarsePointer ? "Selecionar data" : placeholder}
+          inputMode={coarsePointer ? "none" : "numeric"}
+          autoComplete="off"
+          disabled={disabled}
+          readOnly={coarsePointer}
+          className={cn(
+            "relative min-w-0 rounded-r-none border-r-0 focus-visible:z-10",
+            hasValue ? "pr-10" : "",
+          )}
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onClick={() => {
+            if (coarsePointer && !disabled) setOpen(true);
+          }}
+          onChange={(event) => setTextValue(maskPtDateInput(event.target.value))}
+          onBlur={(event) => {
+            if (!coarsePointer) commit(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (coarsePointer && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              setOpen(true);
+              return;
+            }
+            if (!coarsePointer && event.key === "Enter") {
+              commit(textValue);
+              (event.target as HTMLInputElement).blur();
+            }
+          }}
+        />
+
+        {hasValue && !disabled && (
+          <button
+            type="button"
+            aria-label="Limpar data"
+            className="absolute right-2 top-1/2 z-20 -translate-y-1/2 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={(event) => {
+              event.stopPropagation();
+              clearValue();
+            }}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -186,12 +213,27 @@ export function PtDateInput({
             onSelect={selectDate}
           />
 
-          {academicEventDates.length > 0 && (
-            <div className="flex items-center gap-2 border-t px-4 py-2.5 text-[11px] text-muted-foreground">
-              <span className="h-2 w-2 rounded-full border border-primary bg-primary/20" aria-hidden="true" />
-              Dias assinalados já têm eventos no Academic Hub.
+          <div className="flex flex-col gap-2 border-t px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-h-5 items-center gap-2 text-[11px] text-muted-foreground">
+              {academicEventDates.length > 0 && (
+                <>
+                  <span className="h-2 w-2 rounded-full border border-primary bg-primary/20" aria-hidden="true" />
+                  <span>Dias assinalados já têm eventos no Academic Hub.</span>
+                </>
+              )}
             </div>
-          )}
+
+            <div className="flex items-center justify-end gap-2">
+              {hasValue && (
+                <Button type="button" variant="ghost" size="sm" onClick={clearValue}>
+                  Limpar
+                </Button>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+                Fechar
+              </Button>
+            </div>
+          </div>
         </PopoverContent>
       </Popover>
     </div>

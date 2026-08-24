@@ -1,0 +1,128 @@
+/*
+ * Academic Hub — densidade responsiva para telemóveis e tablets.
+ * Objetivo: aproveitar melhor a largura/altura disponível sem ocultar texto,
+ * truncar informação relevante ou reduzir áreas de toque essenciais.
+ */
+
+/* ---------- Telemóvel ---------- */
+@media (max-width: 639px) {
+  /* O Layout já fornece padding lateral. Evita uma segunda margem de 24 px
+     nas páginas Plano de Estudos e Plano de Estudo Pessoal. */
+  main > .p-6.space-y-6 {
+    padding: 0 !important;
+  }
+
+  /* Dashboard: quatro métricas em 2 × 2, mantendo todo o texto visível. */
+  .grid:has(> .premium-card .dashboard-metric-card) {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.65rem !important;
+  }
+
+  .dashboard-metric-card {
+    min-height: 6.5rem !important;
+    padding: 0.75rem !important;
+    gap: 0.3rem !important;
+  }
+
+  .dashboard-metric-card > div:first-child {
+    width: 2rem !important;
+    height: 2rem !important;
+    border-radius: 0.65rem !important;
+  }
+
+  /* Detalhe de cadeira (Regulamento 2026): os três resumos deixam de ocupar
+     três cartões muito altos. O conteúdo continua integralmente visível. */
+  .mx-auto.max-w-5xl > .grid.gap-3.sm\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+
+  .mx-auto.max-w-5xl > .grid.gap-3.sm\:grid-cols-3 .premium-card > div {
+    min-height: 7rem !important;
+    padding: 0.65rem 0.45rem !important;
+  }
+
+  .mx-auto.max-w-5xl > .grid.gap-3.sm\:grid-cols-3 .text-lg,
+  .mx-auto.max-w-5xl > .grid.gap-3.sm\:grid-cols-3 .text-2xl {
+    font-size: 1rem !important;
+    line-height: 1.25rem !important;
+  }
+
+  .mx-auto.max-w-5xl > .grid.gap-3.sm\:grid-cols-3 p {
+    font-size: 0.625rem !important;
+    line-height: 0.85rem !important;
+    overflow-wrap: anywhere;
+  }
+
+  /* Histórico: as três métricas cabem lado a lado sem esconder rótulos. */
+  .grid.grid-cols-1.gap-4.md\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0.5rem !important;
+  }
+
+  .grid.grid-cols-1.gap-4.md\:grid-cols-3 .premium-card > div:first-child {
+    padding: 0.75rem 0.55rem 0.2rem !important;
+  }
+
+  .grid.grid-cols-1.gap-4.md\:grid-cols-3 .premium-card > div:last-child {
+    padding: 0.2rem 0.55rem 0.75rem !important;
+    font-size: 1.25rem !important;
+  }
+
+  .grid.grid-cols-1.gap-4.md\:grid-cols-3 .text-sm {
+    font-size: 0.68rem !important;
+    line-height: 0.9rem !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  /* Cadeiras ativas: menos altura e melhor uso da mesma linha. */
+  main .space-y-6 > .text-2xl.font-semibold + .rounded-xl,
+  main .space-y-6 > .text-2xl.font-semibold + [class*="rounded-xl"] {
+    margin-top: 0.25rem;
+  }
+
+  /* Calendário: cabeçalhos e linhas mais densos, sem remover eventos. */
+  main .space-y-6 > .flex.flex-col.gap-2.sm\:flex-row {
+    gap: 0.6rem !important;
+  }
+
+  main .space-y-6 .rounded-lg.border.p-4.flex,
+  main .space-y-6 .flex.items-center.justify-between.rounded-lg.border.p-4 {
+    padding: 0.75rem !important;
+    gap: 0.65rem !important;
+  }
+
+  /* Cabeçalhos/cartões genéricos em páginas densas: reduz espaço estrutural,
+     mantendo a tipografia e o texto existentes. */
+  .settings-premium .premium-card > [class*="p-6"],
+  .settings-legacy .rounded-xl.border,
+  .settings-legacy .rounded-lg.border {
+    scroll-margin-top: 5rem;
+  }
+}
+
+/* ---------- Telemóvel + tablet ---------- */
+@media (max-width: 1199px) {
+  /* Plano/Plano pessoal: remove padding duplicado apenas no conteúdo da página. */
+  main > .p-6.space-y-6 {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* Cadeiras: cartões mais compactos mas com linhas livres para quebrar texto. */
+  main .rounded-lg.border.p-3.transition-colors,
+  main .rounded-lg.border.p-3.transition-colors.sm\:p-4 {
+    padding: 0.7rem !important;
+  }
+
+  /* Mantém títulos e metadados legíveis quando a largura aperta. */
+  main h1,
+  main h2,
+  main h3,
+  main p,
+  main span,
+  main label {
+    overflow-wrap: break-word;
+  }
+}

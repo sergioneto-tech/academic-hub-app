@@ -5,6 +5,7 @@ import "./index.css";
 import "./settings-catalog.css";
 import "./tablet-sidebar-layout.css";
 import "./dashboard-mobile-fixes.css";
+import "./portable-compact-layout.css";
 import { applyTheme, getStoredTheme, getSystemTheme } from "@/lib/theme";
 import { UpdateProvider } from "@/lib/UpdateProvider";
 import { AppStoreProvider } from "./lib/AppStore";

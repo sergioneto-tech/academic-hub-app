@@ -1,0 +1,87 @@
+/* Academic Hub — feedback visual de interação.
+ * Reforça hover/pen no PC e dispositivos compatíveis sem alterar a informação
+ * nem reduzir áreas de toque. Em touch, mantém uma resposta curta ao pressionar.
+ */
+
+button:not(:disabled),
+a.premium-card,
+nav a,
+[role="button"]:not([aria-disabled="true"]) {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 160ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease,
+    filter 180ms ease;
+}
+
+/* Rato e canetas com hover: o elemento deve parecer claramente interativo. */
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover {
+    transform: translateY(-2px) scale(1.015);
+    filter: brightness(1.08);
+    box-shadow: 0 10px 24px -13px hsl(var(--primary) / 0.55);
+  }
+
+  a.premium-card:hover {
+    transform: translateY(-3px);
+    border-color: hsl(var(--primary) / 0.58);
+    background: hsl(var(--card));
+    box-shadow:
+      0 16px 34px -22px hsl(var(--primary) / 0.72),
+      0 0 0 1px hsl(var(--primary) / 0.12);
+  }
+
+  nav a:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.1);
+  }
+
+  button:not(:disabled):hover svg,
+  a.premium-card:hover svg,
+  nav a:hover svg {
+    transform: scale(1.08);
+  }
+}
+
+/* Clique/toque: pequena compressão para confirmar imediatamente a ação. */
+button:not(:disabled):active,
+a.premium-card:active,
+nav a:active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: translateY(0) scale(0.97);
+  filter: brightness(0.96);
+  transition-duration: 80ms;
+}
+
+/* Teclado e acessibilidade: foco mais fácil de localizar. */
+button:focus-visible,
+a.premium-card:focus-visible,
+nav a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px hsl(var(--primary) / 0.18);
+}
+
+button svg,
+a.premium-card svg,
+nav a svg {
+  transition: transform 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled),
+  a.premium-card,
+  nav a,
+  [role="button"]:not([aria-disabled="true"]),
+  button svg,
+  a.premium-card svg,
+  nav a svg {
+    transition: none !important;
+    transform: none !important;
+  }
+}

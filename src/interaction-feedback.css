@@ -17,8 +17,9 @@ nav a,
     filter 180ms ease;
 }
 
-/* Rato e canetas com hover: o elemento deve parecer claramente interativo. */
-@media (hover: hover) and (pointer: fine) {
+/* Rato e canetas com hover: usa any-* para detetar também uma S Pen/pen
+   num dispositivo cujo apontador principal continua a ser o toque. */
+@media (any-hover: hover) and (any-pointer: fine) {
   button:not(:disabled):hover,
   [role="button"]:not([aria-disabled="true"]):hover {
     transform: translateY(-2px) scale(1.015);

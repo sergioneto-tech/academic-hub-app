@@ -8,6 +8,28 @@ import { formatPtDate } from "@/lib/date";
 
 type EventItem = { when: string; title: string; subtitle: string; tag: string };
 
+function EventRow({ event, muted = false }: { event: EventItem; muted?: boolean }) {
+  return (
+    <div
+      className={`grid min-w-0 grid-cols-[minmax(0,1fr)_104px] items-center gap-3 rounded-lg border p-3 sm:grid-cols-[minmax(0,1fr)_120px] sm:p-4 ${
+        muted ? "border-muted-foreground/20 bg-muted/30" : ""
+      }`}
+    >
+      <div className="min-w-0">
+        <div className="break-words font-medium leading-snug text-muted-foreground">{event.title}</div>
+        <div className="mt-1 break-words text-sm leading-snug text-muted-foreground/80">{event.subtitle}</div>
+      </div>
+
+      <div className="min-w-0 text-right">
+        <div className="whitespace-nowrap text-[13px] font-semibold leading-tight text-muted-foreground sm:text-sm">
+          {formatPtDate(event.when)}
+        </div>
+        <div className="mt-1 break-words text-xs leading-tight text-muted-foreground/70">{event.tag}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function CalendarPage() {
   const { state } = useAppStore();
 
@@ -32,11 +54,15 @@ export default function CalendarPage() {
       if (a.startDate) events.push({ when: a.startDate, title: `${a.name} - Início`, subtitle: courseLine, tag: "Início" });
       if (a.endDate) events.push({ when: a.endDate, title: `${a.name} - Fim`, subtitle: courseLine, tag: "Entrega" });
       if (a.gradeReleaseDate) events.push({ when: a.gradeReleaseDate, title: `${a.name} - Nota`, subtitle: courseLine, tag: "Nota" });
-    } else {
-      if (a.date) events.push({ when: a.date, title: a.type === "exam" ? `${a.name} (Exame)` : "Recurso", subtitle: courseLine, tag: a.type === "exam" ? "Exame" : "Recurso" });
+    } else if (a.date) {
+      events.push({
+        when: a.date,
+        title: a.type === "exam" ? `${a.name} (Exame)` : "Recurso",
+        subtitle: courseLine,
+        tag: a.type === "exam" ? "Exame" : "Recurso",
+      });
     }
   }
-
 
   // Sessões por cadeira (ex.: abertura, antes de e‑fólios, antes de exame)
   for (const c of state.courses) {
@@ -69,7 +95,7 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-2xl font-semibold">Calendário</div>
-        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Select value={exportMode} onValueChange={(v) => setExportMode(v as any)}>
             <SelectTrigger className="w-full sm:w-[260px]">
               <SelectValue placeholder="Exportar…" />
@@ -98,18 +124,7 @@ export default function CalendarPage() {
               Sem eventos futuros agendados.
             </div>
           ) : (
-            future.map((e, idx) => (
-              <div key={idx} className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <div className="font-medium text-muted-foreground">{e.title}</div>
-                  <div className="text-sm text-muted-foreground/80">{e.subtitle}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-medium text-muted-foreground">{formatPtDate(e.when)}</div>
-                  <div className="text-xs text-muted-foreground/70">{e.tag}</div>
-                </div>
-              </div>
-            ))
+            future.map((event, idx) => <EventRow key={idx} event={event} />)
           )}
         </CardContent>
       </Card>
@@ -119,17 +134,8 @@ export default function CalendarPage() {
           <CardTitle>Eventos Passados</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {past.slice(0, 20).map((e, idx) => (
-            <div key={idx} className="flex items-center justify-between rounded-lg border border-muted-foreground/20 bg-muted/30 p-4">
-              <div>
-                <div className="font-medium text-muted-foreground">{e.title}</div>
-                <div className="text-sm text-muted-foreground/80">{e.subtitle}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-medium text-muted-foreground">{formatPtDate(e.when)}</div>
-                <div className="text-xs text-muted-foreground/70">{e.tag}</div>
-              </div>
-            </div>
+          {past.slice(0, 20).map((event, idx) => (
+            <EventRow key={idx} event={event} muted />
           ))}
         </CardContent>
       </Card>

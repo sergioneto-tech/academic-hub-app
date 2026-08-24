@@ -8,6 +8,7 @@ import type {
   CourseSession,
   Degree,
   EvaluationModel,
+  LegacyEvaluationMode,
   StudyBlock,
   StudyBlockStatus,
   SyncSettings,
@@ -19,10 +20,13 @@ const LEGACY_KEYS = ["academic_hub_state_v2", "academic_hub_state_v1"] as const;
 
 type UnknownRecord = Record<string, unknown>;
 
-const ASSESSMENT_TYPES = ["efolio", "exam", "resit", "activity", "project", "presentation", "discussion", "other"] as const;
+const ASSESSMENT_TYPES = ["efolio", "exam", "resit", "special", "activity", "project", "presentation", "discussion", "other"] as const;
 const ASSESSMENT_MODES = ["asynchronous", "synchronous"] as const;
 const ASSESSMENT_STATUSES = ["todo", "submitted", "graded", "not-completed"] as const;
 const EVALUATION_MODELS = ["type1", "type2", "type3", "type4", "exam-only", "custom"] as const;
+const EVALUATION_REGIME_SOURCES = ["official", "manual"] as const;
+const LEGACY_EVALUATION_MODES = ["efolios-exam", "exam-only", "custom", "final-grade-only"] as const;
+const ASSESSMENT_DATE_SOURCES = ["official", "manual"] as const;
 const STUDY_ACTIVITIES = ["reading", "exercises", "revision", "efolio", "other"] as const;
 const STUDY_STATUSES = ["todo", "in_progress", "done"] as const;
 const THEMES = ["light", "dark", "system"] as const;
@@ -69,7 +73,15 @@ function optionalNumber(value: unknown): number | undefined {
 }
 
 function booleanValue(value: unknown, fallback = false): boolean {
-  return typeof value === "boolean" ? value : value === undefined || value === null ? fallback : Boolean(value);
+  if (typeof value === "boolean") return value;
+  if (value === undefined || value === null) return fallback;
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true" || normalized === "1") return true;
+    if (normalized === "false" || normalized === "0" || normalized === "") return false;
+  }
+  if (typeof value === "number") return value !== 0;
+  return Boolean(value);
 }
 
 function oneOf<const T extends readonly string[]>(value: unknown, options: T): T[number] | undefined {
@@ -124,7 +136,10 @@ function migrateCourse(value: UnknownRecord): Course {
     isCompleted: booleanValue(first(value, "isCompleted", "concluida")),
     completedAt: optionalText(value.completedAt),
     evaluationRegime: value.evaluationRegime === "regulation-2026" ? "regulation-2026" : "legacy",
+    evaluationRegimeSource: oneOf(value.evaluationRegimeSource, EVALUATION_REGIME_SOURCES),
     evaluationModel: oneOf(value.evaluationModel, EVALUATION_MODELS) as EvaluationModel | undefined,
+    legacyEvaluationMode: oneOf(value.legacyEvaluationMode, LEGACY_EVALUATION_MODES) as LegacyEvaluationMode | undefined,
+    manualFinalGrade: optionalNumber(value.manualFinalGrade),
     sessions: sessions.length > 0 ? sessions : undefined,
   };
 }
@@ -163,6 +178,8 @@ function migrateAssessment(value: UnknownRecord): Assessment {
     endDate: optionalText(first(value, "endDate", "dataFim")),
     gradeReleaseDate: optionalText(first(value, "gradeReleaseDate", "dataNota", "grade_release")),
     date: optionalText(first(value, "date", "dataExame")),
+    dateSource: oneOf(value.dateSource, ASSESSMENT_DATE_SOURCES),
+    officialCheckedAt: optionalText(value.officialCheckedAt),
   };
 }
 
@@ -202,6 +219,10 @@ export function migrate(input: unknown): AppState {
     supabaseUrl: optionalText(syncRecord.supabaseUrl),
     supabaseAnonKey: optionalText(syncRecord.supabaseAnonKey),
     lastSyncAt: optionalText(syncRecord.lastSyncAt),
+    localModifiedAt: optionalText(syncRecord.localModifiedAt),
+    lastSyncDeviceId: optionalText(syncRecord.lastSyncDeviceId),
+    lastSyncDeviceLabel: optionalText(syncRecord.lastSyncDeviceLabel),
+    conflictPending: typeof syncRecord.conflictPending === "boolean" ? syncRecord.conflictPending : undefined,
   };
 
   return {

@@ -40,7 +40,7 @@ const LEGACY_MAP: Record<LegacyStatus, { label: string; tone: BadgeTone }> = {
 
 const TONE_STYLES: Record<BadgeTone, string> = {
   neutral: "bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:border-slate-700",
-  info: "bg-sky-100 text-sky-900 border border-sky-200 dark:bg-sky-950/45 dark:text-sky-100 dark:border-sky-700/55",
+  info: "bg-sky-100 text-sky-900 border border-sky-200 dark:bg-sky-900/70 dark:text-sky-50 dark:border-sky-400/75 dark:shadow-[0_0_0_1px_rgba(56,189,248,0.08)]",
   warning: "bg-amber-100 text-amber-950 border border-amber-200 dark:bg-amber-950/35 dark:text-amber-100 dark:border-amber-800/55",
   success: "bg-emerald-100 text-emerald-900 border border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-100 dark:border-emerald-900/40",
   danger: "bg-rose-100 text-rose-900 border border-rose-200 dark:bg-rose-950/30 dark:text-rose-100 dark:border-rose-900/40",

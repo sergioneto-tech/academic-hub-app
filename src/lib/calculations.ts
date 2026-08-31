@@ -27,8 +27,14 @@ function configuredLegacyEFolios(state: AppState, courseId: string): Assessment[
 function historicalManualFinalGrade(state: AppState, courseId: string): number | null {
   const course = state.courses.find((item) => item.id === courseId);
   if (!course || course.evaluationRegime !== "legacy" || course.legacyEvaluationMode !== "final-grade-only") return null;
-  if (typeof course.manualFinalGrade !== "number" || !Number.isFinite(course.manualFinalGrade)) return null;
-  return Math.max(0, Math.min(20, course.manualFinalGrade));
+  if (
+    typeof course.manualFinalGrade !== "number"
+    || !Number.isFinite(course.manualFinalGrade)
+    || !Number.isInteger(course.manualFinalGrade)
+    || course.manualFinalGrade < 0
+    || course.manualFinalGrade > 20
+  ) return null;
+  return course.manualFinalGrade;
 }
 
 export function finalGradeRaw(state: AppState, courseId: string): number | null {
@@ -37,7 +43,7 @@ export function finalGradeRaw(state: AppState, courseId: string): number | null 
 
 export function finalGradeRounded(state: AppState, courseId: string): number | null {
   const historical = historicalManualFinalGrade(state, courseId);
-  return historical === null ? coreFinalGradeRounded(state, courseId) : Math.round(historical);
+  return historical === null ? coreFinalGradeRounded(state, courseId) : historical;
 }
 
 export function finalGrade(state: AppState, courseId: string): number | null {

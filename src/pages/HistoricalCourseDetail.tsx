@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAppStore } from "@/lib/AppStore";
+import { parseOfficialFinalGrade } from "@/lib/grade-validation";
 import type { LegacyEvaluationMode } from "@/lib/types";
 import { formatPtNumber, parsePtNumber } from "@/lib/utils";
 
@@ -22,6 +23,52 @@ function GradeInput({ value, max, onCommit }: { value: number | null; max: numbe
       onBlur={() => onCommit(parsePtNumber(text))}
       onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
     />
+  );
+}
+
+function OfficialFinalGradeInput({ value, onCommit }: { value: number | null; onCommit: (value: number | null) => void }) {
+  const [text, setText] = useState(value === null ? "" : String(value));
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setText(value === null ? "" : String(value));
+  }, [value]);
+
+  const commit = () => {
+    const result = parseOfficialFinalGrade(text);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    setError(null);
+    setText(result.value === null ? "" : String(result.value));
+    onCommit(result.value);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <Input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={text}
+        placeholder="0–20"
+        aria-invalid={error ? "true" : undefined}
+        aria-describedby={error ? "official-final-grade-error" : undefined}
+        onChange={(event) => {
+          setText(event.target.value);
+          if (error) setError(null);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}
+      />
+      {error && (
+        <p id="official-final-grade-error" className="text-sm font-medium text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -51,7 +98,11 @@ export default function HistoricalCourseDetail({ courseId, mode }: { courseId: s
   const totalGrade = relevant.reduce((sum, item) => sum + (item.required === false ? 0 : (item.grade ?? 0)), 0);
   const allGraded = relevant.length > 0 && relevant.filter((item) => item.required !== false).every((item) => item.grade !== null);
   const computedFinal = allGraded && Math.abs(totalMax - 20) < 0.001 ? Math.round(totalGrade) : null;
-  const final = mode === "final-grade-only" ? (course.manualFinalGrade ?? null) : computedFinal;
+  const storedManualFinal = course.manualFinalGrade ?? null;
+  const validManualFinal = storedManualFinal !== null && Number.isInteger(storedManualFinal) && storedManualFinal >= 0 && storedManualFinal <= 20
+    ? storedManualFinal
+    : null;
+  const final = mode === "final-grade-only" ? validManualFinal : computedFinal;
   const passed = final !== null && final >= 10;
 
   return (
@@ -68,8 +119,12 @@ export default function HistoricalCourseDetail({ courseId, mode }: { courseId: s
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">Usa esta opção quando conheces a classificação final mas já não existe informação fiável sobre a composição da avaliação.</p>
             <div className="max-w-xs">
-              <Label>Nota final (0–20)</Label>
-              <GradeInput value={course.manualFinalGrade ?? null} max={20} onCommit={(value) => updateCourse(course.id, { manualFinalGrade: value === null ? undefined : Math.max(0, Math.min(20, value)) })} />
+              <Label>Nota final oficial (0–20)</Label>
+              <OfficialFinalGradeInput
+                value={validManualFinal}
+                onCommit={(value) => updateCourse(course.id, { manualFinalGrade: value === null ? undefined : value })}
+              />
+              <p className="mt-1.5 text-xs text-muted-foreground">A classificação final oficial deve ser introduzida sem casas decimais.</p>
             </div>
           </CardContent>
         </Card>

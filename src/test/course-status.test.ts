@@ -43,7 +43,7 @@ function historicalFinalState(): AppState {
         evaluationRegime: "legacy",
         evaluationRegimeSource: "manual",
         legacyEvaluationMode: "final-grade-only",
-        manualFinalGrade: 15.6,
+        manualFinalGrade: 16,
       },
     ],
     assessments: [],
@@ -97,7 +97,7 @@ describe("estado visual de cadeiras ativas", () => {
 });
 
 describe("registo histórico apenas com nota final", () => {
-  it("usa a nota manual sem exigir e-fólios, exame ou recurso", () => {
+  it("usa a nota manual inteira sem exigir e-fólios, exame ou recurso", () => {
     const state = historicalFinalState();
 
     expect(finalGradeRounded(state, "historical-final")).toBe(16);
@@ -118,5 +118,13 @@ describe("registo histórico apenas com nota final", () => {
 
     expect(getCourseStatus(state, "historical-final")).toEqual({ label: "Por registar", badge: "neutral" });
     expect(finalGradeRounded(state, "historical-final")).toBeNull();
+  });
+
+  it("não arredonda nem usa uma nota final histórica com casas decimais", () => {
+    const state = historicalFinalState();
+    state.courses = state.courses.map((course) => ({ ...course, manualFinalGrade: 15.8 }));
+
+    expect(finalGradeRounded(state, "historical-final")).toBeNull();
+    expect(getCourseStatus(state, "historical-final")).toEqual({ label: "Por registar", badge: "neutral" });
   });
 });

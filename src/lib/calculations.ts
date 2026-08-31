@@ -1,7 +1,8 @@
 import type { AppState, Assessment } from "./types";
 import {
   examGrade,
-  finalGradeRounded,
+  finalGradeRaw as coreFinalGradeRaw,
+  finalGradeRounded as coreFinalGradeRounded,
   getAssessments,
   getCourseStatus as getCoreCourseStatus,
   getRegulationOutcome,
@@ -21,6 +22,26 @@ function hasGrade(assessment: Assessment): boolean {
 
 function configuredLegacyEFolios(state: AppState, courseId: string): Assessment[] {
   return getAssessments(state, courseId, "efolio").filter((assessment) => Number(assessment.maxPoints) > 0);
+}
+
+function historicalManualFinalGrade(state: AppState, courseId: string): number | null {
+  const course = state.courses.find((item) => item.id === courseId);
+  if (!course || course.evaluationRegime !== "legacy" || course.legacyEvaluationMode !== "final-grade-only") return null;
+  if (typeof course.manualFinalGrade !== "number" || !Number.isFinite(course.manualFinalGrade)) return null;
+  return Math.max(0, Math.min(20, course.manualFinalGrade));
+}
+
+export function finalGradeRaw(state: AppState, courseId: string): number | null {
+  return historicalManualFinalGrade(state, courseId) ?? coreFinalGradeRaw(state, courseId);
+}
+
+export function finalGradeRounded(state: AppState, courseId: string): number | null {
+  const historical = historicalManualFinalGrade(state, courseId);
+  return historical === null ? coreFinalGradeRounded(state, courseId) : Math.round(historical);
+}
+
+export function finalGrade(state: AppState, courseId: string): number | null {
+  return finalGradeRounded(state, courseId);
 }
 
 function legacyAssessmentStillInProgress(state: AppState, courseId: string): boolean {
@@ -94,4 +115,30 @@ export function needsResit(state: AppState, courseId: string): boolean {
 
 export function courseStatusLabel(state: AppState, courseId: string): StatusResult {
   return getCourseStatus(state, courseId);
+}
+
+export function globalStats(state: AppState) {
+  const active = state.courses.filter((course) => course.isActive && !course.isCompleted).length;
+  const completedCourses = state.courses.filter((course) => course.isCompleted);
+  const finals = completedCourses
+    .map((course) => finalGradeRounded(state, course.id))
+    .filter((grade): grade is number => typeof grade === "number" && Number.isFinite(grade));
+  const average = finals.length ? finals.reduce((total, grade) => total + grade, 0) / finals.length : 0;
+  const best = finals.length ? Math.max(...finals) : null;
+  const activeCourseIds = new Set(state.courses.filter((course) => course.isActive).map((course) => course.id));
+  const eventsCount = state.assessments.reduce((total, assessment) => {
+    if (!activeCourseIds.has(assessment.courseId)) return total;
+    if (assessment.type === "efolio" || assessment.type === "activity" || assessment.type === "project") {
+      return total + (assessment.startDate ? 1 : 0) + (assessment.endDate ? 1 : 0);
+    }
+    return total + (assessment.date ? 1 : 0);
+  }, 0);
+
+  return {
+    active,
+    completed: completedCourses.length,
+    avg: Number(average.toFixed(1)),
+    best,
+    eventsCount,
+  };
 }

@@ -24,7 +24,7 @@ export default function CourseDetailPremium() {
   return (
     <>
       <EvaluationFrameworkNotice regime={regime} />
-      {regime === "legacy" && <EvaluationModeSelector courseId={id} />}
+      <EvaluationModeSelector courseId={id} />
       {regime === "regulation-2026"
         ? <FlexibleCourseDetail courseId={id} />
         : historicalMode === "efolios-exam"

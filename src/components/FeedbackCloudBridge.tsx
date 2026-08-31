@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoredSession, refreshSession, type AuthSession, type CloudConfig } from "@/lib/cloudSync";
 import {
   FEEDBACK_BETA_EVENT,
   currentFeedbackUserId,
@@ -15,6 +16,41 @@ import {
 const db = supabase as any;
 const SYNCING = new Set<string>();
 const ACTIVE_FEEDBACK_POLL_MS = 2 * 60_000;
+
+function cloudConfig(): CloudConfig | null {
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
+  const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+  return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
+}
+
+async function ensureFeedbackSession(): Promise<AuthSession | null> {
+  const config = cloudConfig();
+  if (!config) return null;
+
+  const stored = getStoredSession(config);
+  if (!stored) return null;
+
+  let session = stored;
+  const expiresAt = Number(stored.expires_at ?? 0) * 1000;
+  if (expiresAt && expiresAt <= Date.now() + 60_000) {
+    try {
+      session = await refreshSession(config, stored);
+    } catch {
+      return null;
+    }
+  }
+
+  const { error } = await supabase.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+  if (error) return null;
+  return session;
+}
+
+function notifyCloudRefresh() {
+  window.dispatchEvent(new CustomEvent(FEEDBACK_BETA_EVENT, { detail: { source: "cloud" } }));
+}
 
 function rowToEntry(row: any, messages: FeedbackMessage[], history: FeedbackHistoryItem[], attachments: FeedbackAttachment[]): FeedbackEntry {
   return {
@@ -43,14 +79,16 @@ function rowToEntry(row: any, messages: FeedbackMessage[], history: FeedbackHist
 
 async function pullFromCloud() {
   if (document.visibilityState !== "visible" || !navigator.onLine) return;
-  const userId = currentFeedbackUserId();
-  if (!userId || userId === "feedback-beta-preview") return;
+  const session = await ensureFeedbackSession();
+  const userId = session?.user.id ?? currentFeedbackUserId();
+  if (!session || !userId || userId === "feedback-beta-preview") return;
 
   const { data: requests, error } = await db.from("feedback_requests").select("*").order("created_at", { ascending: false });
   if (error || !requests) return;
   const ids = requests.map((row: any) => row.id);
   if (!ids.length) {
     saveFeedbackStore({ entries: [], counter: 0 }, false);
+    notifyCloudRefresh();
     return;
   }
 
@@ -72,6 +110,7 @@ async function pullFromCloud() {
     return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
   }, 0);
   saveFeedbackStore({ entries, counter }, false);
+  notifyCloudRefresh();
 }
 
 async function uploadFiles(userId: string, requestId: string, files: File[]) {
@@ -91,12 +130,14 @@ async function uploadFiles(userId: string, requestId: string, files: File[]) {
 }
 
 async function pushLocalChanges(pendingFiles: File[]) {
-  const userId = currentFeedbackUserId();
-  if (!userId || userId === "feedback-beta-preview") return;
+  const session = await ensureFeedbackSession();
+  const userId = session?.user.id ?? currentFeedbackUserId();
+  if (!session || !userId || userId === "feedback-beta-preview") return;
   const manager = isFeedbackBetaManager();
   const localEntries = loadFeedbackStore().entries;
 
-  const { data: remoteRows } = await db.from("feedback_requests").select("id,reference,status,resolution_note,resolved_version,manager_read_at,user_id");
+  const { data: remoteRows, error: remoteError } = await db.from("feedback_requests").select("id,reference,status,resolution_note,resolved_version,manager_read_at,user_id");
+  if (remoteError) return;
   const remoteById = new Map((remoteRows ?? []).map((row: any) => [row.id, row]));
 
   for (const entry of localEntries) {
@@ -155,7 +196,8 @@ export default function FeedbackCloudBridge() {
       if (!input || input.type !== "file" || !window.location.hash.includes("/feedback")) return;
       pendingFiles.current = Array.from(input.files ?? []).slice(0, 3);
     };
-    const sync = async () => {
+    const sync = async (event: Event) => {
+      if (event instanceof CustomEvent && event.detail?.source === "cloud") return;
       if (busy.current || document.visibilityState !== "visible") return;
       busy.current = true;
       try { await pushLocalChanges(pendingFiles.current); } finally { busy.current = false; }
@@ -164,9 +206,11 @@ export default function FeedbackCloudBridge() {
     const onVisible = () => {
       if (document.visibilityState === "visible") pull();
     };
+    const onAuthChanged = () => { void pullFromCloud(); };
 
     document.addEventListener("change", captureFiles, true);
     window.addEventListener(FEEDBACK_BETA_EVENT, sync);
+    window.addEventListener("academic-hub-auth-changed", onAuthChanged);
     window.addEventListener("online", pull);
     document.addEventListener("visibilitychange", onVisible);
     void pullFromCloud();
@@ -178,6 +222,7 @@ export default function FeedbackCloudBridge() {
     return () => {
       document.removeEventListener("change", captureFiles, true);
       window.removeEventListener(FEEDBACK_BETA_EVENT, sync);
+      window.removeEventListener("academic-hub-auth-changed", onAuthChanged);
       window.removeEventListener("online", pull);
       document.removeEventListener("visibilitychange", onVisible);
       window.clearInterval(interval);

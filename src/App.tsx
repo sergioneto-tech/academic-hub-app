@@ -9,6 +9,7 @@ import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
 import MobileExitGuard from "./components/MobileExitGuard";
 import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
+import AdminUserMonitor from "./components/AdminUserMonitor";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
@@ -50,6 +51,7 @@ function AcademicHubApp() {
       <CloudSyncStatusBadge />
       <MobileExitGuard />
       <FeedbackCloudBridge />
+      <AdminUserMonitor />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<ExplorePage><Dashboard /></ExplorePage>} />

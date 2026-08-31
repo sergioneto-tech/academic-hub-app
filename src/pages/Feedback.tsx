@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Bug, CheckCircle2, ClipboardList, FileImage, Lightbulb, MessageSquareText, Send, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Bug, CheckCircle2, ClipboardList, FileImage, Lightbulb, MessageSquareText, Send, ShieldCheck, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -117,11 +117,22 @@ export default function FeedbackPage() {
   );
 
   useEffect(() => {
-    if (selected) setPendingStatus(selected.status);
+    if (!selected) return;
+    setPendingStatus(selected.status);
+    setReply("");
+    setResolution("");
+    setResolvedVersion("");
   }, [selected?.id, selected?.status]);
 
   if (!enabled) {
     return <div className="mx-auto max-w-2xl"><Card className="premium-card"><CardHeader><CardTitle>Feedback Academic Hub</CardTitle></CardHeader><CardContent className="text-sm text-muted-foreground">Esta área ainda não está disponível nesta conta.</CardContent></Card></div>;
+  }
+
+  function closeSelected() {
+    setSelectedId(null);
+    setReply("");
+    setResolution("");
+    setResolvedVersion("");
   }
 
   function submit() {
@@ -150,12 +161,17 @@ export default function FeedbackPage() {
     setSteps("");
     setExpected("");
     setFiles([]);
-    setSelectedId(entry.id);
+    closeSelected();
     playAcademicHubAppSound("confirm");
     toast({ title: "Feedback recebido", description: `${entry.reference} · registado no Academic Hub.` });
   }
 
   function openEntry(entry: FeedbackEntry) {
+    const opening = selectedId !== entry.id;
+    if (!opening) {
+      closeSelected();
+      return;
+    }
     setSelectedId(entry.id);
     if (manager && !entry.readAt) markFeedbackRead(entry.id);
   }
@@ -166,18 +182,17 @@ export default function FeedbackPage() {
       return toast({ title: "Sem alterações para guardar" });
     }
     setFeedbackStatus(selected.id, pendingStatus, resolution.trim() || undefined, resolvedVersion.trim() || undefined);
-    setResolution("");
-    setResolvedVersion("");
     playAcademicHubAppSound("confirm");
     toast({ title: `Estado: ${FEEDBACK_STATUS_LABELS[pendingStatus]}` });
+    closeSelected();
   }
 
   function sendReply() {
     if (!selected || !reply.trim()) return;
     addFeedbackMessage(selected.id, reply, "academic_hub");
-    setReply("");
     playAcademicHubAppSound("notification");
     toast({ title: "Resposta AH registada", description: "A mensagem ficou identificada como Academic Hub." });
+    closeSelected();
   }
 
   return <div className="space-y-5">
@@ -240,15 +255,15 @@ export default function FeedbackPage() {
 
           {filteredEntries.length === 0 ? <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Não existem registos para os filtros selecionados.</div> : filteredEntries.map((entry) =>
             <button key={entry.id} type="button" onClick={() => openEntry(entry)} className={`w-full rounded-xl border p-3 text-left transition hover:bg-accent ${KIND_STYLES[entry.kind].list} ${selectedId === entry.id ? "ring-1 ring-primary/40" : ""}`}>
-              <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2"><span className="text-xs font-semibold text-[hsl(var(--gold))]">{entry.reference}</span>{manager && !entry.readAt && <span className="h-2 w-2 rounded-full bg-red-500" />}</div><div className="mt-1 truncate text-sm font-semibold">{entry.title}</div><div className="mt-1 text-xs text-muted-foreground">{KIND_LABELS[entry.kind]} · {formatDate(entry.createdAt)}</div></div><span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusClass(entry.status)}`}>{FEEDBACK_STATUS_LABELS[entry.status]}</span></div>
+              <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2"><span className={`text-xs font-semibold ${KIND_STYLES[entry.kind].icon}`}>{entry.reference} · {KIND_LABELS[entry.kind]}</span>{manager && !entry.readAt && <span className="h-2 w-2 rounded-full bg-red-500" />}</div><div className="mt-1 truncate text-sm font-semibold">{entry.title}</div><div className="mt-1 text-xs text-muted-foreground">{formatDate(entry.createdAt)}</div></div><span className={`shrink-0 rounded-full border px-2 py-1 text-[10px] font-semibold ${statusClass(entry.status)}`}>{FEEDBACK_STATUS_LABELS[entry.status]}</span></div>
             </button>,
           )}
         </CardContent>
       </Card>
     </div>
 
-    {selected && <Card className="premium-card border-primary/25">
-      <CardHeader><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className="text-xs font-semibold text-[hsl(var(--gold))]">{selected.reference} · {KIND_LABELS[selected.kind]}</div><CardTitle className="mt-1 text-lg">{selected.title}</CardTitle><div className="mt-1 text-xs text-muted-foreground">Recebido em {formatDate(selected.createdAt)} · AH v{selected.appVersion}</div></div><span className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(selected.status)}`}>{FEEDBACK_STATUS_LABELS[selected.status]}</span></div></CardHeader>
+    {selected && <Card className={`premium-card overflow-hidden ${KIND_STYLES[selected.kind].list}`}>
+      <CardHeader><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><div className={`text-xs font-semibold ${KIND_STYLES[selected.kind].icon}`}>{selected.reference} · {KIND_LABELS[selected.kind]}</div><CardTitle className="mt-1 text-lg">{selected.title}</CardTitle><div className="mt-1 text-xs text-muted-foreground">Recebido em {formatDate(selected.createdAt)} · AH v{selected.appVersion}</div></div><div className="flex flex-wrap items-center gap-2"><span className={`w-fit rounded-full border px-3 py-1 text-xs font-semibold ${statusClass(selected.status)}`}>{FEEDBACK_STATUS_LABELS[selected.status]}</span><Button type="button" variant="ghost" size="sm" onClick={closeSelected}><X className="mr-1 h-4 w-4" />Fechar</Button></div></div></CardHeader>
       <CardContent className="space-y-5">
         {selected.area && <Detail title="Área" text={selected.area} />}
         {selected.steps && <Detail title="O que estava a fazer" text={selected.steps} />}

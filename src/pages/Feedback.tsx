@@ -200,8 +200,8 @@ export default function FeedbackPage() {
 
     <section className="premium-surface overflow-hidden p-5 sm:p-7">
       <div className="max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">Opinião, sugestões e problemas</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Partilha uma opinião, propõe uma melhoria ou reporta um problema. Cada pedido mantém referência, estado e histórico de acompanhamento.</p>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{manager ? "Gestão de feedback" : "Opinião, sugestões e problemas"}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{manager ? "Consulta, responde e acompanha os pedidos enviados pelos alunos." : "Partilha uma opinião, propõe uma melhoria ou reporta um problema. Cada pedido mantém referência, estado e histórico de acompanhamento."}</p>
       </div>
     </section>
 
@@ -211,8 +211,8 @@ export default function FeedbackPage() {
       )}
     </div>}
 
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,.95fr)]">
-      <Card className="premium-card border-[hsl(var(--gold)/0.35)]">
+    <div className={manager ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,.95fr)]"}>
+      {!manager && <Card className="premium-card border-[hsl(var(--gold)/0.35)]">
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><MessageSquareText className="h-5 w-5 text-[hsl(var(--gold))]" />Enviar feedback</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2">
@@ -243,7 +243,7 @@ export default function FeedbackPage() {
           <div className="rounded-xl border bg-muted/25 p-3 text-xs text-muted-foreground"><ShieldCheck className="mr-2 inline h-4 w-4 text-primary" />O Academic Hub associa automaticamente a versão da app e informação técnica básica do dispositivo. Não anexes passwords nem dados sensíveis.</div>
           <Button onClick={submit}><Send className="mr-2 h-4 w-4" />Enviar para o Academic Hub</Button>
         </CardContent>
-      </Card>
+      </Card>}
 
       <Card className="premium-card">
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ClipboardList className="h-5 w-5 text-primary" />{manager ? "Caixa de feedback" : "Os meus envios"}</CardTitle></CardHeader>

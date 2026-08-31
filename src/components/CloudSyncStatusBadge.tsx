@@ -119,7 +119,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
 
   return (
     <div
-      className={`fixed bottom-[8.25rem] left-4 z-50 hidden w-56 max-w-[calc(100vw-2rem)] min-w-0 items-center justify-center gap-1.5 rounded-xl border bg-sidebar/95 px-3 py-2 text-center text-[11px] font-medium leading-tight shadow-md backdrop-blur md:bottom-[7rem] md:inline-flex xl:bottom-[8.25rem] ${tone}`}
+      className={`fixed bottom-[8.25rem] left-4 z-50 hidden w-56 max-w-[calc(100vw-2rem)] min-w-0 items-center justify-center gap-1.5 rounded-xl border bg-sidebar/95 px-3 py-2 text-center text-[11px] font-medium leading-tight shadow-md backdrop-blur md:bottom-[9rem] md:inline-flex xl:bottom-[8.25rem] ${tone}`}
       role="status"
       aria-live="polite"
       aria-label={detail}

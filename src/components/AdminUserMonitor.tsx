@@ -47,12 +47,30 @@ async function loadSummary(): Promise<Summary | null> {
   };
 }
 
+function findMobileMoreTarget(): HTMLElement | null {
+  const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]'));
+  const moreDialog = dialogs.find((dialog) => {
+    const text = dialog.textContent ?? "";
+    return text.includes("Aparência") && text.includes("Exportar backup");
+  });
+  return moreDialog?.querySelector<HTMLElement>(".space-y-5") ?? null;
+}
+
 export default function AdminUserMonitor() {
   const [summary, setSummary] = useState<Summary | null>(null);
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [desktopPortalTarget, setDesktopPortalTarget] = useState<HTMLElement | null>(null);
+  const [mobilePortalTarget, setMobilePortalTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    setPortalTarget(document.querySelector("aside > div:last-child") as HTMLElement | null);
+    const refreshPortalTargets = () => {
+      setDesktopPortalTarget(document.querySelector("aside > div:last-child") as HTMLElement | null);
+      setMobilePortalTarget(findMobileMoreTarget());
+    };
+
+    refreshPortalTargets();
+    const observer = new MutationObserver(refreshPortalTargets);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -95,16 +113,37 @@ export default function AdminUserMonitor() {
     };
   }, []);
 
-  if (!summary || !portalTarget) return null;
+  if (!summary) return null;
 
-  return createPortal(
-    <div
-      className="mt-2 flex w-full items-center gap-2 rounded-xl border border-sidebar-border bg-sidebar-accent/35 px-3 py-2 text-[11px] font-medium text-sidebar-foreground/80"
-      title={summary.latestCreatedAt ? `Último registo: ${new Date(summary.latestCreatedAt).toLocaleString("pt-PT")}` : undefined}
-    >
-      <Users className="h-4 w-4 shrink-0 text-primary" />
-      <span>{summary.totalUsers} utilizadores registados</span>
-    </div>,
-    portalTarget,
+  const title = summary.latestCreatedAt
+    ? `Último registo: ${new Date(summary.latestCreatedAt).toLocaleString("pt-PT")}`
+    : undefined;
+
+  return (
+    <>
+      {desktopPortalTarget && createPortal(
+        <div
+          className="mt-2 hidden w-full items-center gap-2 rounded-xl border border-sidebar-border bg-sidebar-accent/35 px-3 py-2 text-[11px] font-medium text-sidebar-foreground/80 md:flex"
+          title={title}
+        >
+          <Users className="h-4 w-4 shrink-0 text-primary" />
+          <span>{summary.totalUsers} utilizadores registados</span>
+        </div>,
+        desktopPortalTarget,
+      )}
+
+      {mobilePortalTarget && createPortal(
+        <div className="flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-3 md:hidden" title={title}>
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+            <Users className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold">{summary.totalUsers} utilizadores registados</div>
+            <div className="text-[11px] text-muted-foreground">Total atual do Academic Hub</div>
+          </div>
+        </div>,
+        mobilePortalTarget,
+      )}
+    </>
   );
 }

@@ -113,7 +113,8 @@ function applySnapshot(state: AppState, snapshot: OfficialSnapshot): AppState {
   const courses = state.courses.map((course) => {
     if (!course.isActive || course.isCompleted) return course;
     const covered = regulationCodes.has(normalizedCode(course.code));
-    if (covered && (course.evaluationRegime !== "regulation-2026" || course.evaluationRegimeSource !== "official")) {
+    const manuallyConfigured = course.evaluationRegimeSource === "manual";
+    if (!manuallyConfigured && covered && (course.evaluationRegime !== "regulation-2026" || course.evaluationRegimeSource !== "official")) {
       changed = true;
       return {
         ...course,

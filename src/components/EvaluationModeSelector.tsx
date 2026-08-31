@@ -23,6 +23,7 @@ export default function EvaluationModeSelector({ courseId }: { courseId: string 
   const setRegime = (next: EvaluationRegime) => {
     updateCourse(courseId, {
       evaluationRegime: next,
+      evaluationRegimeSource: next === "legacy" ? "manual" : undefined,
       evaluationModel: next === "regulation-2026" ? (course.evaluationModel ?? "custom") : course.evaluationModel,
     });
   };
@@ -30,8 +31,8 @@ export default function EvaluationModeSelector({ courseId }: { courseId: string 
   const setHistoricalMode = (next: LegacyEvaluationMode) => {
     updateCourse(courseId, {
       evaluationRegime: "legacy",
+      evaluationRegimeSource: "manual",
       legacyEvaluationMode: next,
-      manualFinalGrade: next === "final-grade-only" ? course.manualFinalGrade : undefined,
     });
   };
 
@@ -44,9 +45,9 @@ export default function EvaluationModeSelector({ courseId }: { courseId: string 
               <Scale className="h-5 w-5" />
             </div>
             <div>
-              <div className="font-semibold">Como foi avaliada esta cadeira?</div>
+              <div className="font-semibold">Como queres registar a avaliação desta cadeira?</div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Seleciona a estrutura indicada no PUC ou, para cadeiras antigas, a forma de avaliação utilizada na altura. Esta escolha não elimina notas ou datas já registadas.
+                Se estás a frequentar a cadeira, usa a estrutura indicada no PUC. Se já a concluíste no passado e apenas precisas de guardar a classificação final, escolhe o registo histórico e depois a opção de nota final. Esta escolha não elimina notas ou datas já registadas.
               </p>
             </div>
           </div>
@@ -80,7 +81,7 @@ export default function EvaluationModeSelector({ courseId }: { courseId: string 
                     <SelectItem value="efolios-exam">e-fólios + g-fólio / prova final</SelectItem>
                     <SelectItem value="exam-only">Apenas exame / prova final</SelectItem>
                     <SelectItem value="custom">Avaliação histórica personalizada</SelectItem>
-                    <SelectItem value="final-grade-only">Registar apenas a nota final</SelectItem>
+                    <SelectItem value="final-grade-only">Já concluída no passado — só nota final</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -91,7 +92,9 @@ export default function EvaluationModeSelector({ courseId }: { courseId: string 
             <div className="flex items-start gap-2 rounded-xl border bg-muted/25 p-3 text-xs leading-5 text-muted-foreground">
               <History className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <span>
-                Esta opção destina-se também a unidades curriculares antigas. Não é necessário inventar e-fólios ou ponderações que não existiam ou que já não são conhecidos.
+                {historicalMode === "final-grade-only"
+                  ? "Para uma cadeira já concluída no passado, basta indicar a classificação final de 0 a 20. Não precisas de preencher e-fólios, datas ou ponderações antigas."
+                  : "Esta opção destina-se também a unidades curriculares antigas. Não é necessário inventar e-fólios ou ponderações que não existiam ou que já não são conhecidos."}
               </span>
             </div>
           )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { Users } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { getStoredSession, refreshSession, type CloudConfig } from "@/lib/cloudSync";
@@ -48,6 +49,11 @@ async function loadSummary(): Promise<Summary | null> {
 
 export default function AdminUserMonitor() {
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setPortalTarget(document.querySelector("aside > div:last-child") as HTMLElement | null);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,12 +95,16 @@ export default function AdminUserMonitor() {
     };
   }, []);
 
-  if (!summary) return null;
+  if (!summary || !portalTarget) return null;
 
-  return (
-    <div className="fixed bottom-4 right-4 z-40 hidden items-center gap-2 rounded-full border bg-background/95 px-3 py-2 text-xs font-medium shadow-lg backdrop-blur sm:flex" title={summary.latestCreatedAt ? `Último registo: ${new Date(summary.latestCreatedAt).toLocaleString("pt-PT")}` : undefined}>
-      <Users className="h-4 w-4 text-primary" />
-      <span>{summary.totalUsers} utilizadores</span>
-    </div>
+  return createPortal(
+    <div
+      className="mt-2 flex w-full items-center gap-2 rounded-xl border border-sidebar-border bg-sidebar-accent/35 px-3 py-2 text-[11px] font-medium text-sidebar-foreground/80"
+      title={summary.latestCreatedAt ? `Último registo: ${new Date(summary.latestCreatedAt).toLocaleString("pt-PT")}` : undefined}
+    >
+      <Users className="h-4 w-4 shrink-0 text-primary" />
+      <span>{summary.totalUsers} utilizadores registados</span>
+    </div>,
+    portalTarget,
   );
 }

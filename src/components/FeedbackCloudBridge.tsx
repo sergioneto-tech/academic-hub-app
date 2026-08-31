@@ -48,6 +48,10 @@ async function ensureFeedbackSession(): Promise<AuthSession | null> {
   return session;
 }
 
+function notifyCloudRefresh() {
+  window.dispatchEvent(new CustomEvent(FEEDBACK_BETA_EVENT, { detail: { source: "cloud" } }));
+}
+
 function rowToEntry(row: any, messages: FeedbackMessage[], history: FeedbackHistoryItem[], attachments: FeedbackAttachment[]): FeedbackEntry {
   return {
     id: row.id,
@@ -84,6 +88,7 @@ async function pullFromCloud() {
   const ids = requests.map((row: any) => row.id);
   if (!ids.length) {
     saveFeedbackStore({ entries: [], counter: 0 }, false);
+    notifyCloudRefresh();
     return;
   }
 
@@ -105,7 +110,7 @@ async function pullFromCloud() {
     return Number.isFinite(parsed) ? Math.max(max, parsed) : max;
   }, 0);
   saveFeedbackStore({ entries, counter }, false);
-  window.dispatchEvent(new Event(FEEDBACK_BETA_EVENT));
+  notifyCloudRefresh();
 }
 
 async function uploadFiles(userId: string, requestId: string, files: File[]) {
@@ -191,7 +196,8 @@ export default function FeedbackCloudBridge() {
       if (!input || input.type !== "file" || !window.location.hash.includes("/feedback")) return;
       pendingFiles.current = Array.from(input.files ?? []).slice(0, 3);
     };
-    const sync = async () => {
+    const sync = async (event: Event) => {
+      if (event instanceof CustomEvent && event.detail?.source === "cloud") return;
       if (busy.current || document.visibilityState !== "visible") return;
       busy.current = true;
       try { await pushLocalChanges(pendingFiles.current); } finally { busy.current = false; }

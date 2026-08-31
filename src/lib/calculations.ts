@@ -1,6 +1,7 @@
 import type { AppState, Assessment } from "./types";
 import {
   examGrade,
+  finalGradeRounded,
   getAssessments,
   getCourseStatus as getCoreCourseStatus,
   getRegulationOutcome,
@@ -42,6 +43,16 @@ function regulationStatus(outcome: RegulationOutcome): StatusResult {
   return { label: "Em curso", badge: "info" };
 }
 
+function historicalFinalGradeStatus(state: AppState, courseId: string): StatusResult | null {
+  const course = state.courses.find((item) => item.id === courseId);
+  if (!course || course.evaluationRegime !== "legacy" || course.legacyEvaluationMode !== "final-grade-only") return null;
+
+  const final = finalGradeRounded(state, courseId);
+  if (final === null) return { label: "Por registar", badge: "neutral" };
+  if (final >= 10) return { label: "Aprovado", badge: "success" };
+  return { label: "Classificação registada", badge: "warning" };
+}
+
 /**
  * Estado académico apresentado na interface.
  *
@@ -53,6 +64,9 @@ export function getCourseStatus(state: AppState, courseId: string): StatusResult
   const course = state.courses.find((item) => item.id === courseId);
   if (!course) return { label: "—", badge: "neutral" };
   if (course.isCompleted) return { label: "Concluída", badge: "success" };
+
+  const historicalStatus = historicalFinalGradeStatus(state, courseId);
+  if (historicalStatus) return historicalStatus;
 
   const regulation = getRegulationOutcome(state, courseId);
   if (regulation) return regulationStatus(regulation);
@@ -68,6 +82,7 @@ export function getCourseStatus(state: AppState, courseId: string): StatusResult
 export function needsResit(state: AppState, courseId: string): boolean {
   const course = state.courses.find((item) => item.id === courseId);
   if (!course || course.isCompleted) return false;
+  if (course.evaluationRegime === "legacy" && course.legacyEvaluationMode === "final-grade-only") return false;
 
   const regulation = getRegulationOutcome(state, courseId);
   if (regulation) return regulation.kind === "resit" || regulation.kind === "failed";

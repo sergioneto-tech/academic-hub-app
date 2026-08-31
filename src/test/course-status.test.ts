@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getCourseStatus, needsResit } from "@/lib/calculations";
+import { finalGradeRounded, getCourseStatus, globalStats, needsResit } from "@/lib/calculations";
 import type { AppState } from "@/lib/types";
 
 function legacyState(): AppState {
@@ -22,6 +22,31 @@ function legacyState(): AppState {
       { id: "ef-b", courseId: "legacy-active", type: "efolio", name: "e-fólio B", maxPoints: 4, grade: null },
       { id: "exam", courseId: "legacy-active", type: "exam", name: "Exame", maxPoints: 12, grade: null },
     ],
+    rules: [],
+    studyBlocks: [],
+    sync: { enabled: false },
+  };
+}
+
+function historicalFinalState(): AppState {
+  return {
+    degree: null,
+    courses: [
+      {
+        id: "historical-final",
+        code: "21000",
+        name: "Cadeira concluída no passado",
+        year: 1,
+        semester: 1,
+        isActive: true,
+        isCompleted: false,
+        evaluationRegime: "legacy",
+        evaluationRegimeSource: "manual",
+        legacyEvaluationMode: "final-grade-only",
+        manualFinalGrade: 15.6,
+      },
+    ],
+    assessments: [],
     rules: [],
     studyBlocks: [],
     sync: { enabled: false },
@@ -68,5 +93,30 @@ describe("estado visual de cadeiras ativas", () => {
 
     expect(getCourseStatus(state, "legacy-active")).toEqual({ label: "Apto a Exame", badge: "warning" });
     expect(needsResit(state, "legacy-active")).toBe(false);
+  });
+});
+
+describe("registo histórico apenas com nota final", () => {
+  it("usa a nota manual sem exigir e-fólios, exame ou recurso", () => {
+    const state = historicalFinalState();
+
+    expect(finalGradeRounded(state, "historical-final")).toBe(16);
+    expect(getCourseStatus(state, "historical-final")).toEqual({ label: "Aprovado", badge: "success" });
+    expect(needsResit(state, "historical-final")).toBe(false);
+  });
+
+  it("inclui a nota histórica nas estatísticas depois de concluir a cadeira", () => {
+    const state = historicalFinalState();
+    state.courses = state.courses.map((course) => ({ ...course, isActive: false, isCompleted: true }));
+
+    expect(globalStats(state)).toMatchObject({ completed: 1, avg: 16, best: 16 });
+  });
+
+  it("indica claramente quando ainda falta registar a nota final", () => {
+    const state = historicalFinalState();
+    state.courses = state.courses.map((course) => ({ ...course, manualFinalGrade: undefined }));
+
+    expect(getCourseStatus(state, "historical-final")).toEqual({ label: "Por registar", badge: "neutral" });
+    expect(finalGradeRounded(state, "historical-final")).toBeNull();
   });
 });

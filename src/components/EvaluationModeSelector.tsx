@@ -23,7 +23,7 @@ export default function EvaluationModeSelector({ courseId }: { courseId: string 
   const setRegime = (next: EvaluationRegime) => {
     updateCourse(courseId, {
       evaluationRegime: next,
-      evaluationRegimeSource: "manual",
+      evaluationRegimeSource: next === "legacy" ? "manual" : undefined,
       evaluationModel: next === "regulation-2026" ? (course.evaluationModel ?? "custom") : course.evaluationModel,
     });
   };

@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   deploy:
-    name: Apply migrations, config and deploy functions
+    name: Apply migrations, auth config and deploy functions
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
@@ -76,8 +76,24 @@ jobs:
       - name: Apply database migrations
         run: supabase db push --linked --include-all
 
-      - name: Apply project configuration
-        run: supabase config push --project-ref "$SUPABASE_PROJECT_REF"
+      # Não usamos `supabase config push` em CI: o comando consulta recursos de
+      # infraestrutura (incluindo add-ons) que não fazem parte da configuração
+      # do Academic Hub e obrigariam a alargar desnecessariamente o token.
+      # O único ajuste remoto de Auth mantido em config.toml é aplicado aqui de
+      # forma explícita e com privilégios mínimos. As opções verify_jwt das
+      # Edge Functions são lidas diretamente de config.toml por functions deploy.
+      - name: Apply Academic Hub auth hook
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail-with-body \
+            --request PATCH \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+            --header "Content-Type: application/json" \
+            --data '{"hook_before_user_created_enabled":true,"hook_before_user_created_uri":"pg-functions://postgres/public/hook_restrict_signup_to_uab"}' \
+            > /dev/null
+          echo "Auth Hook do Academic Hub aplicado."
 
       - name: Apply Academic Hub email templates
         shell: bash
@@ -89,7 +105,7 @@ jobs:
             --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             --header "Content-Type: application/json" \
             --data-binary @supabase/auth-email-templates.json; then
-            echo "::warning::Não foi possível personalizar os emails de autenticação automaticamente. As migrações e o Auth Hook podem continuar; verifica Authentication > Email Templates no Supabase."
+            echo "::warning::Não foi possível personalizar os emails de autenticação automaticamente. O restante deploy pode continuar; verifica Authentication > Email Templates no Supabase."
           fi
 
       - name: Deploy Edge Functions

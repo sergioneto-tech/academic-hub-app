@@ -1,4 +1,4 @@
-import type { AppState, Assessment } from "./types";
+import type { AppState, Assessment, Course } from "./types";
 import {
   examGrade,
   finalGradeRaw as coreFinalGradeRaw,
@@ -15,6 +15,10 @@ export * from "./calculations-core";
 
 type PublicCourseStatus = "success" | "warning" | "danger" | "neutral" | "info";
 type StatusResult = { label: string; badge: PublicCourseStatus };
+
+export function isOfficialCourse(course: Course): boolean {
+  return !course.isExtracurricular;
+}
 
 function hasGrade(assessment: Assessment): boolean {
   return assessment.grade !== null && Number.isFinite(assessment.grade);
@@ -54,11 +58,7 @@ function legacyAssessmentStillInProgress(state: AppState, courseId: string): boo
   const efolios = configuredLegacyEFolios(state, courseId);
   const examValue = examGrade(state, courseId);
 
-  // Enquanto existirem e-fólios por classificar, ainda não existe informação
-  // suficiente para declarar o aluno "Não Apto".
   if (efolios.some((assessment) => !hasGrade(assessment))) return true;
-
-  // Uma cadeira ativa sem qualquer classificação continua simplesmente em curso.
   return !efolios.some(hasGrade) && examValue === null;
 }
 
@@ -80,13 +80,6 @@ function historicalFinalGradeStatus(state: AppState, courseId: string): StatusRe
   return { label: "Classificação registada", badge: "warning" };
 }
 
-/**
- * Estado académico apresentado na interface.
- *
- * A lógica anterior tratava 0 pontos como uma classificação real e podia mostrar
- * "Não Apto" antes de existir qualquer nota. Nesta camada preservamos os cálculos
- * existentes e só avaliamos aptidão quando já há resultados suficientes.
- */
 export function getCourseStatus(state: AppState, courseId: string): StatusResult {
   const course = state.courses.find((item) => item.id === courseId);
   if (!course) return { label: "—", badge: "neutral" };
@@ -105,7 +98,6 @@ export function getCourseStatus(state: AppState, courseId: string): StatusResult
   return getCoreCourseStatus(state, courseId) as StatusResult;
 }
 
-/** Evita também sinalizar recurso prematuramente enquanto faltam classificações. */
 export function needsResit(state: AppState, courseId: string): boolean {
   const course = state.courses.find((item) => item.id === courseId);
   if (!course || course.isCompleted) return false;
@@ -125,7 +117,7 @@ export function courseStatusLabel(state: AppState, courseId: string): StatusResu
 
 export function globalStats(state: AppState) {
   const active = state.courses.filter((course) => course.isActive && !course.isCompleted).length;
-  const completedCourses = state.courses.filter((course) => course.isCompleted);
+  const completedCourses = state.courses.filter((course) => course.isCompleted && isOfficialCourse(course));
   const finals = completedCourses
     .map((course) => finalGradeRounded(state, course.id))
     .filter((grade): grade is number => typeof grade === "number" && Number.isFinite(grade));

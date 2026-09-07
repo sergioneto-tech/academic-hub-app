@@ -4,7 +4,7 @@ import webpush from "web-push";
 type Pref = { user_id:string; deadlines_enabled:boolean; exams_enabled:boolean; uab_enabled:boolean; efinal_lead_days:number; exam_lead_days:number; uab_lead_days:number; timezone:string };
 type Sub = { id:string; user_id:string; endpoint:string; p256dh:string; auth:string; enabled:boolean };
 type Due = { key:string; title:string; body:string; url:string };
-type UabPeriod = { id:string; label:string; open:string; close:string };
+type UabPeriod = { id:string; label:string; open:string; close:string; kind:"enrollment"|"classes" };
 type Slot = { status:string; dateTime:string|null };
 type OfficialEntry = { code:string; continuousNormal:Slot; continuousResit:Slot; examNormal:Slot; examResit:Slot };
 
@@ -25,7 +25,28 @@ function max(a:any){return Math.max(0,Number(a?.maxPoints)||0);}
 function grade(a:any){return validGrade(a)?Math.max(0,Math.min(Number(a.grade),max(a))):0;}
 function total(items:any[],selector:(a:any)=>number){return items.reduce((sum,a)=>sum+selector(a),0);}
 
-function extractUabPeriods(rows:any[]):UabPeriod[]{const periods:UabPeriod[]=[];for(const row of rows??[]){const year=row?.payload?.academicYear??row?.academic_year??"";for(const event of Array.isArray(row?.payload?.events)?row.payload.events:[]){if(event?.id!=="matriculas-1sem"&&event?.id!=="matriculas-2sem")continue;if(typeof event.startDate!=="string"||typeof event.endDate!=="string")continue;const semester=event.id==="matriculas-1sem"?"1.º":"2.º";periods.push({id:`${year}:${event.id}`,label:`Inscrições do ${semester} semestre`,open:event.startDate.slice(0,10),close:event.endDate.slice(0,10)});}}return periods;}
+function extractUabPeriods(rows:any[]):UabPeriod[]{
+  const periods:UabPeriod[]=[];
+  for(const row of rows??[]){
+    const year=row?.payload?.academicYear??row?.academic_year??"";
+    for(const event of Array.isArray(row?.payload?.events)?row.payload.events:[]){
+      const id=String(event?.id??"");
+      const isEnrollment=id==="matriculas-1sem"||id==="matriculas-2sem";
+      const isClasses=id==="inicio-1sem"||id==="inicio-2sem";
+      if(!isEnrollment&&!isClasses)continue;
+      if(typeof event.startDate!=="string"||typeof event.endDate!=="string")continue;
+      const semester=id.endsWith("1sem")?"1.º":"2.º";
+      periods.push({
+        id:`${year}:${id}`,
+        label:isClasses?`Aulas do ${semester} semestre`:`Inscrições do ${semester} semestre`,
+        open:event.startDate.slice(0,10),
+        close:event.endDate.slice(0,10),
+        kind:isClasses?"classes":"enrollment",
+      });
+    }
+  }
+  return periods;
+}
 
 function buildScheduleMap(rows:any[]){const map=new Map<string,OfficialEntry>();for(const row of rows??[]){const semester=Number(row?.semester);for(const entry of row?.payload?.entries??[]){if(entry?.code)map.set(`${semester}:${String(entry.code).trim()}`,entry as OfficialEntry);}}return map;}
 function officialDate(course:any,type:"exam"|"resit",schedule:Map<string,OfficialEntry>,fallback?:string){const entry=schedule.get(`${course?.semester}:${String(course?.code??"").trim()}`);if(!entry)return fallback;const examPath=course?.evaluationModel==="exam-only"||(course?.evaluationRegime==="legacy"&&course?.legacyEvaluationMode==="exam-only");const slot=type==="exam"?(examPath?entry.examNormal:entry.continuousNormal):(examPath?entry.examResit:entry.continuousResit);if(slot?.status==="scheduled"&&slot.dateTime)return slot.dateTime;return undefined;}
@@ -57,7 +78,32 @@ function buildDue(state:any,pref:Pref,now:Date,uabPeriods:UabPeriod[],schedule:M
     if(a.type==="efolio"&&pref.deadlines_enabled){if(a.startDate?.slice(0,10)===today)due.push({key:`efolio:${a.id}:start:${today}`,title:`${a.name} começa hoje`,body:label,url:"/#/calendario"});if(a.endDate){const end=a.endDate.slice(0,10),left=daysBetween(today,end);if(left===pref.efinal_lead_days)due.push({key:`efolio:${a.id}:end-lead:${end}:${left}`,title:`${a.name}: faltam ${left} dias`,body:`Prazo de entrega · ${label}`,url:"/#/calendario"});if(left===0)due.push({key:`efolio:${a.id}:end:${end}`,title:`${a.name} termina hoje`,body:`Último dia para entrega · ${label}`,url:"/#/calendario"});}}
     if((a.type==="exam"||a.type==="resit")&&pref.exams_enabled){if(a.type==="resit"&&!needsOfficialResit(state,course))continue;const date=officialDate(course,a.type,schedule,a.date);if(!date)continue;const day=date.slice(0,10),left=daysBetween(today,day),hour=timePart(date),kind=a.type==="resit"?"Recurso":"Prova";if(left===pref.exam_lead_days)due.push({key:`${a.type}:${course.code}:lead:${day}:${left}`,title:`${kind} daqui a ${left} dias`,body:`${label}${hour?` · ${hour}`:""}`,url:"/#/calendario"});if(left===0)due.push({key:`${a.type}:${course.code}:day:${day}`,title:`${kind} hoje${hour?` às ${hour}`:""}`,body:label,url:"/#/calendario"});}
   }
-  if(pref.uab_enabled){for(const p of uabPeriods){const openLeft=daysBetween(today,p.open),closeLeft=daysBetween(today,p.close);if(openLeft===pref.uab_lead_days)due.push({key:`uab:${p.id}:open-lead:${openLeft}`,title:`${p.label} abrem em ${openLeft} dias`,body:"Universidade Aberta",url:UAB_URL});if(openLeft===0)due.push({key:`uab:${p.id}:open`,title:`${p.label} abrem hoje`,body:"Consulta o calendário oficial da UAb.",url:UAB_URL});if(closeLeft===pref.uab_lead_days)due.push({key:`uab:${p.id}:close-lead:${closeLeft}`,title:`${p.label}: faltam ${closeLeft} dias`,body:"Prazo de inscrição a terminar.",url:UAB_URL});if(closeLeft===0)due.push({key:`uab:${p.id}:close`,title:`Último dia — ${p.label}`,body:"Confirma a inscrição no portal da UAb.",url:UAB_URL});}}
+  if(pref.uab_enabled){
+    for(const p of uabPeriods){
+      const openLeft=daysBetween(today,p.open);
+      if(openLeft===pref.uab_lead_days){
+        due.push({
+          key:`uab:${p.id}:open-lead:${openLeft}`,
+          title:p.kind==="classes"?`${p.label} começam em ${openLeft} dias`:`${p.label} abrem em ${openLeft} dias`,
+          body:"Universidade Aberta",
+          url:UAB_URL,
+        });
+      }
+      if(openLeft===0){
+        due.push({
+          key:`uab:${p.id}:open`,
+          title:p.kind==="classes"?`${p.label} começam hoje`:`${p.label} abrem hoje`,
+          body:p.kind==="classes"?"Bom início de semestre! Consulta o calendário oficial da UAb.":"Consulta o calendário oficial da UAb.",
+          url:UAB_URL,
+        });
+      }
+      if(p.kind==="enrollment"){
+        const closeLeft=daysBetween(today,p.close);
+        if(closeLeft===pref.uab_lead_days)due.push({key:`uab:${p.id}:close-lead:${closeLeft}`,title:`${p.label}: faltam ${closeLeft} dias`,body:"Prazo de inscrição a terminar.",url:UAB_URL});
+        if(closeLeft===0)due.push({key:`uab:${p.id}:close`,title:`Último dia — ${p.label}`,body:"Confirma a inscrição no portal da UAb.",url:UAB_URL});
+      }
+    }
+  }
   return due;
 }
 

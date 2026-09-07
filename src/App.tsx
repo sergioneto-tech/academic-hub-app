@@ -15,6 +15,7 @@ import FeedbackBetaEnhancements from "./components/FeedbackBetaEnhancements";
 import FeedbackGlobalSyncPulse from "./components/FeedbackGlobalSyncPulse";
 import AppSatisfactionSurvey from "./components/AppSatisfactionSurvey";
 import AdminSurveyResults from "./components/AdminSurveyResults";
+import PushDeepLinkNotice from "./components/PushDeepLinkNotice";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
@@ -54,6 +55,7 @@ function AcademicHubApp() {
       <LegacyMigrationAssistant />
       <CloudSyncNotice />
       <CloudSyncStatusBadge />
+      <PushDeepLinkNotice />
       <MobileExitGuard />
       <AdminUserMonitor />
       <FeedbackCloudBridge />

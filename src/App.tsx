@@ -13,6 +13,8 @@ import AdminFeedbackMonitor from "./components/AdminFeedbackMonitor";
 import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
 import FeedbackBetaEnhancements from "./components/FeedbackBetaEnhancements";
 import FeedbackGlobalSyncPulse from "./components/FeedbackGlobalSyncPulse";
+import AppSatisfactionSurvey from "./components/AppSatisfactionSurvey";
+import AdminSurveyResults from "./components/AdminSurveyResults";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
@@ -58,6 +60,8 @@ function AcademicHubApp() {
       <FeedbackGlobalSyncPulse />
       <FeedbackBetaEnhancements />
       <AdminFeedbackMonitor />
+      <AppSatisfactionSurvey />
+      <AdminSurveyResults />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<ExplorePage><Dashboard /></ExplorePage>} />

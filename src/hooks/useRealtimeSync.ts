@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { CLOUD_SYNC_NOTICE_EVENT } from "@/components/CloudSyncNotice";
@@ -39,11 +39,11 @@ export function useRealtimeSync() {
   stateRef.current = state;
   const [visible, setVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
 
-  const cloudConfig: CloudConfig | null = (() => {
+  const cloudConfig = useMemo<CloudConfig | null>(() => {
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
     const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
     return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
-  })();
+  }, []);
 
   const applyRemote = useCallback((remoteState: AppState, updatedAt: string, deviceLabel?: string) => {
     const next: AppState = {
@@ -130,5 +130,5 @@ export function useRealtimeSync() {
       cancelled = true;
       if (channel && removeChannel) void removeChannel(channel);
     };
-  }, [applyRemote, cloudConfig?.supabaseUrl, state.sync?.enabled, setSync, visible]);
+  }, [applyRemote, cloudConfig, state.sync?.enabled, setSync, visible]);
 }

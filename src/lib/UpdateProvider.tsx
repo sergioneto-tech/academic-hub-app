@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 
 type Ctx = {
   updateAvailable: boolean;
@@ -30,8 +30,18 @@ function hardReload() {
   window.location.replace(url.toString());
 }
 
+function activateWaitingWorker(registration: ServiceWorkerRegistration | null) {
+  const waiting = registration?.waiting;
+  if (!waiting) return false;
+  try {
+    waiting.postMessage({ type: "SKIP_WAITING" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function UpdateProvider({ children }: { children: React.ReactNode }) {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
   const regRef = useRef<ServiceWorkerRegistration | null>(null);
   const refreshingRef = useRef(false);
   const applyingRef = useRef(false);
@@ -45,6 +55,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     const swUrl = `${import.meta.env.BASE_URL ?? "./"}sw.js`;
     let disposed = false;
     let registered: ServiceWorkerRegistration | null = null;
+    let hasControlledPage = Boolean(navigator.serviceWorker.controller);
 
     const checkForUpdate = () => {
       const reg = regRef.current;
@@ -64,8 +75,11 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         registered = reg;
         regRef.current = reg;
 
+        // Alterações técnicas do Service Worker são aplicadas silenciosamente.
+        // O cartão de "Nova versão" fica reservado ao manifesto de versões da app,
+        // evitando anunciar versões antigas devido a workers/cache residuais.
+        activateWaitingWorker(reg);
         void reg.update().catch(() => {});
-        if (reg.waiting && !applyingRef.current) setUpdateAvailable(true);
 
         reg.addEventListener("updatefound", () => {
           const installing = reg.installing;
@@ -73,9 +87,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
 
           installing.addEventListener("statechange", () => {
             if (installing.state !== "installed" || applyingRef.current) return;
-            if (navigator.serviceWorker.controller && reg.waiting) {
-              setUpdateAvailable(true);
-            }
+            if (navigator.serviceWorker.controller) activateWaitingWorker(reg);
           });
         });
 
@@ -87,6 +99,12 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       });
 
     const onControllerChange = () => {
+      // Na primeira instalação apenas passa a existir um controlador; não é necessário
+      // recarregar. Nas trocas seguintes, recarrega para usar imediatamente o novo bundle.
+      if (!hasControlledPage) {
+        hasControlledPage = true;
+        return;
+      }
       if (refreshingRef.current) return;
       refreshingRef.current = true;
       hardReload();
@@ -107,10 +125,6 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const applyUpdate = async () => {
     if (applyingRef.current) return;
     applyingRef.current = true;
-
-    // O utilizador acabou de aceitar a atualização: o aviso deve desaparecer logo,
-    // em vez de ficar preso no ecrã enquanto o navegador troca o Service Worker.
-    setUpdateAvailable(false);
     const reg = regRef.current;
 
     await clearAcademicHubCaches();
@@ -122,27 +136,23 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         // O reload com cache-buster abaixo continua a ser um fallback válido.
       }
 
-      if (reg.waiting) {
-        try {
-          reg.waiting.postMessage({ type: "SKIP_WAITING" });
-
-          // Alguns PWAs móveis não disparam controllerchange de forma previsível.
-          // Se isso acontecer, força a recarga pouco depois sem tocar nos dados locais.
-          window.setTimeout(() => {
-            if (refreshingRef.current) return;
-            refreshingRef.current = true;
-            hardReload();
-          }, 1400);
-          return;
-        } catch {
-          // Segue para o fallback abaixo.
-        }
+      if (activateWaitingWorker(reg)) {
+        window.setTimeout(() => {
+          if (refreshingRef.current) return;
+          refreshingRef.current = true;
+          hardReload();
+        }, 1400);
+        return;
       }
     }
 
     refreshingRef.current = true;
     hardReload();
   };
+
+  // Um Service Worker diferente não é, por si só, uma nova versão pública da app.
+  // A interface só anuncia versões superiores através do release-notes.json.
+  const updateAvailable = false;
 
   return <UpdateCtx.Provider value={{ updateAvailable, applyUpdate, isSupported }}>{children}</UpdateCtx.Provider>;
 }

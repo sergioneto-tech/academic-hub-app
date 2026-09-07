@@ -135,6 +135,7 @@ function migrateCourse(value: UnknownRecord): Course {
     isActive: booleanValue(first(value, "isActive", "ativa")),
     isCompleted: booleanValue(first(value, "isCompleted", "concluida")),
     completedAt: optionalText(value.completedAt),
+    isExtracurricular: booleanValue(value.isExtracurricular),
     evaluationRegime: value.evaluationRegime === "regulation-2026" ? "regulation-2026" : "legacy",
     evaluationRegimeSource: oneOf(value.evaluationRegimeSource, EVALUATION_REGIME_SOURCES),
     evaluationModel: oneOf(value.evaluationModel, EVALUATION_MODELS) as EvaluationModel | undefined,

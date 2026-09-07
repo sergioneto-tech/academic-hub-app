@@ -48,6 +48,26 @@ jobs:
           test -n "$SUPABASE_DB_PASSWORD" || (echo "Missing SUPABASE_DB_PASSWORD" && exit 1)
           test -n "$SUPABASE_PROJECT_REF" || (echo "Missing SUPABASE_PROJECT_REF" && exit 1)
 
+      - name: Validate production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_ref="dayettlozmkjagrymjai"
+          if [ "$SUPABASE_PROJECT_REF" != "$expected_ref" ]; then
+            echo "::error::O secret SUPABASE_PROJECT_REF do environment production não aponta para o projeto Supabase atual do Academic Hub."
+            exit 2
+          fi
+
+          status=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF" \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN")
+          if [ "$status" != "200" ]; then
+            echo "::error::O SUPABASE_ACCESS_TOKEN do environment production não está autorizado para o projeto atual (HTTP $status)."
+            exit 3
+          fi
+
+          echo "Destino e token Supabase validados para o Academic Hub atual."
+
       - name: Link production project
         run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
 

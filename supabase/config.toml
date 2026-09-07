@@ -6,9 +6,13 @@ uri = "pg-functions://postgres/public/hook_restrict_signup_to_uab"
 
 # Estas funções aceitam chamadas sem Authorization ao nível do gateway:
 # - GET público apenas devolve dados oficiais UAb já validados;
-# - POST de cron é autenticado dentro da própria função por x-cron-secret;
-# - academic-push valida internamente x-cron-secret ou o JWT do utilizador.
+# - POST de cron/trigger é autenticado dentro da própria função por x-cron-secret;
+# - academic-push valida internamente x-cron-secret ou o JWT do utilizador;
+# - feedback-push aceita apenas o segredo interno usado pelo trigger da base de dados.
 [functions.academic-push]
+verify_jwt = false
+
+[functions.feedback-push]
 verify_jwt = false
 
 [functions.uab-calendar-sync]

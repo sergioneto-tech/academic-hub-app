@@ -70,7 +70,7 @@ export default {
     const payload = JSON.stringify({
       title: "Novo feedback recebido",
       body: `${row.reference} · ${kindLabel(row.kind)}: ${row.title}`,
-      url: "/#/feedback",
+      url: `/#/feedback?request=${encodeURIComponent(row.id)}`,
       icon: "/academic-hub-icon-v10-192.png",
       badge: "/academic-hub-notification-badge.png",
       tag: `feedback-${row.id}`,

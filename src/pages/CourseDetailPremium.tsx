@@ -23,6 +23,12 @@ export default function CourseDetailPremium() {
 
   return (
     <>
+      {course.isExtracurricular && (
+        <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+          <strong>Cadeira extracurricular.</strong>{" "}
+          Podes gerir avaliações, datas, notas e conclusão normalmente. Esta cadeira não é contabilizada na média, ECTS ou progresso oficial da licenciatura.
+        </div>
+      )}
       <EvaluationFrameworkNotice regime={regime} />
       <EvaluationModeSelector courseId={id} />
       {regime === "regulation-2026"

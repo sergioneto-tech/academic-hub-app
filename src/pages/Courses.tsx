@@ -54,12 +54,15 @@ export default function CoursesPage() {
                       to={`/cadeiras/${c.id}`}
                       className="min-w-0 flex-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                     >
-                      <div className="font-semibold">{c.name}</div>
+                      <div className="flex flex-wrap items-center gap-2 font-semibold">
+                        <span>{c.name}</span>
+                        {c.isExtracurricular && <Badge variant="outline">Extracurricular</Badge>}
+                      </div>
                       <div className="text-sm text-muted-foreground">
                         {c.code} • e-fólios: {ef.toFixed(1)} / {efMax.toFixed(1)}
-                        {getCourseArea(planCourses, c.code) && (
-                          <span className="italic"> • {getCourseArea(planCourses, c.code)}</span>
-                        )}
+                        {c.isExtracurricular
+                          ? <span className="italic"> • não conta para média/ECTS oficiais</span>
+                          : getCourseArea(planCourses, c.code) && <span className="italic"> • {getCourseArea(planCourses, c.code)}</span>}
                       </div>
                     </Link>
 

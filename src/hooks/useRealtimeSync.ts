@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 import { CLOUD_SYNC_NOTICE_EVENT } from "@/components/CloudSyncNotice";
-import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/lib/AppStore";
 import { fetchRemoteState, getStoredSession, isUabStudentEmail, type CloudConfig } from "@/lib/cloudSync";
 import {
@@ -39,11 +39,11 @@ export function useRealtimeSync() {
   stateRef.current = state;
   const [visible, setVisible] = useState(() => typeof document === "undefined" || document.visibilityState === "visible");
 
-  const cloudConfig: CloudConfig | null = (() => {
+  const cloudConfig = useMemo<CloudConfig | null>(() => {
     const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
     const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
     return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
-  })();
+  }, []);
 
   const applyRemote = useCallback((remoteState: AppState, updatedAt: string, deviceLabel?: string) => {
     const next: AppState = {
@@ -69,7 +69,8 @@ export function useRealtimeSync() {
 
     const deviceId = getDeviceId();
     let cancelled = false;
-    void supabase.realtime.setAuth(session.access_token);
+    let channel: RealtimeChannel | null = null;
+    let removeChannel: ((target: RealtimeChannel) => Promise<unknown>) | null = null;
 
     const handleRemoteChange = async (payload: RealtimeUserStatePayload) => {
       if (cancelled || hasCloudConflict()) return;
@@ -105,18 +106,29 @@ export function useRealtimeSync() {
       }
     };
 
-    const channel = supabase
-      .channel(`academic-hub-user-state-${session.user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "user_state", filter: `user_id=eq.${session.user.id}` },
-        (payload) => void handleRemoteChange(payload as RealtimeUserStatePayload),
-      )
-      .subscribe();
+    void (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        if (cancelled) return;
+
+        void supabase.realtime.setAuth(session.access_token);
+        removeChannel = (target) => supabase.removeChannel(target);
+        channel = supabase
+          .channel(`academic-hub-user-state-${session.user.id}`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "user_state", filter: `user_id=eq.${session.user.id}` },
+            (payload) => void handleRemoteChange(payload as RealtimeUserStatePayload),
+          )
+          .subscribe();
+      } catch (error) {
+        if (!cancelled) console.warn("[RealtimeSync] Não foi possível iniciar o canal realtime:", error);
+      }
+    })();
 
     return () => {
       cancelled = true;
-      void supabase.removeChannel(channel);
+      if (channel && removeChannel) void removeChannel(channel);
     };
-  }, [applyRemote, cloudConfig?.supabaseUrl, state.sync?.enabled, setSync, visible]);
+  }, [applyRemote, cloudConfig, state.sync?.enabled, setSync, visible]);
 }

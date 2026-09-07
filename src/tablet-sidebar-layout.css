@@ -1,5 +1,22 @@
 /* Ajustes de responsividade quando o menu lateral já está visível. */
 @media (min-width: 768px) {
+  /* A sidebar é uma zona de scroll independente. Em iPadOS/Safari isto impede que,
+     depois de levantar e voltar a pousar o dedo, o gesto seja transferido para a
+     página principal (scroll chaining). */
+  aside[class~="fixed"][class~="inset-y-0"] {
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
+
+  aside[class~="fixed"][class~="inset-y-0"] > nav {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    scrollbar-gutter: stable;
+  }
+
   /* A fotografia do utilizador já está no menu lateral: evita repetições no cabeçalho e no resumo. */
   header > div > div:last-child > div.hidden.sm\:block {
     display: none !important;

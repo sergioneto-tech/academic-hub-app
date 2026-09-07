@@ -21,6 +21,9 @@ export type Course = {
   isCompleted: boolean;
   completedAt?: string; // ISO
 
+  /** Cadeira complementar que não integra o plano oficial nem os cálculos de ECTS/média do curso. */
+  isExtracurricular?: boolean;
+
   /** Regime aplicável à UC. O valor legacy preserva todos os dados antigos. */
   evaluationRegime?: EvaluationRegime;
   /** Indica quando o regime foi aplicado automaticamente a partir da publicação oficial da UAb. */
@@ -109,7 +112,7 @@ export type SyncSettings = {
   /** Data/hora do último upload/download realizado (informativo). */
   lastSyncAt?: string; // ISO
   /** Última alteração local relevante; permite detetar conflitos entre dispositivos. */
-  localModifiedAt?: string; // ISO
+  localModifiedAt?: string;
   /** Dispositivo que originou a versão cloud atualmente conhecida. */
   lastSyncDeviceId?: string;
   lastSyncDeviceLabel?: string;

@@ -32,7 +32,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      # Bloqueia novas vulnerabilidades high/critical sem forçar upgrades major automáticos.
+      # Bloqueia vulnerabilidades high/critical sem recorrer a upgrades major automáticos.
       - name: Dependency security audit
         run: npm audit --audit-level=high
 

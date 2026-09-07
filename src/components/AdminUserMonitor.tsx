@@ -6,9 +6,11 @@ import { getStoredSession, refreshSession, type CloudConfig } from "@/lib/cloudS
 import { FEEDBACK_BETA_MANAGER_USER_ID, playAcademicHubAppSound } from "@/lib/feedbackBeta";
 
 const STORAGE_KEY = "academic_hub_admin_user_count";
+const SUMMARY_CACHE_KEY = "academic_hub_admin_user_summary_v1";
 const POLL_MS = 5 * 60_000;
 
 type Summary = { totalUsers: number; latestCreatedAt: string | null };
+type CachedSummary = Summary & { cachedAt: string };
 
 function cloudConfig(): CloudConfig | null {
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
@@ -20,6 +22,50 @@ function hasManagerSession(): boolean {
   const config = cloudConfig();
   if (!config) return false;
   return getStoredSession(config)?.user.id === FEEDBACK_BETA_MANAGER_USER_ID;
+}
+
+function readCachedSummary(): CachedSummary | null {
+  try {
+    const raw = localStorage.getItem(SUMMARY_CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<CachedSummary>;
+      const totalUsers = Number(parsed.totalUsers);
+      if (Number.isFinite(totalUsers) && totalUsers >= 0) {
+        return {
+          totalUsers,
+          latestCreatedAt: typeof parsed.latestCreatedAt === "string" ? parsed.latestCreatedAt : null,
+          cachedAt: typeof parsed.cachedAt === "string" ? parsed.cachedAt : new Date().toISOString(),
+        };
+      }
+    }
+
+    const legacyTotal = Number(localStorage.getItem(STORAGE_KEY) || "0");
+    if (Number.isFinite(legacyTotal) && legacyTotal > 0) {
+      return { totalUsers: legacyTotal, latestCreatedAt: null, cachedAt: new Date().toISOString() };
+    }
+  } catch {
+    // O contador continua funcional mesmo quando o armazenamento local está indisponível.
+  }
+  return null;
+}
+
+function cacheSummary(summary: Summary) {
+  try {
+    const cached: CachedSummary = { ...summary, cachedAt: new Date().toISOString() };
+    localStorage.setItem(SUMMARY_CACHE_KEY, JSON.stringify(cached));
+    localStorage.setItem(STORAGE_KEY, String(summary.totalUsers));
+  } catch {
+    // O valor remoto continua a ser mostrado mesmo sem cache local.
+  }
+}
+
+function previousStoredTotal(): number {
+  try {
+    const value = Number(localStorage.getItem(STORAGE_KEY) || "0");
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
 }
 
 async function loadSummary(): Promise<Summary | null> {
@@ -37,20 +83,26 @@ async function loadSummary(): Promise<Summary | null> {
     }
   }
 
-  const response = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/functions/v1/admin-user-summary`, {
-    method: "GET",
-    cache: "no-store",
-    headers: {
-      apikey: config.supabaseAnonKey,
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
-  if (!response.ok) return null;
-  const data = await response.json() as Partial<Summary>;
-  return {
-    totalUsers: Number(data.totalUsers) || 0,
-    latestCreatedAt: typeof data.latestCreatedAt === "string" ? data.latestCreatedAt : null,
-  };
+  try {
+    const response = await fetch(`${config.supabaseUrl.replace(/\/$/, "")}/functions/v1/admin-user-summary`, {
+      method: "GET",
+      cache: "no-store",
+      headers: {
+        apikey: config.supabaseAnonKey,
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+    if (!response.ok) return null;
+    const data = await response.json() as Partial<Summary>;
+    const totalUsers = Number(data.totalUsers);
+    if (!Number.isFinite(totalUsers) || totalUsers < 0) return null;
+    return {
+      totalUsers,
+      latestCreatedAt: typeof data.latestCreatedAt === "string" ? data.latestCreatedAt : null,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function findMobileMoreTarget(): HTMLElement | null {
@@ -63,7 +115,9 @@ function findMobileMoreTarget(): HTMLElement | null {
 }
 
 export default function AdminUserMonitor() {
-  const [summary, setSummary] = useState<Summary | null>(null);
+  const initialCached = hasManagerSession() ? readCachedSummary() : null;
+  const [summary, setSummary] = useState<Summary | null>(initialCached);
+  const [usingCachedValue, setUsingCachedValue] = useState(Boolean(initialCached));
   const [desktopPortalTarget, setDesktopPortalTarget] = useState<HTMLElement | null>(null);
   const [mobilePortalTarget, setMobilePortalTarget] = useState<HTMLElement | null>(null);
 
@@ -119,11 +173,30 @@ export default function AdminUserMonitor() {
     let cancelled = false;
 
     const check = async () => {
-      const next = await loadSummary();
-      if (!next || cancelled) return;
-      setSummary(next);
+      if (!hasManagerSession()) {
+        if (!cancelled) {
+          setSummary(null);
+          setUsingCachedValue(false);
+        }
+        return;
+      }
 
-      const previous = Number(localStorage.getItem(STORAGE_KEY) || "0");
+      const next = await loadSummary();
+      if (cancelled) return;
+
+      if (!next) {
+        const cached = readCachedSummary();
+        if (cached) {
+          setSummary(cached);
+          setUsingCachedValue(true);
+        }
+        return;
+      }
+
+      const previous = previousStoredTotal();
+      setSummary(next);
+      setUsingCachedValue(false);
+
       if (previous > 0 && next.totalUsers > previous) {
         const added = next.totalUsers - previous;
         playAcademicHubAppSound("notification");
@@ -132,7 +205,7 @@ export default function AdminUserMonitor() {
           description: `O Academic Hub tem agora ${next.totalUsers} contas registadas.`,
         });
       }
-      localStorage.setItem(STORAGE_KEY, String(next.totalUsers));
+      cacheSummary(next);
     };
 
     const onVisible = () => {
@@ -157,9 +230,12 @@ export default function AdminUserMonitor() {
 
   if (!summary) return null;
 
-  const title = summary.latestCreatedAt
+  const latestRegistration = summary.latestCreatedAt
     ? `Último registo: ${new Date(summary.latestCreatedAt).toLocaleString("pt-PT")}`
-    : undefined;
+    : null;
+  const title = [latestRegistration, usingCachedValue ? "A mostrar o último total confirmado; atualização automática pendente." : null]
+    .filter(Boolean)
+    .join(" · ") || undefined;
 
   return (
     <>
@@ -170,6 +246,7 @@ export default function AdminUserMonitor() {
         >
           <Users className="h-4 w-4 shrink-0 text-primary" />
           <span>{summary.totalUsers} utilizadores registados</span>
+          {usingCachedValue && <span className="ml-auto text-[9px] text-muted-foreground">último valor</span>}
         </div>,
         desktopPortalTarget,
       )}
@@ -181,7 +258,9 @@ export default function AdminUserMonitor() {
           </div>
           <div className="min-w-0">
             <div className="text-sm font-semibold">{summary.totalUsers} utilizadores registados</div>
-            <div className="text-[11px] text-muted-foreground">Total atual do Academic Hub</div>
+            <div className="text-[11px] text-muted-foreground">
+              {usingCachedValue ? "Último total confirmado · a atualizar" : "Total atual do Academic Hub"}
+            </div>
           </div>
         </div>,
         mobilePortalTarget,

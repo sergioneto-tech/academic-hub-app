@@ -1,5 +1,6 @@
 import { Bell, BookOpenCheck, Check, ExternalLink, Monitor, Moon, Palette, Sun, UserRound, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import ExtracurricularCoursesCard from "@/components/ExtracurricularCoursesCard";
 import PushNotificationSettings from "@/components/PushNotificationSettings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,6 +43,8 @@ export default function SettingsPremium() {
     </section>
 
     <Card className="premium-card border-[hsl(var(--gold)/0.35)]"><CardContent className="flex items-center gap-3 p-4"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--gold-soft))] text-[hsl(var(--gold))]"><BookOpenCheck className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="text-sm font-semibold">Regulamento de avaliação em vigor</div><div className="mt-0.5 text-xs text-muted-foreground">Consulta sempre a informação oficial da UAb e o PUC de cada unidade curricular.</div></div><Button asChild variant="ghost" size="icon"><a href={REGULATION_URL} target="_blank" rel="noopener noreferrer" aria-label="Abrir informação oficial de avaliação da UAb"><ExternalLink className="h-4 w-4"/></a></Button></CardContent></Card>
+
+    <ExtracurricularCoursesCard />
 
     <section><div className="mb-4"><h2 className="text-lg font-semibold">Dados académicos</h2><p className="text-xs text-muted-foreground">Licenciatura, plano automático, backups locais e catálogo de cadeiras.</p></div><div className="settings-legacy [&>div>div:first-child]:hidden"><SettingsPage/></div></section>
   </div>;

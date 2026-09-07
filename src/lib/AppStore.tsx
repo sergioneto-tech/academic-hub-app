@@ -25,7 +25,7 @@ type Store = {
   setNotifications: (patch: Partial<NotificationSettings>) => void;
   setLastSeenRelease: (version: string) => void;
 
-  addCourse: (seed: { code: string; name: string; year: number; semester: number }) => string;
+  addCourse: (seed: { code: string; name: string; year: number; semester: number; isExtracurricular?: boolean }) => string;
   updateCourse: (courseId: string, patch: Partial<Course>) => void;
   removeCourse: (courseId: string) => void;
   mergePlanCourses: (seeds: PlanCourseSeed[]) => void;
@@ -157,6 +157,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
           semester: Number(seed.semester) || 1,
           isActive: false,
           isCompleted: false,
+          isExtracurricular: Boolean(seed.isExtracurricular),
           evaluationRegime: "legacy",
           evaluationModel: "custom",
         };
@@ -200,8 +201,8 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         if (!seeds?.length) return;
         const s = getState();
         const seedCodes = new Set(seeds.map((seed) => normCode(seed.code)));
-        const keepCourses = s.courses.filter((c) => c.isActive || c.isCompleted || seedCodes.has(normCode(c.code)));
-        const byCode = new Map(keepCourses.map((c) => [normCode(c.code), c]));
+        const keepCourses = s.courses.filter((c) => c.isExtracurricular || c.isActive || c.isCompleted || seedCodes.has(normCode(c.code)));
+        const byCode = new Map(keepCourses.filter((c) => !c.isExtracurricular).map((c) => [normCode(c.code), c]));
         const toAdd: Course[] = [];
 
         for (const seed of seeds) {
@@ -215,6 +216,7 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
             semester: Number(seed.semester) || 1,
             isActive: false,
             isCompleted: false,
+            isExtracurricular: false,
             evaluationRegime: "legacy",
             evaluationModel: "custom",
           });

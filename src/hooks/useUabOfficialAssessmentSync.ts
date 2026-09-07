@@ -111,7 +111,7 @@ function applySnapshot(state: AppState, snapshot: OfficialSnapshot): AppState {
   let changed = false;
 
   const courses = state.courses.map((course) => {
-    if (!course.isActive || course.isCompleted) return course;
+    if (course.isExtracurricular || !course.isActive || course.isCompleted) return course;
     const covered = regulationCodes.has(normalizedCode(course.code));
     const manuallyConfigured = course.evaluationRegimeSource === "manual";
     if (!manuallyConfigured && covered && (course.evaluationRegime !== "regulation-2026" || course.evaluationRegimeSource !== "official")) {
@@ -149,7 +149,7 @@ function applySnapshot(state: AppState, snapshot: OfficialSnapshot): AppState {
 
   const shouldExposeResit = new Map<string, boolean>();
   for (const course of courses) {
-    if (!course.isActive || course.isCompleted) continue;
+    if (course.isExtracurricular || !course.isActive || course.isCompleted) continue;
     const resource = resitByCourse.get(course.id);
     if (resource?.grade !== null && resource?.grade !== undefined) {
       shouldExposeResit.set(course.id, true);
@@ -167,7 +167,7 @@ function applySnapshot(state: AppState, snapshot: OfficialSnapshot): AppState {
   const assessments = state.assessments.map((assessment) => {
     if (assessment.type !== "exam" && assessment.type !== "resit") return assessment;
     const course = courseById.get(assessment.courseId);
-    if (!course || !course.isActive || course.isCompleted) return assessment;
+    if (!course || course.isExtracurricular || !course.isActive || course.isCompleted) return assessment;
     const scheduled = schedules.get(`${course.semester}:${normalizedCode(course.code)}`);
     if (!scheduled) return assessment;
     const slots = officialSlots(course, scheduled.entry);
@@ -211,7 +211,6 @@ export function useUabOfficialAssessmentSync() {
       })
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        // Mantém silenciosamente a última fonte oficial válida em cache.
       });
 
     return () => controller.abort();

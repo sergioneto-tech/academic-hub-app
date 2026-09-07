@@ -16,6 +16,12 @@ function cloudConfig(): CloudConfig | null {
   return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
 }
 
+function hasManagerSession(): boolean {
+  const config = cloudConfig();
+  if (!config) return false;
+  return getStoredSession(config)?.user.id === FEEDBACK_BETA_MANAGER_USER_ID;
+}
+
 async function loadSummary(): Promise<Summary | null> {
   const config = cloudConfig();
   if (!config) return null;
@@ -62,15 +68,51 @@ export default function AdminUserMonitor() {
   const [mobilePortalTarget, setMobilePortalTarget] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
+    let observer: MutationObserver | null = null;
+    let frame: number | null = null;
+
     const refreshPortalTargets = () => {
       setDesktopPortalTarget(document.querySelector("aside > div:last-child") as HTMLElement | null);
       setMobilePortalTarget(findMobileMoreTarget());
     };
 
-    refreshPortalTargets();
-    const observer = new MutationObserver(refreshPortalTargets);
-    observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
+    const scheduleRefresh = () => {
+      if (frame !== null) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        refreshPortalTargets();
+      });
+    };
+
+    const stopObserver = () => {
+      observer?.disconnect();
+      observer = null;
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+        frame = null;
+      }
+    };
+
+    const syncObserver = () => {
+      if (!hasManagerSession()) {
+        stopObserver();
+        setDesktopPortalTarget(null);
+        setMobilePortalTarget(null);
+        return;
+      }
+
+      refreshPortalTargets();
+      if (observer) return;
+      observer = new MutationObserver(scheduleRefresh);
+      observer.observe(document.body, { childList: true, subtree: true });
+    };
+
+    syncObserver();
+    window.addEventListener("academic-hub-auth-changed", syncObserver);
+    return () => {
+      window.removeEventListener("academic-hub-auth-changed", syncObserver);
+      stopObserver();
+    };
   }, []);
 
   useEffect(() => {

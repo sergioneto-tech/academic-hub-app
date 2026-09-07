@@ -1,4 +1,4 @@
-project_id = "dayettlozmkjagrymjai"
+project_id = "apgoyzfzuukkpmuxiqvy"
 
 [auth.hook.before_user_created]
 enabled = true

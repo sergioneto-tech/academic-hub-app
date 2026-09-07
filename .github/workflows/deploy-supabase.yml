@@ -29,9 +29,9 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      # O project ref é um identificador público, não um segredo. Mantê-lo explícito
-      # evita que um secret antigo aponte acidentalmente para outro projeto Supabase.
-      SUPABASE_PROJECT_REF: dayettlozmkjagrymjai
+      # Produção atual sob controlo direto do utilizador. O antigo dayett...
+      # pertence ao backend legado Lovable Cloud e não deve receber deploys.
+      SUPABASE_PROJECT_REF: apgoyzfzuukkpmuxiqvy
 
     steps:
       - name: Checkout repository
@@ -53,9 +53,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_ref="dayettlozmkjagrymjai"
+          expected_ref="apgoyzfzuukkpmuxiqvy"
           if [ "$SUPABASE_PROJECT_REF" != "$expected_ref" ]; then
-            echo "::error::O workflow não aponta para o projeto Supabase atual do Academic Hub."
+            echo "::error::O workflow não aponta para o projeto Supabase de produção do Academic Hub."
             exit 2
           fi
 

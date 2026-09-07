@@ -45,7 +45,7 @@ export default {
     const { data: subscriptions } = await db.from("push_subscriptions").select("id,endpoint,p256dh,auth").eq("user_id", MANAGER_USER_ID).eq("enabled", true);
     if (!subscriptions?.length) return jsonResponse({ sent: 0, reason: "no-active-subscriptions" });
     webpush.setVapidDetails("mailto:sergioneto78@gmail.com", config.vapid_public, config.vapid_private);
-    const payload = JSON.stringify({ title, body: message, url: "/#/feedback", icon: "/academic-hub-icon-v10-192.png", badge: "/academic-hub-notification-badge.png", tag: isTest ? `survey-test-${Date.now()}` : eventKey });
+    const payload = JSON.stringify({ title, body: message, url: "/#/feedback?survey=1", icon: "/academic-hub-icon-v10-192.png", badge: "/academic-hub-notification-badge.png", tag: isTest ? `survey-test-${Date.now()}` : eventKey });
 
     let sent = 0;
     for (const subscription of subscriptions as Sub[]) {

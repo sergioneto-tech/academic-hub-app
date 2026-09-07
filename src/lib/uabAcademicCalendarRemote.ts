@@ -145,15 +145,35 @@ function sortAlerts(items: CalendarAlert[]) {
 
 export function getRuntimeAcademicDashboardCards(events: AcademicEvent[], limit = 2): CalendarAlert[] {
   const cards: CalendarAlert[] = [];
+  let upcomingClassesCard: CalendarAlert | null = null;
+
   for (const event of events) {
     const daysToStart = daysUntil(event.startDate);
     const daysToEnd = daysUntil(event.endDate);
     if (daysToStart === null || daysToEnd === null || daysToEnd < 0) continue;
     const isOngoing = daysToStart <= 0 && daysToEnd >= 0;
     if (!isOngoing && daysToStart <= 0) continue;
-    cards.push(buildAlert(event, isOngoing, isOngoing ? daysToEnd : daysToStart));
+
+    const card = buildAlert(event, isOngoing, isOngoing ? daysToEnd : daysToStart);
+    cards.push(card);
+
+    const alertWindow = event.alertDaysBefore ?? 7;
+    if (event.category === "classes" && daysToStart > 0 && daysToStart <= alertWindow) {
+      if (!upcomingClassesCard || daysToStart < upcomingClassesCard.daysLeft) upcomingClassesCard = card;
+    }
   }
-  return sortAlerts(cards).slice(0, Math.max(1, limit));
+
+  const maxCards = Math.max(1, limit);
+  const selected = sortAlerts(cards).slice(0, maxCards);
+
+  // O início das atividades letivas é relevante para todos os estudantes. Quando
+  // entra na respetiva janela de alerta, garante-se que não fica escondido por
+  // eventos mais específicos (por exemplo, o módulo de ambientação).
+  if (upcomingClassesCard && !selected.some((card) => card.id === upcomingClassesCard?.id)) {
+    selected[Math.max(0, selected.length - 1)] = upcomingClassesCard;
+  }
+
+  return selected;
 }
 
 export function getRuntimeAcademicAlerts(events: AcademicEvent[]): CalendarAlert[] {

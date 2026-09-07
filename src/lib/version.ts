@@ -1,7 +1,7 @@
 // Versão da aplicação (incrementar quando publicares uma atualização)
 // A série 1.x corresponde à versão estável do Academic Hub renovado.
-export const APP_VERSION = "1.4.0";
+export const APP_VERSION = "1.5.0";
 
-// Versão do esquema de dados. A área de Feedback ainda não altera o esquema académico
-// persistente, pelo que se mantém compatibilidade integral com backups v5.
+// Versão do esquema de dados académicos persistente. O inquérito de satisfação
+// é guardado numa tabela Supabase própria e não altera a compatibilidade dos backups.
 export const SCHEMA_VERSION = 5;

@@ -1,6 +1,6 @@
 {
   "imports": {
     "supabase": "npm:@supabase/supabase-js@2.95.3",
-    "pdfjs": "npm:pdfjs-dist@4.10.38/legacy/build/pdf.mjs"
+    "pdfjs": "https://esm.sh/pdfjs-dist@4.10.38/build/pdf.mjs?target=deno"
   }
 }

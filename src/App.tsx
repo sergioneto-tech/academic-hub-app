@@ -9,6 +9,7 @@ import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
 import MobileExitGuard from "./components/MobileExitGuard";
 import AdminUserMonitor from "./components/AdminUserMonitor";
+import AdminFeedbackMonitor from "./components/AdminFeedbackMonitor";
 import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
 import FeedbackBetaEnhancements from "./components/FeedbackBetaEnhancements";
 import FeedbackGlobalSyncPulse from "./components/FeedbackGlobalSyncPulse";
@@ -56,6 +57,7 @@ function AcademicHubApp() {
       <FeedbackCloudBridge />
       <FeedbackGlobalSyncPulse />
       <FeedbackBetaEnhancements />
+      <AdminFeedbackMonitor />
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<ExplorePage><Dashboard /></ExplorePage>} />

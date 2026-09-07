@@ -14,7 +14,7 @@ on:
 
 concurrency:
   group: deploy-supabase-production
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -24,7 +24,6 @@ jobs:
     name: Apply migrations, config and deploy functions
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    environment: production
 
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

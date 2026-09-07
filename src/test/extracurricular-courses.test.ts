@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { globalStats } from "@/lib/calculations";
+import { migrate } from "@/lib/storage";
 import type { AppState } from "@/lib/types";
 import { getCourseEcts } from "@/lib/uabPlan";
 
@@ -27,5 +28,11 @@ describe("extracurricular courses", () => {
 
   it("does not invent ECTS for a course outside the official plan", () => {
     expect(getCourseEcts([], "EXT-01")).toBe(0);
+  });
+
+  it("preserves the extracurricular classification when state is migrated or loaded", () => {
+    const migrated = migrate(state);
+    expect(migrated.courses.find((course) => course.id === "extra")?.isExtracurricular).toBe(true);
+    expect(migrated.courses.find((course) => course.id === "official")?.isExtracurricular).toBe(false);
   });
 });

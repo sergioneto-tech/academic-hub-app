@@ -18,6 +18,23 @@ const initialTheme = getStoredTheme() ?? getSystemTheme();
 applyTheme(initialTheme);
 document.documentElement.lang = "pt-PT";
 
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event?.data?.type !== "ACADEMIC_HUB_NOTIFICATION_NAVIGATE" || typeof event.data.url !== "string") return;
+    try {
+      const target = new URL(event.data.url, window.location.href);
+      if (target.origin !== window.location.origin) return;
+      if (target.pathname === window.location.pathname && target.search === window.location.search && target.hash) {
+        window.location.hash = target.hash;
+      } else {
+        window.location.assign(target.href);
+      }
+    } catch {
+      // Ignora payloads de navegação inválidos; a app continua funcional.
+    }
+  });
+}
+
 async function prepareRecoveryFlow(): Promise<void> {
   const rawHash = window.location.hash || "";
   const rawSearch = window.location.search || "";

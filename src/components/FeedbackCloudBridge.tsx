@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getStoredSession, refreshSession, type AuthSession, type CloudConfig } from "@/lib/cloudSync";
 import {
@@ -10,10 +11,96 @@ import {
   type FeedbackAttachment,
   type FeedbackEntry,
   type FeedbackHistoryItem,
+  type FeedbackKind,
   type FeedbackMessage,
+  type FeedbackStatus,
 } from "@/lib/feedbackBeta";
 
-const db = supabase as any;
+type FeedbackRequestRow = {
+  id: string;
+  reference: string;
+  user_id: string;
+  kind: FeedbackKind;
+  area: string | null;
+  title: string;
+  body: string;
+  steps: string | null;
+  expected: string | null;
+  status: FeedbackStatus;
+  resolution_note: string | null;
+  resolved_version: string | null;
+  app_version: string;
+  device: string;
+  manager_read_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type FeedbackMessageRow = {
+  id: string;
+  request_id: string;
+  author: "student" | "academic_hub";
+  body: string;
+  created_at: string;
+};
+
+type FeedbackHistoryRow = {
+  id: string;
+  request_id: string;
+  status: FeedbackStatus;
+  note: string | null;
+  created_at: string;
+};
+
+type FeedbackAttachmentRow = {
+  id: string;
+  request_id: string;
+  storage_path: string;
+  name: string;
+  mime_type: string | null;
+  size_bytes: number;
+  created_at: string;
+};
+
+type FeedbackDatabase = {
+  public: {
+    Tables: {
+      feedback_requests: {
+        Row: FeedbackRequestRow;
+        Insert: Partial<FeedbackRequestRow> & Pick<FeedbackRequestRow, "user_id" | "kind" | "title" | "app_version" | "device">;
+        Update: Partial<FeedbackRequestRow>;
+        Relationships: [];
+      };
+      feedback_messages: {
+        Row: FeedbackMessageRow;
+        Insert: Partial<FeedbackMessageRow> & Pick<FeedbackMessageRow, "request_id" | "author" | "body">;
+        Update: Partial<FeedbackMessageRow>;
+        Relationships: [];
+      };
+      feedback_history: {
+        Row: FeedbackHistoryRow;
+        Insert: Partial<FeedbackHistoryRow> & Pick<FeedbackHistoryRow, "request_id" | "status">;
+        Update: Partial<FeedbackHistoryRow>;
+        Relationships: [];
+      };
+      feedback_attachments: {
+        Row: FeedbackAttachmentRow;
+        Insert: Partial<FeedbackAttachmentRow> & Pick<FeedbackAttachmentRow, "request_id" | "storage_path" | "name">;
+        Update: Partial<FeedbackAttachmentRow>;
+        Relationships: [];
+      };
+    };
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: {
+      feedback_kind: FeedbackKind;
+      feedback_status: FeedbackStatus;
+    };
+    CompositeTypes: { [_ in never]: never };
+  };
+};
+
+const db = supabase as unknown as SupabaseClient<FeedbackDatabase>;
 const SYNCING = new Set<string>();
 const ACTIVE_FEEDBACK_POLL_MS = 2 * 60_000;
 
@@ -52,7 +139,7 @@ function notifyCloudRefresh() {
   window.dispatchEvent(new CustomEvent(FEEDBACK_BETA_EVENT, { detail: { source: "cloud" } }));
 }
 
-function rowToEntry(row: any, messages: FeedbackMessage[], history: FeedbackHistoryItem[], attachments: FeedbackAttachment[]): FeedbackEntry {
+function rowToEntry(row: FeedbackRequestRow, messages: FeedbackMessage[], history: FeedbackHistoryItem[], attachments: FeedbackAttachment[]): FeedbackEntry {
   return {
     id: row.id,
     reference: row.reference,
@@ -85,7 +172,7 @@ async function pullFromCloud() {
 
   const { data: requests, error } = await db.from("feedback_requests").select("*").order("created_at", { ascending: false });
   if (error || !requests) return;
-  const ids = requests.map((row: any) => row.id);
+  const ids = requests.map((row) => row.id);
   if (!ids.length) {
     saveFeedbackStore({ entries: [], counter: 0 }, false);
     notifyCloudRefresh();
@@ -98,11 +185,11 @@ async function pullFromCloud() {
     db.from("feedback_attachments").select("*").in("request_id", ids).order("created_at", { ascending: true }),
   ]);
 
-  const entries = requests.map((row: any) => rowToEntry(
+  const entries = requests.map((row) => rowToEntry(
     row,
-    (messageRows ?? []).filter((m: any) => m.request_id === row.id).map((m: any) => ({ id: m.id, author: m.author, body: m.body, createdAt: m.created_at })),
-    (historyRows ?? []).filter((h: any) => h.request_id === row.id).map((h: any) => ({ id: h.id, status: h.status, note: h.note ?? undefined, createdAt: h.created_at })),
-    (attachmentRows ?? []).filter((a: any) => a.request_id === row.id).map((a: any) => ({ id: a.id, name: a.name, type: a.mime_type ?? "", size: Number(a.size_bytes) || 0 })),
+    (messageRows ?? []).filter((message) => message.request_id === row.id).map((message) => ({ id: message.id, author: message.author, body: message.body, createdAt: message.created_at })),
+    (historyRows ?? []).filter((item) => item.request_id === row.id).map((item) => ({ id: item.id, status: item.status, note: item.note ?? undefined, createdAt: item.created_at })),
+    (attachmentRows ?? []).filter((attachment) => attachment.request_id === row.id).map((attachment) => ({ id: attachment.id, name: attachment.name, type: attachment.mime_type ?? "", size: Number(attachment.size_bytes) || 0 })),
   ));
 
   const counter = entries.reduce((max: number, entry: FeedbackEntry) => {
@@ -138,13 +225,13 @@ async function pushLocalChanges(pendingFiles: File[]) {
 
   const { data: remoteRows, error: remoteError } = await db.from("feedback_requests").select("id,reference,status,resolution_note,resolved_version,manager_read_at,user_id");
   if (remoteError) return;
-  const remoteById = new Map((remoteRows ?? []).map((row: any) => [row.id, row]));
+  const remoteById = new Map((remoteRows ?? []).map((row) => [row.id, row]));
 
   for (const entry of localEntries) {
     if (SYNCING.has(entry.id)) continue;
     SYNCING.add(entry.id);
     try {
-      const remote = remoteById.get(entry.id) as any;
+      const remote = remoteById.get(entry.id);
       if (!remote) {
         if (entry.userId !== userId) continue;
         const { data: inserted, error } = await db.from("feedback_requests").insert({
@@ -163,7 +250,7 @@ async function pushLocalChanges(pendingFiles: File[]) {
           await uploadFiles(userId, entry.id, pendingFiles.splice(0, pendingFiles.length));
         }
       } else if (manager) {
-        const patch: Record<string, unknown> = {};
+        const patch: Partial<FeedbackRequestRow> = {};
         if (remote.status !== entry.status) patch.status = entry.status;
         if ((remote.resolution_note ?? undefined) !== entry.resolutionNote) patch.resolution_note = entry.resolutionNote ?? null;
         if ((remote.resolved_version ?? undefined) !== entry.resolvedVersion) patch.resolved_version = entry.resolvedVersion ?? null;
@@ -172,7 +259,7 @@ async function pushLocalChanges(pendingFiles: File[]) {
       }
 
       const { data: remoteMessages } = await db.from("feedback_messages").select("id").eq("request_id", entry.id);
-      const remoteMessageIds = new Set((remoteMessages ?? []).map((m: any) => m.id));
+      const remoteMessageIds = new Set((remoteMessages ?? []).map((message) => message.id));
       for (const message of entry.messages) {
         if (remoteMessageIds.has(message.id)) continue;
         if (message.author === "academic_hub" && !manager) continue;

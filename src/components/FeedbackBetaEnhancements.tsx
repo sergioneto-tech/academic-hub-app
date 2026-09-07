@@ -6,6 +6,7 @@ const FILTER_ID = "academic-hub-feedback-filters";
 
 let activeType = "all";
 let activeStatus = "all";
+let lastDeepLinkKey = "";
 
 const KIND_META = {
   opinion: { label: "Opinião", className: "opinion" },
@@ -53,12 +54,14 @@ function ensureStyles() {
     button[data-feedback-list-kind="opinion"] { border-left: 4px solid rgb(59 130 246) !important; background-image: linear-gradient(90deg, rgb(59 130 246 / .08), transparent 34%); }
     button[data-feedback-list-kind="suggestion"] { border-left: 4px solid rgb(34 197 94) !important; background-image: linear-gradient(90deg, rgb(34 197 94 / .08), transparent 34%); }
     button[data-feedback-list-kind="bug"] { border-left: 4px solid rgb(239 68 68) !important; background-image: linear-gradient(90deg, rgb(239 68 68 / .08), transparent 34%); }
+    button[data-feedback-deeplink="true"] { outline: 2px solid hsl(var(--gold)); outline-offset: 2px; box-shadow: 0 0 0 5px hsl(var(--gold) / .16), 0 12px 30px hsl(var(--gold) / .18) !important; animation: ah-feedback-deeplink 1.1s ease-in-out 2; }
     #${FILTER_ID} { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; margin: 0 1.5rem .8rem; padding: .7rem; border: 1px solid hsl(var(--border)); border-radius: .85rem; background: hsl(var(--muted) / .22); }
     #${FILTER_ID} label { display: grid; gap: .3rem; min-width: 0; font-size: .68rem; font-weight: 700; color: hsl(var(--muted-foreground)); }
     #${FILTER_ID} select { width: 100%; min-width: 0; height: 2.35rem; border: 1px solid hsl(var(--input)); border-radius: .7rem; padding: 0 .65rem; background: hsl(var(--background)); color: hsl(var(--foreground)); font-size: .78rem; }
     @keyframes ah-feedback-pulse { 0%,100% { box-shadow: 0 0 0 1px hsl(var(--gold) / .18), 0 0 0 hsl(var(--gold) / 0); } 50% { box-shadow: 0 0 0 1px hsl(var(--gold) / .42), 0 0 20px hsl(var(--gold) / .22); } }
+    @keyframes ah-feedback-deeplink { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
     @media (max-width: 639px) { #${FILTER_ID} { grid-template-columns: minmax(0, 1fr); margin-inline: 1rem; } .ah-feedback-kind-counts { gap: .18rem; } }
-    @media (prefers-reduced-motion: reduce) { a[href$="/feedback"][data-feedback-unread="true"] { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { a[href$="/feedback"][data-feedback-unread="true"], button[data-feedback-deeplink="true"] { animation: none; } }
   `;
   document.head.appendChild(style);
 }
@@ -141,6 +144,57 @@ function enhanceInbox() {
   });
 }
 
+function feedbackRouteParams() {
+  const hash = window.location.hash || "";
+  const queryIndex = hash.indexOf("?");
+  return new URLSearchParams(queryIndex >= 0 ? hash.slice(queryIndex + 1) : "");
+}
+
+function handleFeedbackDeepLink() {
+  if (!window.location.hash.includes("/feedback")) return;
+  const params = feedbackRouteParams();
+  if (params.get("_push") !== "1") return;
+
+  const contextKey = params.get("_pushBody") || params.get("_pushTitle") || "push";
+  const survey = params.get("survey");
+  if (survey === "1") {
+    const key = `survey:${contextKey}`;
+    if (lastDeepLinkKey !== key) {
+      const surveyButton = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find((button) =>
+        (button.textContent || "").includes("Resultados do inquérito"),
+      );
+      if (surveyButton) {
+        lastDeepLinkKey = key;
+        surveyButton.click();
+      }
+    }
+    return;
+  }
+
+  const request = params.get("request");
+  if (!request) return;
+  const entries = loadFeedbackStore().entries;
+  const entry = entries.find((item) => item.id === request || item.reference === request);
+  if (!entry) return;
+  const key = `request:${entry.id}:${contextKey}`;
+  if (lastDeepLinkKey === key) return;
+
+  activeType = "all";
+  activeStatus = "all";
+  enhanceInbox();
+  const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-feedback-list-kind]')).find((item) =>
+    item.textContent?.includes(entry.reference),
+  );
+  if (!button) return;
+
+  lastDeepLinkKey = key;
+  button.hidden = false;
+  button.dataset.feedbackDeeplink = "true";
+  button.click();
+  button.scrollIntoView({ behavior: "smooth", block: "center" });
+  window.setTimeout(() => { delete button.dataset.feedbackDeeplink; }, 4500);
+}
+
 function enhanceFeedbackPage() {
   enhanceMenu();
   if (!window.location.hash.includes("/feedback")) return;
@@ -153,11 +207,13 @@ function enhanceFeedbackPage() {
     if (text.startsWith("Som interno")) button.hidden = true;
   });
   enhanceInbox();
+  handleFeedbackDeepLink();
 }
 
 function scheduleEnhance() {
   window.requestAnimationFrame(() => enhanceFeedbackPage());
   window.setTimeout(enhanceFeedbackPage, 80);
+  window.setTimeout(enhanceFeedbackPage, 250);
 }
 
 export default function FeedbackBetaEnhancements() {

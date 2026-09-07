@@ -1,6 +1,6 @@
 {
   "imports": {
     "supabase": "npm:@supabase/supabase-js@2.95.3",
-    "pdfjs": "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs"
+    "pdfjs": "./pdfjs.ts"
   }
 }

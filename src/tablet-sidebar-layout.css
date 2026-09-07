@@ -15,6 +15,12 @@
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     scrollbar-gutter: stable;
+
+    /* O estado Cloud é um cartão fixo sobre a sidebar. Esta reserva de espaço no
+       fim do scroll permite que Feedback/Definições parem completamente acima
+       desse cartão e permaneçam nessa posição quando o utilizador larga o dedo. */
+    padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: calc(6.25rem + env(safe-area-inset-bottom));
   }
 
   /* A fotografia do utilizador já está no menu lateral: evita repetições no cabeçalho e no resumo. */

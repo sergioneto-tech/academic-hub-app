@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ export type CloudSyncNoticeDetail = {
 };
 
 export const CLOUD_SYNC_NOTICE_EVENT = "academic-hub:cloud-sync-notice";
+export const CLOUD_SYNC_NOTICE_VISIBILITY_EVENT = "academic-hub:cloud-sync-notice-visibility";
 
 function formatDateTime(value?: string) {
   if (!value) return "";
@@ -27,6 +28,23 @@ function formatDateTime(value?: string) {
 
 export default function CloudSyncNotice() {
   const [notice, setNotice] = useState<CloudSyncNoticeDetail | null>(null);
+  const noticeRef = useRef<CloudSyncNoticeDetail | null>(null);
+  const pendingUpdatedRef = useRef<CloudSyncNoticeDetail | null>(null);
+
+  const showNotice = (next: CloudSyncNoticeDetail | null) => {
+    noticeRef.current = next;
+    setNotice(next);
+  };
+
+  const closeNotice = () => {
+    const queued = pendingUpdatedRef.current;
+    pendingUpdatedRef.current = null;
+    if (queued) {
+      showNotice(queued);
+      return;
+    }
+    showNotice(null);
+  };
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -34,20 +52,50 @@ export default function CloudSyncNotice() {
       if (!custom.detail) return;
 
       // Falhas automáticas e transitórias de rede ficam silenciosas.
-      // O utilizador continua a receber feedback explícito em ações manuais
-      // (Guardar/Carregar da cloud), e conflitos reais continuam visíveis.
       if (custom.detail.kind === "error") return;
 
-      setNotice(custom.detail);
+      const current = noticeRef.current;
+
+      // Conflitos têm prioridade máxima: nunca são substituídos por um simples
+      // aviso de dados atualizados. Esse aviso fica em espera e aparece depois.
+      if (current?.kind === "conflict" && custom.detail.kind === "updated") {
+        pendingUpdatedRef.current = custom.detail;
+        return;
+      }
+
+      if (custom.detail.kind === "conflict") {
+        if (current?.kind === "updated") pendingUpdatedRef.current = current;
+        showNotice(custom.detail);
+        return;
+      }
+
+      showNotice(custom.detail);
     };
     window.addEventListener(CLOUD_SYNC_NOTICE_EVENT, handler);
     return () => window.removeEventListener(CLOUD_SYNC_NOTICE_EVENT, handler);
   }, []);
 
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(CLOUD_SYNC_NOTICE_VISIBILITY_EVENT, {
+      detail: { visible: Boolean(notice), kind: notice?.kind ?? null },
+    }));
+
+    return () => {
+      window.dispatchEvent(new CustomEvent(CLOUD_SYNC_NOTICE_VISIBILITY_EVENT, {
+        detail: { visible: false, kind: null },
+      }));
+    };
+  }, [notice]);
+
+  useEffect(() => {
+    if (notice?.kind !== "updated") return;
+    const timer = window.setTimeout(() => closeNotice(), 6500);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
+
   if (!notice) return null;
 
   const isUpdated = notice.kind === "updated";
-  const isConflict = notice.kind === "conflict";
   const Icon = isUpdated ? CheckCircle2 : AlertTriangle;
 
   return (
@@ -75,7 +123,7 @@ export default function CloudSyncNotice() {
                 : "Existem dados locais e dados diferentes na cloud. Por segurança, nenhuma versão foi substituída. Abre Definições para escolher a versão a utilizar.")}
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setNotice(null)} aria-label="Fechar aviso">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={closeNotice} aria-label="Fechar aviso">
             <X className="h-4 w-4" />
           </Button>
         </div>

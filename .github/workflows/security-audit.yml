@@ -21,6 +21,7 @@ concurrency:
 # Não altera políticas, dados dos alunos, segredos ou configuração do Supabase.
 permissions:
   contents: write
+  issues: write
 
 jobs:
   audit:
@@ -78,6 +79,7 @@ jobs:
           exit 0
 
       - name: Publish latest security status
+        id: publish_status
         shell: bash
         run: |
           set -euo pipefail
@@ -108,6 +110,35 @@ jobs:
 
           echo "::error::Não foi possível publicar o estado de segurança após três tentativas sem sobrescrever alterações concorrentes."
           exit 1
+
+      - name: Sync security audit alert
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUDIT_CODE: ${{ steps.security_audit.outputs.exit_code }}
+          PUBLISH_OUTCOME: ${{ steps.publish_status.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title="Security audit requires attention"
+          issue_number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$title in:title" --json number,title --jq '.[0].number // empty')
+
+          needs_attention=false
+          if [ -z "$AUDIT_CODE" ] || [ "$AUDIT_CODE" != "0" ] || [ "$PUBLISH_OUTCOME" != "success" ]; then
+            needs_attention=true
+          fi
+
+          if [ "$needs_attention" = true ]; then
+            body="A vistoria semanal do Academic Hub não terminou em estado protegido.\n\n- Código da auditoria: ${AUDIT_CODE:-indisponível}\n- Publicação do estado: ${PUBLISH_OUTCOME:-indisponível}\n- Execução: $RUN_URL\n\nConsulta os logs e o ficheiro public/security-status.json antes de considerar o estado resolvido."
+            if [ -n "$issue_number" ]; then
+              gh issue comment "$issue_number" --repo "$GITHUB_REPOSITORY" --body "$body"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            fi
+          elif [ -n "$issue_number" ]; then
+            gh issue close "$issue_number" --repo "$GITHUB_REPOSITORY" --comment "A vistoria semanal voltou a concluir com sucesso: $RUN_URL"
+          fi
 
       - name: Fail workflow when audit requires attention
         if: always()

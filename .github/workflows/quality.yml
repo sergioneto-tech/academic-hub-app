@@ -79,6 +79,7 @@ jobs:
         run: >-
           npx eslint
           src/App.tsx
+          src/components/AccountSecurityCard.tsx
           src/components/AdminUserMonitor.tsx
           src/components/CloudAccountPanel.tsx
           src/components/CloudRecoveryCard.tsx
@@ -106,6 +107,7 @@ jobs:
           src/lib/cloudSyncState.ts
           src/lib/degreeTheme.ts
           src/lib/realtimeSync.ts
+          src/lib/securityTelemetry.ts
           src/lib/storage.ts
           src/lib/theme.ts
           src/lib/types.ts

@@ -1,0 +1,83 @@
+name: Apply account security 1.5.3
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/apply-account-security-1-5-3.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Integrate account security UI and release
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+
+          const account='src/components/CloudAccountPanel.tsx';
+          let s=fs.readFileSync(account,'utf8');
+          if(!s.includes('reportAuthSecurityEvent')){
+            s=s.replace('import { APP_VERSION } from "@/lib/version";','import { APP_VERSION } from "@/lib/version";\nimport { reportAuthSecurityEvent } from "@/lib/securityTelemetry";');
+          }
+          const start=s.indexOf(' const handleSignIn=async()=>{');
+          const end=s.indexOf('\n const handleSignOut=',start);
+          if(start<0||end<0)throw new Error('handleSignIn not found');
+          const replacement=` const handleSignIn=async()=>{if(!cloudConfig)return;try{setAuthBusy(true);const next=await signIn(cloudConfig,signinEmail,signinPassword);void reportAuthSecurityEvent({eventType:"login_success",session:next,deviceLabel:getDeviceLabel()});storeSession(cloudConfig,next);setSession(next);setSigninPassword("");setAuthMode("overview");const status=await loadMigrationStatus(next);toast(!isUabStudentEmail(next.user.email)?{title:"Conta em regularização",description:status?.deadline?\`Atualiza o email para @\${UAB_STUDENT_EMAIL_DOMAIN} até \${formatDate(status.deadline)}.\`:\`Atualiza o email para @\${UAB_STUDENT_EMAIL_DOMAIN}.\`}:{title:"Sessão iniciada",description:"Conta institucional UAb verificada."});}catch(error){const message=error instanceof Error?error.message:"Erro inesperado.";const lower=message.toLowerCase();if(lower.includes("email ou password incorretos"))void reportAuthSecurityEvent({eventType:"login_failed",email:signinEmail,deviceLabel:getDeviceLabel()});else if(lower.includes("demasiadas tentativas")||lower.includes("rate limit"))void reportAuthSecurityEvent({eventType:"rate_limited",email:signinEmail,deviceLabel:getDeviceLabel()});toast({title:"Falha ao entrar",description:message,variant:"destructive"});}finally{setAuthBusy(false);}};`;
+          s=s.slice(0,start)+replacement+s.slice(end);
+          const recoverMarker='toast({title:"Pedido de recuperação aceite",description:"O servidor de autenticação aceitou o pedido. Deverás receber o email para definir uma nova password; verifica também o spam."});';
+          if(s.includes(recoverMarker)&&!s.includes('eventType:"password_recovery"')){
+            s=s.replace(recoverMarker,'void reportAuthSecurityEvent({eventType:"password_recovery",email,deviceLabel:getDeviceLabel()});'+recoverMarker);
+          }
+          fs.writeFileSync(account,s);
+
+          const legal='src/pages/Legal.tsx';
+          let l=fs.readFileSync(legal,'utf8');
+          if(!l.includes('Segurança, prevenção de abuso e registos técnicos')){
+            const marker='<div className="grid gap-4 lg:grid-cols-2"><Card className="premium-card"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><GraduationCap';
+            const card='<Card className="premium-card border-primary/25"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-5 w-5 text-primary" />Segurança, prevenção de abuso e registos técnicos</CardTitle></CardHeader><CardContent className="space-y-3 text-sm leading-6 text-muted-foreground"><p>Para proteger contas, dados e a infraestrutura, o Academic Hub pode registar eventos técnicos de autenticação e segurança, incluindo data e hora, tipo de evento, endereço IP, país aproximado, navegador/sistema, dispositivo e versão da aplicação. Estes dados destinam-se exclusivamente à deteção, investigação e prevenção de acessos indevidos e abuso.</p><p>Não são guardadas palavras-passe, códigos de autenticação nem tokens completos. Os eventos de rotina têm retenção limitada, normalmente entre 90 e 180 dias; incidentes de maior gravidade podem ser conservados até 365 dias ou, quando exista necessidade legal ou investigação em curso, enquanto durar essa necessidade.</p><p>Os registos técnicos não identificam por si só uma pessoa responsável por uma tentativa de acesso. Quando legalmente exigido ou necessário para defesa de direitos e segurança, informação relevante pode ser preservada e disponibilizada às autoridades competentes pelos meios legalmente aplicáveis.</p></CardContent></Card>\n';
+            if(!l.includes(marker))throw new Error('Legal insertion marker not found');
+            l=l.replace(marker,card+marker);
+            fs.writeFileSync(legal,l);
+          }
+
+          const version='src/lib/version.ts';
+          let v=fs.readFileSync(version,'utf8').replace(/APP_VERSION\s*=\s*["']1\.5\.2["']/,'APP_VERSION = "1.5.3"');
+          if(!v.includes('APP_VERSION = "1.5.3"'))throw new Error('Version bump failed');
+          fs.writeFileSync(version,v);
+
+          const notesPath='public/release-notes.json';
+          const notes=JSON.parse(fs.readFileSync(notesPath,'utf8'));
+          notes.versions=Array.isArray(notes.versions)?notes.versions:[];
+          const entry={version:'1.5.3',date:'2026-09-09',kind:'security',securityLevel:'2026.09',securitySummary:'Adiciona monitorização de segurança da conta, registo privado de incidentes e alertas de tentativas repetidas.',pushNotify:false,changes:[
+            'Nova área Segurança da conta nas Definições com histórico técnico recente visível apenas ao próprio aluno.',
+            'Tentativas de login falhadas, limites de autenticação, recuperações e logins válidos podem ser registados sem guardar passwords ou tokens.',
+            'Após várias tentativas de acesso à mesma conta através do Academic Hub, o aluno pode receber um alerta Push único por incidente.',
+            'Eventos e incidentes ficam numa área privada do Supabase, com retenção limitada, cadeia de integridade e possibilidade de legal hold em investigação.',
+            'A política de privacidade passa a explicar o tratamento de dados técnicos de segurança e respetivos limites.'
+          ]};
+          const idx=notes.versions.findIndex(x=>x?.version==='1.5.3');if(idx>=0)notes.versions[idx]=entry;else notes.versions.unshift(entry);notes.latest='1.5.3';fs.writeFileSync(notesPath,JSON.stringify(notes,null,2)+'\n');
+
+          const swPath='public/sw.js';let sw=fs.readFileSync(swPath,'utf8');sw=sw.replace(/const SW_VERSION = "[^"]+";/,'const SW_VERSION = "1.5.3-security-account-1";');sw=sw.replace(/"\.\/release-notes\.json\?v=[^"]+",/,'"./release-notes.json?v=1.5.3",');fs.writeFileSync(swPath,sw);
+
+          const quality='.github/workflows/quality.yml';let q=fs.readFileSync(quality,'utf8');
+          if(!q.includes('src/components/AccountSecurityCard.tsx'))q=q.replace('          src/components/AdminUserMonitor.tsx\n','          src/components/AdminUserMonitor.tsx\n          src/components/AccountSecurityCard.tsx\n');
+          if(!q.includes('src/lib/securityTelemetry.ts'))q=q.replace('          src/lib/realtimeSync.ts\n','          src/lib/realtimeSync.ts\n          src/lib/securityTelemetry.ts\n');
+          fs.writeFileSync(quality,q);
+          NODE
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "academic-hub-security-bot"
+          git config user.email "security-bot@users.noreply.github.com"
+          git add src/components/CloudAccountPanel.tsx src/pages/Legal.tsx src/lib/version.ts public/release-notes.json public/sw.js .github/workflows/quality.yml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "release: Academic Hub 1.5.3 account security"
+          git pull --rebase origin main
+          git push origin HEAD:main

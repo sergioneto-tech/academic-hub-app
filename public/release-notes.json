@@ -1,6 +1,19 @@
 {
-  "latest": "1.5.1",
+  "latest": "1.5.2",
   "versions": [
+    {
+      "version": "1.5.2",
+      "date": "2026-09-09",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "Nova fila de avisos evita sobreposição entre conflitos de dados, sincronização cloud, atualizações e o resumo O que mudou.",
+        "Conflitos entre dispositivos têm prioridade e já não podem ser substituídos por um simples aviso de dados atualizados.",
+        "Avisos de dados atualizados fecham automaticamente após alguns segundos e libertam o aviso seguinte da fila.",
+        "No telemóvel, O que mudou mostra primeiro três alterações e permite expandir apenas quando necessário.",
+        "Mantida a atualização real e individual por dispositivo, sem percentagens simuladas."
+      ]
+    },
     {
       "version": "1.5.1",
       "date": "2026-09-09",

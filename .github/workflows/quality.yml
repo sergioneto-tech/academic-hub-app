@@ -59,6 +59,7 @@ jobs:
           src/components/FeedbackCloudBridge.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
+          src/components/SecurityStatusCard.tsx
           src/components/ui/card.tsx
           src/components/ui/pt-datetime-input.tsx
           src/hooks/useAutoSync.ts

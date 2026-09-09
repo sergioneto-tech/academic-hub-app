@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "product": "Academic Hub",
   "securityLevel": "2026.09",
-  "lastAudit": "2026-09-09T20:21:30.137Z",
-  "status": "attention",
-  "summary": "A última vistoria não conseguiu concluir todos os controlos e requer nova validação.",
+  "lastAudit": "2026-09-09T20:23:11.647Z",
+  "status": "review",
+  "summary": "A última vistoria detetou um controlo de segurança que requer revisão.",
   "checks": [
     {
       "id": "dependencies",
@@ -21,8 +21,8 @@
     {
       "id": "database",
       "label": "Base de dados e acesso",
-      "status": "warning",
-      "detail": "Security Advisor CLI não concluiu ({\"_tag\":\"Error\",\"error\":{\"code\":\"LegacyDbAdvisorsSecurityStatusError\",\"message\":\"unexpected security advisors status 403: {\\\"message\\\":\\\"Your account does not have the necessary privileges to access this endpoint. For more details, refer to our documentation https://supabase.com/). O comando de controlo live não concluiu (DESCRIPTION Execute a SQL query against the database. USAGE supabase db query [flags] [<sql>] ARGUMENTS sql string SQL query to execute. (optional) FLAGS --db-url string Queries the database specified by the connection string (must be percent-encoded). --linked Queries the linked). DB lint sem erros."
+      "status": "fail",
+      "detail": "Baseline live falhou: unexpected status 400: {\"message\":\"Failed to run sql query: ERROR: P0001: AH_AUDIT: expected authenticated table privilege missing\\nCONTEXT: PL/pgSQL function inline_code_block line 50 at RAISE\\n\"} Try rerunning the command with --debug to troubleshoot the error.. DB lint sem erros."
     },
     {
       "id": "frontend",
@@ -37,6 +37,5 @@
       "detail": "CSP, HSTS, nosniff, anti-framing e Referrer-Policy confirmados no site live."
     }
   ],
-  "acceptedFindings": [],
   "source": "automated-weekly-security-audit"
 }

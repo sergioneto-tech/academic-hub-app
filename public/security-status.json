@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "product": "Academic Hub",
   "securityLevel": "2026.09",
-  "lastAudit": "2026-09-09T20:23:11.647Z",
+  "lastAudit": "2026-09-09T20:24:25.098Z",
   "status": "review",
   "summary": "A última vistoria detetou um controlo de segurança que requer revisão.",
   "checks": [

@@ -3,7 +3,6 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const root = process.cwd();
-const dbPassword = process.env.SUPABASE_DB_PASSWORD || "";
 const appUrl = process.env.ACADEMIC_HUB_URL || "https://academichub.sergioneto.pt";
 
 const results = {
@@ -16,7 +15,6 @@ const results = {
 
 let securityFailure = false;
 let auditIncomplete = false;
-const acceptedFindings = [];
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -35,7 +33,7 @@ function run(command, args, options = {}) {
 }
 
 function shortError(result) {
-  return `${result.stderr || result.stdout || `exit ${result.status}`}`.trim().replace(/\s+/g, " ").slice(0, 280);
+  return `${result.stderr || result.stdout || `exit ${result.status}`}`.trim().replace(/\s+/g, " ").slice(0, 320);
 }
 
 function walkFiles(dir, extensions = [".ts", ".tsx", ".js", ".jsx", ".json", ".env"]) {
@@ -57,15 +55,8 @@ function findUnsafeClientPatterns() {
     })
     .flatMap((path) => walkFiles(path));
 
-  const secretPatterns = [
-    /SUPABASE_SERVICE_ROLE_KEY/g,
-    /sb_secret_[A-Za-z0-9_-]+/g,
-  ];
-  const executionPatterns = [
-    /dangerouslySetInnerHTML\s*=/g,
-    /\beval\s*\(/g,
-    /new\s+Function\s*\(/g,
-  ];
+  const secretPatterns = [/SUPABASE_SERVICE_ROLE_KEY/g, /sb_secret_[A-Za-z0-9_-]+/g];
+  const executionPatterns = [/dangerouslySetInnerHTML\s*=/g, /\beval\s*\(/g, /new\s+Function\s*\(/g];
   const secretHits = [];
   const executionHits = [];
 
@@ -78,31 +69,19 @@ function findUnsafeClientPatterns() {
   return { secretHits, executionHits };
 }
 
-function collectAdvisorFindings(value, output = [], seen = new Set()) {
-  if (!value || typeof value !== "object") return output;
-  if (seen.has(value)) return output;
-  seen.add(value);
-  if (!Array.isArray(value) && typeof value.level === "string" && typeof value.name === "string") output.push(value);
-  for (const child of Object.values(value)) collectAdvisorFindings(child, output, seen);
-  return output;
-}
-
 async function checkDependencies() {
   const audit = run("npm", ["audit", "--audit-level=high", "--json"]);
-  let high = 0;
-  let critical = 0;
   try {
     const parsed = JSON.parse(audit.stdout || "{}");
-    high = Number(parsed?.metadata?.vulnerabilities?.high || 0);
-    critical = Number(parsed?.metadata?.vulnerabilities?.critical || 0);
+    const high = Number(parsed?.metadata?.vulnerabilities?.high || 0);
+    const critical = Number(parsed?.metadata?.vulnerabilities?.critical || 0);
+    const ok = high === 0 && critical === 0;
+    results.dependencies = { ok, severity: ok ? "pass" : "fail", detail: ok ? "0 vulnerabilidades high/critical detetadas pelo npm audit." : `${high} high e ${critical} critical detetadas pelo npm audit.` };
+    if (!ok) securityFailure = true;
   } catch {
     auditIncomplete = true;
     results.dependencies = { ok: false, severity: "warning", detail: "Não foi possível interpretar o resultado do npm audit." };
-    return;
   }
-  const ok = high === 0 && critical === 0;
-  results.dependencies = { ok, severity: ok ? "pass" : "fail", detail: ok ? "0 vulnerabilidades high/critical detetadas pelo npm audit." : `${high} high e ${critical} critical detetadas pelo npm audit.` };
-  if (!ok) securityFailure = true;
 }
 
 function checkApplication() {
@@ -120,102 +99,129 @@ function checkApplication() {
   if (!ok) auditIncomplete = true;
 }
 
-async function checkDatabase() {
-  if (!dbPassword) {
-    auditIncomplete = true;
-    results.database = { ok: false, severity: "warning", detail: "Password de auditoria Supabase indisponível no workflow." };
-    return;
-  }
-
-  let advisorOk = false;
-  let advisorIncomplete = false;
-  let advisorDetail = "Security Advisor indisponível.";
-  const advisor = run("supabase", ["db", "advisors", "--linked", "--type", "security", "--output-format", "json"]);
-  if (advisor.ok) {
-    try {
-      const payload = JSON.parse(advisor.stdout || "{}");
-      const findings = collectAdvisorFindings(payload);
-      const relevant = [];
-      for (const finding of findings) {
-        const level = String(finding.level || "").toUpperCase();
-        if (!new Set(["WARN", "WARNING", "ERROR", "CRITICAL"]).has(level)) continue;
-        const detail = String(finding.detail || finding.description || "");
-        const metadataName = String(finding?.metadata?.name || "");
-        if (finding.name === "extension_in_public" && (detail.includes("pg_net") || metadataName === "pg_net")) {
-          acceptedFindings.push({
-            id: "extension_in_public:pg_net",
-            label: "pg_net no schema public",
-            reason: "Aviso conhecido do advisor. A extensão instalada é não relocatable e é mantida para evitar regressões na infraestrutura de notificações.",
-          });
-          continue;
-        }
-        relevant.push(finding);
-      }
-      advisorOk = relevant.length === 0;
-      advisorDetail = advisorOk ? "Security Advisor sem findings WARN/ERROR não aceites." : `${relevant.length} finding(s) WARN/ERROR requerem revisão.`;
-      if (!advisorOk) securityFailure = true;
-    } catch {
-      advisorIncomplete = true;
-      auditIncomplete = true;
-      advisorDetail = "O Security Advisor respondeu, mas o JSON não pôde ser interpretado.";
-    }
-  } else {
-    advisorIncomplete = true;
-    auditIncomplete = true;
-    advisorDetail = `Security Advisor CLI não concluiu (${shortError(advisor)}).`;
-  }
-
+function checkDatabase() {
   const lint = run("supabase", ["db", "lint", "--linked", "--level", "warning", "--fail-on", "error"]);
   if (!lint.ok) auditIncomplete = true;
 
   const dbSecuritySql = `do $audit$
 begin
   if exists (
-    select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
-    where n.nspname = 'public' and c.relkind = 'r' and (not c.relrowsecurity or not c.relforcerowsecurity)
+    select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relkind='r' and (not c.relrowsecurity or not c.relforcerowsecurity)
   ) then raise exception 'AH_AUDIT: public table without RLS/FORCE RLS'; end if;
 
-  if not has_table_privilege('authenticated', 'public.app_survey_responses', 'SELECT')
-     or not has_table_privilege('authenticated', 'public.app_survey_responses', 'INSERT')
-     or has_table_privilege('authenticated', 'public.app_survey_responses', 'UPDATE')
-     or has_table_privilege('authenticated', 'public.app_survey_responses', 'DELETE')
-     or has_table_privilege('authenticated', 'public.app_survey_responses', 'TRUNCATE')
-     or has_table_privilege('authenticated', 'public.app_survey_responses', 'REFERENCES')
-     or has_table_privilege('authenticated', 'public.app_survey_responses', 'TRIGGER')
-  then raise exception 'AH_AUDIT: app_survey_responses privileges are not least-privilege'; end if;
+  if exists (
+    select 1 from information_schema.role_table_grants
+    where table_schema='public' and grantee='anon'
+  ) then raise exception 'AH_AUDIT: anon has direct public-table privileges'; end if;
 
   if exists (
-    select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-    where p.prosecdef and n.nspname in ('public', 'private')
-      and (has_function_privilege('anon', p.oid, 'EXECUTE') or has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+    with allowed(table_name, privilege_type) as (values
+      ('account_email_migration','INSERT'),('account_email_migration','SELECT'),
+      ('app_survey_responses','INSERT'),('app_survey_responses','SELECT'),
+      ('feedback_attachments','INSERT'),('feedback_attachments','SELECT'),
+      ('feedback_history','SELECT'),
+      ('feedback_messages','INSERT'),('feedback_messages','SELECT'),
+      ('feedback_requests','INSERT'),('feedback_requests','SELECT'),('feedback_requests','UPDATE'),
+      ('push_preferences','INSERT'),('push_preferences','SELECT'),('push_preferences','UPDATE'),
+      ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
+      ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
+      ('user_state_history','SELECT')
+    )
+    select 1
+    from information_schema.role_table_grants g
+    where g.table_schema='public' and g.grantee='authenticated'
+      and not exists (select 1 from allowed a where a.table_name=g.table_name and a.privilege_type=g.privilege_type)
+  ) then raise exception 'AH_AUDIT: unexpected authenticated table privilege'; end if;
+
+  if exists (
+    with allowed(table_name, privilege_type) as (values
+      ('account_email_migration','INSERT'),('account_email_migration','SELECT'),
+      ('app_survey_responses','INSERT'),('app_survey_responses','SELECT'),
+      ('feedback_attachments','INSERT'),('feedback_attachments','SELECT'),
+      ('feedback_history','SELECT'),
+      ('feedback_messages','INSERT'),('feedback_messages','SELECT'),
+      ('feedback_requests','INSERT'),('feedback_requests','SELECT'),('feedback_requests','UPDATE'),
+      ('push_preferences','INSERT'),('push_preferences','SELECT'),('push_preferences','UPDATE'),
+      ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
+      ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
+      ('user_state_history','SELECT')
+    )
+    select 1 from allowed a
+    where not exists (
+      select 1 from information_schema.role_table_grants g
+      where g.table_schema='public' and g.grantee='authenticated' and g.table_name=a.table_name and g.privilege_type=a.privilege_type
+    )
+  ) then raise exception 'AH_AUDIT: expected authenticated table privilege missing'; end if;
+
+  if exists (
+    select 1 from information_schema.role_usage_grants
+    where object_schema='public' and object_type='SEQUENCE' and grantee='anon'
+  ) then raise exception 'AH_AUDIT: anon has sequence USAGE'; end if;
+
+  if exists (
+    select 1 from information_schema.role_usage_grants
+    where object_schema='public' and object_type='SEQUENCE' and grantee='authenticated'
+      and not (object_name='feedback_reference_seq' and privilege_type='USAGE')
+  ) then raise exception 'AH_AUDIT: unexpected authenticated sequence privilege'; end if;
+
+  if not exists (
+    select 1 from information_schema.role_usage_grants
+    where object_schema='public' and object_type='SEQUENCE' and grantee='authenticated'
+      and object_name='feedback_reference_seq' and privilege_type='USAGE'
+  ) then raise exception 'AH_AUDIT: feedback reference sequence privilege missing'; end if;
+
+  if exists (
+    select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+    where p.prosecdef and n.nspname in ('public','private')
+      and (has_function_privilege('anon',p.oid,'EXECUTE') or has_function_privilege('authenticated',p.oid,'EXECUTE'))
   ) then raise exception 'AH_AUDIT: SECURITY DEFINER executable by client role'; end if;
 
-  if exists (select 1 from storage.buckets where public = true) then
-    raise exception 'AH_AUDIT: public storage bucket detected';
-  end if;
+  if exists (
+    select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relkind in ('v','m')
+      and (has_table_privilege('anon',c.oid,'SELECT') or has_table_privilege('authenticated',c.oid,'SELECT'))
+  ) then raise exception 'AH_AUDIT: client-readable public view/materialized view'; end if;
+
+  if exists (select 1 from storage.buckets where public=true)
+  then raise exception 'AH_AUDIT: public storage bucket detected'; end if;
+
+  if exists (
+    select 1
+    from pg_default_acl d
+    join pg_roles owner on owner.oid=d.defaclrole
+    left join pg_namespace ns on ns.oid=d.defaclnamespace
+    cross join lateral aclexplode(d.defaclacl) x
+    left join pg_roles grantee on grantee.oid=x.grantee
+    where owner.rolname='postgres' and ns.nspname='public' and grantee.rolname in ('anon','authenticated')
+  ) then raise exception 'AH_AUDIT: insecure postgres default privileges restored'; end if;
 end
 $audit$;`;
 
-  const dbControls = run("supabase", ["db", "query", "--linked", "-p", dbPassword, dbSecuritySql]);
+  const dbControls = run("supabase", ["db", "query", "--linked", dbSecuritySql]);
   let controlsOk = dbControls.ok;
-  let controlsDetail = "RLS, privilégios críticos, SECURITY DEFINER e Storage passaram os controlos live.";
+  let severity = "pass";
+  let controlsDetail = "RLS/FORCE RLS, grants de tabelas e sequências, SECURITY DEFINER, views, Storage e default privileges passaram a baseline live.";
+
   if (!dbControls.ok) {
     const errorText = `${dbControls.stderr}\n${dbControls.stdout}`;
     if (errorText.includes("AH_AUDIT:")) {
       securityFailure = true;
-      controlsDetail = `Um controlo live falhou: ${shortError(dbControls)}.`;
+      severity = "fail";
+      controlsDetail = `Baseline live falhou: ${shortError(dbControls)}.`;
     } else {
       auditIncomplete = true;
-      controlsDetail = `O comando de controlo live não concluiu (${shortError(dbControls)}).`;
+      severity = "warning";
+      controlsDetail = `O comando da baseline live não concluiu (${shortError(dbControls)}).`;
     }
   }
 
-  const ok = advisorOk && lint.ok && controlsOk;
-  const severity = securityFailure && (!advisorOk && !advisorIncomplete || !controlsOk && `${dbControls.stderr}${dbControls.stdout}`.includes("AH_AUDIT:")) ? "fail" : ok ? "pass" : "warning";
+  const ok = controlsOk && lint.ok;
+  if (!lint.ok && severity !== "fail") severity = "warning";
   results.database = {
     ok,
     severity,
-    detail: `${advisorDetail} ${controlsDetail}${lint.ok ? " DB lint sem erros." : ` DB lint não concluiu (${shortError(lint)}).`}`,
+    detail: `${controlsDetail}${lint.ok ? " DB lint sem erros." : ` DB lint não concluiu (${shortError(lint)}).`}`,
   };
 }
 
@@ -270,7 +276,7 @@ function writeStatus() {
   const now = new Date();
   const securityLevel = `${now.getUTCFullYear()}.${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
   const summary = status === "protected"
-    ? "Sem vulnerabilidades críticas ou altas detetadas na última vistoria automática de segurança."
+    ? "Sem vulnerabilidades críticas ou altas ou desvios à baseline de segurança detetados na última vistoria automática."
     : status === "review"
       ? "A última vistoria detetou um controlo de segurança que requer revisão."
       : "A última vistoria não conseguiu concluir todos os controlos e requer nova validação.";
@@ -282,7 +288,6 @@ function writeStatus() {
     status,
     summary,
     checks,
-    acceptedFindings,
     source: "automated-weekly-security-audit",
   };
   writeFileSync(join(root, "public", "security-status.json"), `${JSON.stringify(output, null, 2)}\n`, "utf8");
@@ -293,7 +298,7 @@ function writeStatus() {
 try {
   await checkDependencies();
   checkApplication();
-  await checkDatabase();
+  checkDatabase();
   checkFrontend();
   await checkWebProtection();
 } catch (error) {

@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "product": "Academic Hub",
+  "securityLevel": "2026.09",
+  "lastAudit": "2026-09-09T19:45:00Z",
+  "status": "protected",
+  "summary": "Sem vulnerabilidades críticas ou altas detetadas na última vistoria de segurança.",
+  "checks": [
+    {
+      "id": "dependencies",
+      "label": "Dependências",
+      "status": "pass",
+      "detail": "npm audit sem vulnerabilidades high/critical na última validação."
+    },
+    {
+      "id": "application",
+      "label": "Aplicação",
+      "status": "pass",
+      "detail": "TypeScript, build e testes automáticos concluídos com sucesso."
+    },
+    {
+      "id": "database",
+      "label": "Base de dados e acesso",
+      "status": "pass",
+      "detail": "RLS e FORCE RLS ativos nas tabelas públicas; privilégios sensíveis revistos segundo o princípio do menor privilégio."
+    },
+    {
+      "id": "edge-functions",
+      "label": "Funções de servidor",
+      "status": "pass",
+      "detail": "Funções privilegiadas revistas; pedidos sem credenciais são rejeitados antes de operações protegidas nas funções reforçadas."
+    },
+    {
+      "id": "web-protection",
+      "label": "Proteção web",
+      "status": "pass",
+      "detail": "CSP, HSTS, anti-framing, nosniff e políticas de permissões configuradas."
+    }
+  ],
+  "acceptedFindings": [
+    {
+      "id": "extension_in_public:pg_net",
+      "label": "pg_net no schema public",
+      "reason": "Aviso conhecido do advisor. A extensão instalada é não relocatable e é mantida para evitar regressões na infraestrutura de notificações."
+    }
+  ],
+  "source": "manual-security-hardening-audit"
+}

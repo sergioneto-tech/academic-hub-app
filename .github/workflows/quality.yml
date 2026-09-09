@@ -51,6 +51,18 @@ jobs:
           if (!Array.isArray(notes.versions) || !notes.versions.some((item) => item?.version === appVersion)) {
             throw new Error(`release-notes.json não contém a entrada da versão ${appVersion}`);
           }
+          for (const entry of notes.versions ?? []) {
+            const kind = entry?.kind ?? 'app';
+            if (!['app', 'security', 'mixed'].includes(kind)) {
+              throw new Error(`Tipo de release inválido em ${entry?.version ?? 'desconhecida'}: ${kind}`);
+            }
+            if ((kind === 'security' || kind === 'mixed') && !/^\d{4}\.\d{2}$/.test(String(entry?.securityLevel ?? ''))) {
+              throw new Error(`Release ${entry?.version ?? 'desconhecida'} (${kind}) exige securityLevel no formato YYYY.MM`);
+            }
+            if (entry?.pushNotify !== undefined && typeof entry.pushNotify !== 'boolean') {
+              throw new Error(`pushNotify inválido em ${entry?.version ?? 'desconhecida'}`);
+            }
+          }
           console.log(`Release metadata aligned with v${appVersion}.`);
           NODE
 
@@ -77,6 +89,7 @@ jobs:
           src/components/FeedbackCloudBridge.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
+          src/components/ReleaseUpdateNotice.tsx
           src/components/SecurityStatusBadge.tsx
           src/components/SecurityStatusCard.tsx
           src/components/UpdateProgressModal.tsx

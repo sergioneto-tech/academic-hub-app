@@ -20,6 +20,11 @@ export default {
   async fetch(req: Request) {
     if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
+    // Reject requests that do not even present the server-to-server credential
+    // before creating a privileged Supabase client or reading protected config.
+    const suppliedSecret = req.headers.get("x-cron-secret");
+    if (!suppliedSecret) return jsonResponse({ error: "Unauthorized" }, 401);
+
     const url = Deno.env.get("SUPABASE_URL")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const db = createClient(url, service, { auth: { persistSession: false } });
@@ -29,7 +34,6 @@ export default {
       .in("key", ["vapid_public", "vapid_private", "cron_secret"]);
     const config = Object.fromEntries((configRows ?? []).map((row: any) => [row.key, row.value]));
 
-    const suppliedSecret = req.headers.get("x-cron-secret");
     if (!config.cron_secret || suppliedSecret !== config.cron_secret) {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }

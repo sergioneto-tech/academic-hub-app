@@ -82,6 +82,7 @@ jobs:
           src/components/AdminUserMonitor.tsx
           src/components/CloudAccountPanel.tsx
           src/components/CloudRecoveryCard.tsx
+          src/components/CloudSyncNotice.tsx
           src/components/CloudSyncStatusBadge.tsx
           src/components/CourseEvaluationSettings.tsx
           src/components/EvaluationFrameworkNotice.tsx

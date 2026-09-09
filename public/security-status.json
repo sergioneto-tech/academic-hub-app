@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "product": "Academic Hub",
   "securityLevel": "2026.09",
-  "lastAudit": "2026-09-09T20:24:25.098Z",
-  "status": "review",
-  "summary": "A última vistoria detetou um controlo de segurança que requer revisão.",
+  "lastAudit": "2026-09-09T20:34:35.378Z",
+  "status": "protected",
+  "summary": "Sem vulnerabilidades críticas ou altas ou desvios à baseline de segurança detetados na última vistoria automática.",
   "checks": [
     {
       "id": "dependencies",
@@ -21,8 +21,8 @@
     {
       "id": "database",
       "label": "Base de dados e acesso",
-      "status": "fail",
-      "detail": "Baseline live falhou: unexpected status 400: {\"message\":\"Failed to run sql query: ERROR: P0001: AH_AUDIT: expected authenticated table privilege missing\\nCONTEXT: PL/pgSQL function inline_code_block line 50 at RAISE\\n\"} Try rerunning the command with --debug to troubleshoot the error.. DB lint sem erros."
+      "status": "pass",
+      "detail": "RLS/FORCE RLS, ACLs exatas de tabelas e sequências (incluindo MAINTAIN), SECURITY DEFINER, views, Storage e default privileges passaram a baseline live. DB lint sem erros."
     },
     {
       "id": "frontend",

@@ -1,5 +1,6 @@
 import { Bell, BookOpenCheck, Check, ExternalLink, Monitor, Moon, Palette, Sun, UserRound, Volume2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import AccountSecurityCard from "@/components/AccountSecurityCard";
 import ExtracurricularCoursesCard from "@/components/ExtracurricularCoursesCard";
 import PushNotificationSettings from "@/components/PushNotificationSettings";
 import SecurityStatusCard from "@/components/SecurityStatusCard";
@@ -37,6 +38,8 @@ export default function SettingsPremium() {
     <section className="premium-surface overflow-hidden"><div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6"><div><div className="flex flex-wrap items-center gap-2"><h1 className="text-2xl font-semibold tracking-tight">Definições</h1><span className="rounded-full border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">v{APP_VERSION}</span></div><p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">Preferências da aplicação, aparência, alertas e configuração académica.</p></div><div className="flex flex-wrap gap-2"><Button asChild variant="outline" size="sm"><Link to="/conta"><UserRound className="mr-2 h-4 w-4"/>Conta e Perfil</Link></Button><Button asChild variant="outline" size="sm"><Link to="/ajuda"><BookOpenCheck className="mr-2 h-4 w-4"/>Ajuda & Guia</Link></Button></div></div></section>
 
     <SecurityStatusCard />
+
+    <AccountSecurityCard />
 
     <PushNotificationSettings />
 

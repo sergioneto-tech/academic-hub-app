@@ -1,6 +1,12 @@
 name: Weekly security audit
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/security-audit.mjs"
+      - ".github/workflows/security-audit.yml"
   schedule:
     # Domingo de madrugada. Em Madeira corresponde aproximadamente a 04:17/05:17,
     # consoante o horário de inverno/verão.

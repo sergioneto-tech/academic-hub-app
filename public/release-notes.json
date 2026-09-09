@@ -1,6 +1,21 @@
 {
-  "latest": "1.5.2",
+  "latest": "1.5.3",
   "versions": [
+    {
+      "version": "1.5.3",
+      "date": "2026-09-09",
+      "kind": "security",
+      "securityLevel": "2026.09",
+      "securitySummary": "Adiciona monitorização de segurança da conta, registo privado de incidentes e alertas de tentativas repetidas.",
+      "pushNotify": false,
+      "changes": [
+        "Nova área Segurança da conta nas Definições com histórico técnico recente visível apenas ao próprio aluno.",
+        "Tentativas de login falhadas, limites de autenticação, recuperações e logins válidos podem ser registados sem guardar passwords ou tokens.",
+        "Após várias tentativas de acesso à mesma conta através do Academic Hub, o aluno pode receber um alerta Push único por incidente.",
+        "Eventos e incidentes ficam numa área privada do Supabase, com retenção limitada, cadeia de integridade e possibilidade de legal hold em investigação.",
+        "A política de privacidade passa a explicar o tratamento de dados técnicos de segurança e respetivos limites."
+      ]
+    },
     {
       "version": "1.5.2",
       "date": "2026-09-09",

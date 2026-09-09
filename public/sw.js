@@ -1,4 +1,4 @@
-const SW_VERSION = "1.5.0-deeplink-1";
+const SW_VERSION = "1.5.0-update-control-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
 const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
@@ -17,7 +17,8 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {})
   );
-  self.skipWaiting();
+  // Não chama skipWaiting aqui: uma nova versão pública fica preparada e só
+  // é ativada quando o aluno escolhe "Atualizar" na interface.
 });
 
 self.addEventListener("activate", (event) => {

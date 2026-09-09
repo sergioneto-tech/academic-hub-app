@@ -28,7 +28,7 @@ type SecurityStatus = {
   source: string;
 };
 
-const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
 
 function formatAuditDate(value: string) {
   const date = new Date(value);
@@ -69,7 +69,7 @@ export default function SecurityStatusCard() {
   const stale = useMemo(() => {
     if (!data?.lastAudit) return false;
     const audit = new Date(data.lastAudit).getTime();
-    return Number.isFinite(audit) && Date.now() - audit > TEN_DAYS_MS;
+    return Number.isFinite(audit) && Date.now() - audit > EIGHT_DAYS_MS;
   }, [data]);
 
   const effectiveStatus = loadFailed || stale ? "attention" : data?.status ?? "attention";
@@ -80,12 +80,12 @@ export default function SecurityStatusCard() {
   const description = loadFailed
     ? "Não foi possível consultar o resultado da última vistoria. A aplicação não assume um estado seguro sem dados atuais."
     : stale
-      ? "A última vistoria ultrapassou o período esperado. O indicador voltará a verde quando uma nova auditoria concluir sem problemas relevantes."
+      ? "A última vistoria ultrapassou o período semanal esperado. O indicador voltará a verde quando uma nova auditoria concluir sem problemas relevantes."
       : data?.summary ?? "A aguardar o resultado da vistoria de segurança.";
 
   return (
-    <Card className={cn(
-      "premium-card overflow-hidden",
+    <Card id="seguranca" className={cn(
+      "premium-card scroll-mt-24 overflow-hidden",
       protectedStatus && "border-emerald-500/35",
       effectiveStatus === "attention" && "border-amber-500/35",
       reviewStatus && "border-destructive/40",

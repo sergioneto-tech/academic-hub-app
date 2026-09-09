@@ -1,0 +1,75 @@
+name: Security audit watchdog
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/security-watchdog.yml"
+  schedule:
+    # Verificação diária independente da vistoria principal.
+    - cron: "23 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check last audit age
+        id: freshness
+        shell: bash
+        run: |
+          set +e
+          node <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('public/security-status.json', 'utf8'));
+          const last = Date.parse(data.lastAudit || '');
+          const maxAge = 8 * 24 * 60 * 60 * 1000;
+          const stale = !Number.isFinite(last) || Date.now() - last > maxAge;
+          console.log(`Last audit: ${data.lastAudit || 'indisponível'}`);
+          process.exit(stale ? 2 : 0);
+          NODE
+          code=$?
+          if [ "$code" = "0" ]; then
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+
+      - name: Sync overdue audit alert
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STALE: ${{ steps.freshness.outputs.stale }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title="Weekly security audit is overdue"
+          issue_number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$title in:title" --json number,title --jq '.[0].number // empty')
+
+          if [ "$STALE" = "true" ]; then
+            body="O Academic Hub está há mais de 8 dias sem uma vistoria de segurança publicada.\n\nVerifica o workflow Weekly security audit e a última execução agendada.\n\nWatchdog: $RUN_URL"
+            if [ -n "$issue_number" ]; then
+              gh issue comment "$issue_number" --repo "$GITHUB_REPOSITORY" --body "$body"
+            else
+              gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"
+            fi
+          elif [ -n "$issue_number" ]; then
+            gh issue close "$issue_number" --repo "$GITHUB_REPOSITORY" --comment "Foi publicada uma vistoria recente; watchdog normalizado: $RUN_URL"
+          fi
+
+      - name: Fail when audit is overdue
+        if: steps.freshness.outputs.stale == 'true'
+        run: |
+          echo "::error::O Academic Hub está há mais de 8 dias sem uma vistoria de segurança publicada."
+          exit 1

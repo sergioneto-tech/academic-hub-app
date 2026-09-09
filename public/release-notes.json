@@ -11,7 +11,10 @@
         "Reforço das permissões PostgreSQL/Supabase, incluindo remoção e vigilância do privilégio MAINTAIN introduzido no PostgreSQL 17.",
         "Atualizações da aplicação passam a ser ativadas pelo aluno através do botão Atualizar, com etapas reais do processo e sem percentagens simuladas.",
         "Melhorias de estabilidade em iPad/PWA e no encaminhamento de notificações para a área correspondente da aplicação."
-      ]
+      ],
+      "kind": "mixed",
+      "securityLevel": "2026.09",
+      "securitySummary": "Inclui melhorias da aplicação e reforços de segurança validados na baseline 2026.09."
     },
     {
       "version": "1.4.0",

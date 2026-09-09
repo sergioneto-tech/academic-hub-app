@@ -11,12 +11,17 @@ const yesNo = (value: boolean) => value ? "Sim" : "Não";
 export default {
   async fetch(req: Request) {
     if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
+
+    // Reject requests without the server credential before any privileged lookup.
+    const suppliedSecret = req.headers.get("x-cron-secret");
+    if (!suppliedSecret) return jsonResponse({ error: "Unauthorized" }, 401);
+
     const url = Deno.env.get("SUPABASE_URL")!;
     const service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const db = createClient(url, service, { auth: { persistSession: false } });
     const { data: configRows } = await db.from("push_server_config").select("key,value").in("key", ["vapid_public", "vapid_private", "cron_secret"]);
     const config = Object.fromEntries((configRows ?? []).map((row: any) => [row.key, row.value]));
-    if (!config.cron_secret || req.headers.get("x-cron-secret") !== config.cron_secret) return jsonResponse({ error: "Unauthorized" }, 401);
+    if (!config.cron_secret || suppliedSecret !== config.cron_secret) return jsonResponse({ error: "Unauthorized" }, 401);
     if (!config.vapid_public || !config.vapid_private) return jsonResponse({ error: "Push not configured" }, 503);
 
     const body = await req.json().catch(() => ({}));

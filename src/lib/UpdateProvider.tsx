@@ -1,9 +1,13 @@
-import React, { createContext, useContext, useEffect, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+
+export type UpdatePhase = "idle" | "preparing" | "checking" | "installing" | "activating" | "restarting" | "error";
 
 type Ctx = {
   updateAvailable: boolean;
   applyUpdate: () => Promise<void>;
   isSupported: boolean;
+  updatePhase: UpdatePhase;
+  completedUpdatePhases: UpdatePhase[];
 };
 
 const UpdateCtx = createContext<Ctx | null>(null);
@@ -41,10 +45,32 @@ function activateWaitingWorker(registration: ServiceWorkerRegistration | null) {
   }
 }
 
+function waitForWorkerInstall(worker: ServiceWorker, timeoutMs = 20_000) {
+  if (["installed", "activated", "redundant"].includes(worker.state)) return Promise.resolve();
+
+  return new Promise<void>((resolve) => {
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(timeout);
+      worker.removeEventListener("statechange", onStateChange);
+      resolve();
+    };
+    const onStateChange = () => {
+      if (["installed", "activated", "redundant"].includes(worker.state)) finish();
+    };
+    const timeout = window.setTimeout(finish, timeoutMs);
+    worker.addEventListener("statechange", onStateChange);
+  });
+}
+
 export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const regRef = useRef<ServiceWorkerRegistration | null>(null);
   const refreshingRef = useRef(false);
   const applyingRef = useRef(false);
+  const [updatePhase, setUpdatePhase] = useState<UpdatePhase>("idle");
+  const [completedUpdatePhases, setCompletedUpdatePhases] = useState<UpdatePhase[]>([]);
 
   const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
 
@@ -60,6 +86,8 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     const checkForUpdate = () => {
       const reg = regRef.current;
       if (!reg || applyingRef.current) return;
+      // Apenas verifica/prepara o worker. A ativação fica reservada ao clique do aluno
+      // quando release-notes.json anunciar uma versão superior.
       void reg.update().catch(() => {});
     };
 
@@ -74,39 +102,23 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         if (disposed) return;
         registered = reg;
         regRef.current = reg;
-
-        // Alterações técnicas do Service Worker são aplicadas silenciosamente.
-        // O cartão de "Nova versão" fica reservado ao manifesto de versões da app,
-        // evitando anunciar versões antigas devido a workers/cache residuais.
-        activateWaitingWorker(reg);
         void reg.update().catch(() => {});
-
-        reg.addEventListener("updatefound", () => {
-          const installing = reg.installing;
-          if (!installing) return;
-
-          installing.addEventListener("statechange", () => {
-            if (installing.state !== "installed" || applyingRef.current) return;
-            if (navigator.serviceWorker.controller) activateWaitingWorker(reg);
-          });
-        });
 
         window.addEventListener("focus", onFocus);
         document.addEventListener("visibilitychange", onVisibility);
       })
       .catch(() => {
-        // Sem Service Worker não há atualização automática, mas a app continua utilizável.
+        // Sem Service Worker não há atualização controlada, mas a app continua utilizável.
       });
 
     const onControllerChange = () => {
-      // Na primeira instalação apenas passa a existir um controlador; não é necessário
-      // recarregar. Nas trocas seguintes, recarrega para usar imediatamente o novo bundle.
       if (!hasControlledPage) {
         hasControlledPage = true;
         return;
       }
-      if (refreshingRef.current) return;
+      if (refreshingRef.current || !applyingRef.current) return;
       refreshingRef.current = true;
+      setUpdatePhase("restarting");
       hardReload();
     };
 
@@ -122,39 +134,72 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isSupported]);
 
+  const completePhase = (phase: UpdatePhase) => {
+    setCompletedUpdatePhases((current) => current.includes(phase) ? current : [...current, phase]);
+  };
+
   const applyUpdate = async () => {
     if (applyingRef.current) return;
     applyingRef.current = true;
-    const reg = regRef.current;
+    refreshingRef.current = false;
+    setCompletedUpdatePhases([]);
 
-    await clearAcademicHubCaches();
+    try {
+      setUpdatePhase("preparing");
+      await clearAcademicHubCaches();
+      completePhase("preparing");
 
-    if (reg) {
-      try {
-        await reg.update();
-      } catch {
-        // O reload com cache-buster abaixo continua a ser um fallback válido.
+      const reg = regRef.current;
+      if (reg) {
+        setUpdatePhase("checking");
+        try {
+          await reg.update();
+          completePhase("checking");
+        } catch {
+          // Se a verificação direta falhar, o reload com cache-buster continua a ser
+          // um fallback real para obter o HTML/bundle atual do servidor.
+        }
+
+        const installing = reg.installing;
+        if (installing) {
+          setUpdatePhase("installing");
+          await waitForWorkerInstall(installing);
+          if (installing.state !== "redundant") completePhase("installing");
+        }
+
+        if (reg.waiting) {
+          setUpdatePhase("activating");
+          if (activateWaitingWorker(reg)) {
+            completePhase("activating");
+            setUpdatePhase("restarting");
+            window.setTimeout(() => {
+              if (refreshingRef.current) return;
+              refreshingRef.current = true;
+              hardReload();
+            }, 1400);
+            return;
+          }
+        }
       }
 
-      if (activateWaitingWorker(reg)) {
-        window.setTimeout(() => {
-          if (refreshingRef.current) return;
-          refreshingRef.current = true;
-          hardReload();
-        }, 1400);
-        return;
-      }
+      setUpdatePhase("restarting");
+      refreshingRef.current = true;
+      hardReload();
+    } catch {
+      applyingRef.current = false;
+      setUpdatePhase("error");
     }
-
-    refreshingRef.current = true;
-    hardReload();
   };
 
-  // Um Service Worker diferente não é, por si só, uma nova versão pública da app.
-  // A interface só anuncia versões superiores através do release-notes.json.
+  // A interface anuncia uma nova versão apenas quando release-notes.json contém
+  // uma versão superior. Um worker técnico, por si só, não cria um falso aviso.
   const updateAvailable = false;
 
-  return <UpdateCtx.Provider value={{ updateAvailable, applyUpdate, isSupported }}>{children}</UpdateCtx.Provider>;
+  return (
+    <UpdateCtx.Provider value={{ updateAvailable, applyUpdate, isSupported, updatePhase, completedUpdatePhases }}>
+      {children}
+    </UpdateCtx.Provider>
+  );
 }
 
 export function useUpdate() {

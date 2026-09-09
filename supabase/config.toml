@@ -9,7 +9,8 @@ uri = "pg-functions://postgres/public/hook_restrict_signup_to_uab"
 # - POST de cron/trigger é autenticado dentro da própria função por x-cron-secret;
 # - academic-push valida internamente x-cron-secret ou o JWT do utilizador;
 # - feedback-push aceita apenas o segredo interno usado pelo trigger da base de dados;
-# - survey-push aceita apenas o segredo interno usado pelo trigger das avaliações.
+# - survey-push aceita apenas o segredo interno usado pelo trigger das avaliações;
+# - security-event recebe telemetria de autenticação e faz a validação necessária dentro da função.
 [functions.academic-push]
 verify_jwt = false
 
@@ -25,7 +26,13 @@ verify_jwt = false
 [functions.uab-assessment-sync]
 verify_jwt = false
 
-# Endpoint administrativo: mantém a barreira JWT do gateway e volta a validar
-# o utilizador/ID do gestor dentro da própria função.
+[functions.security-event]
+verify_jwt = false
+
+# Endpoints autenticados: mantêm a barreira JWT do gateway e voltam a validar
+# o utilizador dentro da própria função antes de devolver dados.
 [functions.admin-user-summary]
+verify_jwt = true
+
+[functions.security-activity]
 verify_jwt = true

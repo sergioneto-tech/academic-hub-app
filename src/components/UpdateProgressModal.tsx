@@ -11,11 +11,10 @@ const STEPS: Array<{ phase: Exclude<UpdatePhase, "idle" | "error">; label: strin
 ];
 
 export default function UpdateProgressModal() {
-  const { updatePhase } = useUpdate();
+  const { updatePhase, completedUpdatePhases } = useUpdate();
   if (updatePhase === "idle") return null;
 
   const error = updatePhase === "error";
-  const currentIndex = error ? -1 : STEPS.findIndex((step) => step.phase === updatePhase);
 
   return (
     <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="status" aria-live="polite">
@@ -36,9 +35,9 @@ export default function UpdateProgressModal() {
 
         {!error && (
           <div className="mt-5 space-y-2">
-            {STEPS.map((step, index) => {
-              const done = currentIndex > index;
-              const active = currentIndex === index;
+            {STEPS.map((step) => {
+              const done = completedUpdatePhases.includes(step.phase);
+              const active = updatePhase === step.phase;
               return (
                 <div key={step.phase} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", active && "border-primary/35 bg-primary/5")}>
                   {done ? (

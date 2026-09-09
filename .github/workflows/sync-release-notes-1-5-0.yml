@@ -1,0 +1,59 @@
+name: Sync release notes 1.5.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/sync-release-notes-1-5-0.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Align release notes
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'public/release-notes.json';
+          const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+          data.versions = Array.isArray(data.versions) ? data.versions : [];
+          const entry = {
+            version: '1.5.0',
+            date: '2026-09-09',
+            changes: [
+              'Novo estado de segurança visível no Academic Hub, com nível, data da última vistoria e detalhe dos controlos verificados.',
+              'Vistoria de segurança automática semanal com verificação de dependências, aplicação, base de dados, frontend e proteção web.',
+              'Novo watchdog diário: se a vistoria semanal ficar mais de 8 dias sem novo resultado, o estado deixa de aparecer como protegido e é criado um alerta técnico.',
+              'Reforço das permissões PostgreSQL/Supabase, incluindo remoção e vigilância do privilégio MAINTAIN introduzido no PostgreSQL 17.',
+              'Atualizações da aplicação passam a ser ativadas pelo aluno através do botão Atualizar, com etapas reais do processo e sem percentagens simuladas.',
+              'Melhorias de estabilidade em iPad/PWA e no encaminhamento de notificações para a área correspondente da aplicação.'
+            ]
+          };
+          const existing = data.versions.findIndex((item) => item?.version === entry.version);
+          if (existing >= 0) data.versions[existing] = entry;
+          else data.versions.unshift(entry);
+          data.latest = entry.version;
+          fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+          NODE
+
+      - name: Commit aligned metadata
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- public/release-notes.json; then
+            echo "Release notes already aligned."
+            exit 0
+          fi
+          git config user.name "academic-hub-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git add public/release-notes.json
+          git commit -m "chore: align release notes with v1.5.0"
+          git pull --rebase origin main
+          git push origin HEAD:main

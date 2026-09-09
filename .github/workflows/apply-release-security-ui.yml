@@ -1,0 +1,85 @@
+name: Apply differentiated release update UI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/apply-release-security-ui.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Patch Layout and release metadata
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          const layoutPath = 'src/components/Layout.tsx';
+          let layout = fs.readFileSync(layoutPath, 'utf8');
+
+          if (!layout.includes('ReleaseUpdateNotice')) {
+            layout = layout.replace(
+              'import { ProfileAvatar } from "@/components/ProfileAvatarEditor";',
+              'import { ProfileAvatar } from "@/components/ProfileAvatarEditor";\nimport ReleaseUpdateNotice, { type ReleaseUpdateEntry } from "@/components/ReleaseUpdateNotice";'
+            );
+          }
+
+          layout = layout.replace('MoreHorizontal, RefreshCw, Settings', 'MoreHorizontal, Settings');
+          layout = layout.replace(
+            'type ReleaseNotesEntry={version:string;date?:string;changes:string[]};',
+            'type ReleaseNotesEntry=ReleaseUpdateEntry;'
+          );
+
+          const oldBanner = /\{\(updateAvailable\|\|releaseNotesUpdateAvailable\)&&!deferUpdate&&<section className="premium-surface mb-5 border-warning\/35 bg-warning\/10 p-4 text-sm">.*?<\/section>\}/;
+          if (!oldBanner.test(layout)) {
+            throw new Error('Could not locate the legacy update banner in Layout.tsx');
+          }
+
+          layout = layout.replace(
+            oldBanner,
+            `<ReleaseUpdateNotice
+              entry={latestEntry}
+              available={updateAvailable||releaseNotesUpdateAvailable}
+              deferred={deferUpdate}
+              onBackup={downloadBackup}
+              onLater={()=>{try{if(latestEntry?.version)localStorage.setItem(UPDATE_DEFER_KEY,latestEntry.version)}catch{}setDeferUpdate(true)}}
+              onUpdate={()=>void applyUpdate()}
+            />`
+          );
+
+          fs.writeFileSync(layoutPath, layout);
+
+          const notesPath = 'public/release-notes.json';
+          const notes = JSON.parse(fs.readFileSync(notesPath, 'utf8'));
+          const current = Array.isArray(notes.versions) ? notes.versions.find((item) => item?.version === '1.5.0') : null;
+          if (!current) throw new Error('release-notes.json does not contain v1.5.0');
+          current.kind = 'mixed';
+          current.securityLevel = '2026.09';
+          current.securitySummary = 'Inclui melhorias da aplicação e reforços de segurança validados na baseline 2026.09.';
+          fs.writeFileSync(notesPath, JSON.stringify(notes, null, 2) + '\n');
+          NODE
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src/components/Layout.tsx public/release-notes.json; then
+            echo "Already applied."
+            exit 0
+          fi
+          git config user.name "academic-hub-release-bot"
+          git config user.email "release-bot@users.noreply.github.com"
+          git add src/components/Layout.tsx public/release-notes.json
+          git commit -m "feat: distinguish app and security updates"
+          git pull --rebase origin main
+          git push origin HEAD:main

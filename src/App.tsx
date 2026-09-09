@@ -16,6 +16,8 @@ import FeedbackGlobalSyncPulse from "./components/FeedbackGlobalSyncPulse";
 import AppSatisfactionSurvey from "./components/AppSatisfactionSurvey";
 import AdminSurveyResults from "./components/AdminSurveyResults";
 import PushDeepLinkNotice from "./components/PushDeepLinkNotice";
+import SecurityStatusBadge from "./components/SecurityStatusBadge";
+import UpdateProgressModal from "./components/UpdateProgressModal";
 import Dashboard from "./pages/Dashboard";
 import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
@@ -64,9 +66,10 @@ function AcademicHubApp() {
       <AdminFeedbackMonitor />
       <AppSatisfactionSurvey />
       <AdminSurveyResults />
+      <UpdateProgressModal />
       <Routes>
         <Route element={<Layout />}>
-          <Route path="/" element={<ExplorePage><Dashboard /></ExplorePage>} />
+          <Route path="/" element={<ExplorePage><><SecurityStatusBadge /><Dashboard /></></ExplorePage>} />
           <Route path="/cadeiras" element={<LazyPage><ExplorePage><CoursesPage /></ExplorePage></LazyPage>} />
           <Route path="/cadeiras/:id" element={<LazyPage><ExplorePage><CourseDetailPremium /></ExplorePage></LazyPage>} />
           <Route path="/calendario" element={<LazyPage><ExplorePage><CalendarPage /></ExplorePage></LazyPage>} />

@@ -64,11 +64,6 @@ jobs:
           const idx=notes.versions.findIndex(x=>x?.version==='1.5.3');if(idx>=0)notes.versions[idx]=entry;else notes.versions.unshift(entry);notes.latest='1.5.3';fs.writeFileSync(notesPath,JSON.stringify(notes,null,2)+'\n');
 
           const swPath='public/sw.js';let sw=fs.readFileSync(swPath,'utf8');sw=sw.replace(/const SW_VERSION = "[^"]+";/,'const SW_VERSION = "1.5.3-security-account-1";');sw=sw.replace(/"\.\/release-notes\.json\?v=[^"]+",/,'"./release-notes.json?v=1.5.3",');fs.writeFileSync(swPath,sw);
-
-          const quality='.github/workflows/quality.yml';let q=fs.readFileSync(quality,'utf8');
-          if(!q.includes('src/components/AccountSecurityCard.tsx'))q=q.replace('          src/components/AdminUserMonitor.tsx\n','          src/components/AdminUserMonitor.tsx\n          src/components/AccountSecurityCard.tsx\n');
-          if(!q.includes('src/lib/securityTelemetry.ts'))q=q.replace('          src/lib/realtimeSync.ts\n','          src/lib/realtimeSync.ts\n          src/lib/securityTelemetry.ts\n');
-          fs.writeFileSync(quality,q);
           NODE
       - name: Commit
         shell: bash
@@ -76,7 +71,7 @@ jobs:
           set -euo pipefail
           git config user.name "academic-hub-security-bot"
           git config user.email "security-bot@users.noreply.github.com"
-          git add src/components/CloudAccountPanel.tsx src/pages/Legal.tsx src/lib/version.ts public/release-notes.json public/sw.js .github/workflows/quality.yml
+          git add src/components/CloudAccountPanel.tsx src/pages/Legal.tsx src/lib/version.ts public/release-notes.json public/sw.js
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "release: Academic Hub 1.5.3 account security"
           git pull --rebase origin main

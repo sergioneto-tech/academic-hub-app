@@ -2,47 +2,41 @@
   "schemaVersion": 1,
   "product": "Academic Hub",
   "securityLevel": "2026.09",
-  "lastAudit": "2026-09-09T19:45:00Z",
-  "status": "protected",
-  "summary": "Sem vulnerabilidades críticas ou altas detetadas na última vistoria de segurança.",
+  "lastAudit": "2026-09-09T20:21:30.137Z",
+  "status": "attention",
+  "summary": "A última vistoria não conseguiu concluir todos os controlos e requer nova validação.",
   "checks": [
     {
       "id": "dependencies",
       "label": "Dependências",
       "status": "pass",
-      "detail": "npm audit sem vulnerabilidades high/critical na última validação."
+      "detail": "0 vulnerabilidades high/critical detetadas pelo npm audit."
     },
     {
       "id": "application",
       "label": "Aplicação",
       "status": "pass",
-      "detail": "TypeScript, build e testes automáticos concluídos com sucesso."
+      "detail": "TypeScript, build e testes concluídos sem erros bloqueantes; o lint é validado pelo workflow Quality checks."
     },
     {
       "id": "database",
       "label": "Base de dados e acesso",
-      "status": "pass",
-      "detail": "RLS e FORCE RLS ativos nas tabelas públicas; privilégios sensíveis revistos segundo o princípio do menor privilégio."
+      "status": "warning",
+      "detail": "Security Advisor CLI não concluiu ({\"_tag\":\"Error\",\"error\":{\"code\":\"LegacyDbAdvisorsSecurityStatusError\",\"message\":\"unexpected security advisors status 403: {\\\"message\\\":\\\"Your account does not have the necessary privileges to access this endpoint. For more details, refer to our documentation https://supabase.com/). O comando de controlo live não concluiu (DESCRIPTION Execute a SQL query against the database. USAGE supabase db query [flags] [<sql>] ARGUMENTS sql string SQL query to execute. (optional) FLAGS --db-url string Queries the database specified by the connection string (must be percent-encoded). --linked Queries the linked). DB lint sem erros."
     },
     {
-      "id": "edge-functions",
-      "label": "Funções de servidor",
+      "id": "frontend",
+      "label": "Frontend",
       "status": "pass",
-      "detail": "Funções privilegiadas revistas; pedidos sem credenciais são rejeitados antes de operações protegidas nas funções reforçadas."
+      "detail": "Sem service-role/secret keys no cliente e sem eval, new Function ou dangerouslySetInnerHTML detetados."
     },
     {
       "id": "web-protection",
       "label": "Proteção web",
       "status": "pass",
-      "detail": "CSP, HSTS, anti-framing, nosniff e políticas de permissões configuradas."
+      "detail": "CSP, HSTS, nosniff, anti-framing e Referrer-Policy confirmados no site live."
     }
   ],
-  "acceptedFindings": [
-    {
-      "id": "extension_in_public:pg_net",
-      "label": "pg_net no schema public",
-      "reason": "Aviso conhecido do advisor. A extensão instalada é não relocatable e é mantida para evitar regressões na infraestrutura de notificações."
-    }
-  ],
-  "source": "manual-security-hardening-audit"
+  "acceptedFindings": [],
+  "source": "automated-weekly-security-audit"
 }

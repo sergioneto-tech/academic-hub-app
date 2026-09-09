@@ -1,6 +1,19 @@
 {
-  "latest": "1.5.0",
+  "latest": "1.5.1",
   "versions": [
+    {
+      "version": "1.5.1",
+      "date": "2026-09-09",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "Separadas formalmente a versão da aplicação e o nível de segurança, evitando tratar uma atualização funcional como atualização de segurança.",
+        "Novo aviso de atualização distingue atualização normal, atualização de segurança e atualização mista, apresentando os identificadores corretos.",
+        "Atualização controlada pelo utilizador em cada dispositivo, com fases reais do Service Worker e sem percentagens simuladas.",
+        "Estado de segurança compacto no Início e detalhes completos em Definições, alimentados pela vistoria automática semanal.",
+        "Infraestrutura de notificações Push de releases preparada com deduplicação; esta versão fica sem envio Push automático para permitir validação inicial."
+      ]
+    },
     {
       "version": "1.5.0",
       "date": "2026-09-09",

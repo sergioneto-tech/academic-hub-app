@@ -111,8 +111,12 @@ begin
   ) then raise exception 'AH_AUDIT: public table without RLS/FORCE RLS'; end if;
 
   if exists (
-    select 1 from information_schema.role_table_grants
-    where table_schema='public' and grantee='anon'
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
+    left join pg_roles r on r.oid=x.grantee
+    where n.nspname='public' and c.relkind='r' and r.rolname='anon'
   ) then raise exception 'AH_AUDIT: anon has direct public-table privileges'; end if;
 
   if exists (
@@ -127,11 +131,16 @@ begin
       ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
       ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
       ('user_state_history','SELECT')
+    ), actual as (
+      select c.relname::text as table_name, x.privilege_type::text as privilege_type
+      from pg_class c
+      join pg_namespace n on n.oid=c.relnamespace
+      cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
+      left join pg_roles r on r.oid=x.grantee
+      where n.nspname='public' and c.relkind='r' and r.rolname='authenticated'
     )
-    select 1
-    from information_schema.role_table_grants g
-    where g.table_schema='public' and g.grantee='authenticated'
-      and not exists (select 1 from allowed a where a.table_name=g.table_name and a.privilege_type=g.privilege_type)
+    select 1 from actual g
+    where not exists (select 1 from allowed a where a.table_name=g.table_name and a.privilege_type=g.privilege_type)
   ) then raise exception 'AH_AUDIT: unexpected authenticated table privilege'; end if;
 
   if exists (
@@ -146,29 +155,45 @@ begin
       ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
       ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
       ('user_state_history','SELECT')
+    ), actual as (
+      select c.relname::text as table_name, x.privilege_type::text as privilege_type
+      from pg_class c
+      join pg_namespace n on n.oid=c.relnamespace
+      cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
+      left join pg_roles r on r.oid=x.grantee
+      where n.nspname='public' and c.relkind='r' and r.rolname='authenticated'
     )
     select 1 from allowed a
-    where not exists (
-      select 1 from information_schema.role_table_grants g
-      where g.table_schema='public' and g.grantee='authenticated' and g.table_name=a.table_name and g.privilege_type=a.privilege_type
-    )
+    where not exists (select 1 from actual g where g.table_name=a.table_name and g.privilege_type=a.privilege_type)
   ) then raise exception 'AH_AUDIT: expected authenticated table privilege missing'; end if;
 
   if exists (
-    select 1 from information_schema.role_usage_grants
-    where object_schema='public' and object_type='SEQUENCE' and grantee='anon'
-  ) then raise exception 'AH_AUDIT: anon has sequence USAGE'; end if;
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl, acldefault('S', c.relowner))) x
+    left join pg_roles r on r.oid=x.grantee
+    where n.nspname='public' and c.relkind='S' and r.rolname='anon'
+  ) then raise exception 'AH_AUDIT: anon has sequence privilege'; end if;
 
   if exists (
-    select 1 from information_schema.role_usage_grants
-    where object_schema='public' and object_type='SEQUENCE' and grantee='authenticated'
-      and not (object_name='feedback_reference_seq' and privilege_type='USAGE')
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl, acldefault('S', c.relowner))) x
+    left join pg_roles r on r.oid=x.grantee
+    where n.nspname='public' and c.relkind='S' and r.rolname='authenticated'
+      and not (c.relname='feedback_reference_seq' and x.privilege_type='USAGE')
   ) then raise exception 'AH_AUDIT: unexpected authenticated sequence privilege'; end if;
 
   if not exists (
-    select 1 from information_schema.role_usage_grants
-    where object_schema='public' and object_type='SEQUENCE' and grantee='authenticated'
-      and object_name='feedback_reference_seq' and privilege_type='USAGE'
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl, acldefault('S', c.relowner))) x
+    left join pg_roles r on r.oid=x.grantee
+    where n.nspname='public' and c.relkind='S' and r.rolname='authenticated'
+      and c.relname='feedback_reference_seq' and x.privilege_type='USAGE'
   ) then raise exception 'AH_AUDIT: feedback reference sequence privilege missing'; end if;
 
   if exists (
@@ -199,9 +224,9 @@ end
 $audit$;`;
 
   const dbControls = run("supabase", ["db", "query", "--linked", dbSecuritySql]);
-  let controlsOk = dbControls.ok;
+  const controlsOk = dbControls.ok;
   let severity = "pass";
-  let controlsDetail = "RLS/FORCE RLS, grants de tabelas e sequências, SECURITY DEFINER, views, Storage e default privileges passaram a baseline live.";
+  let controlsDetail = "RLS/FORCE RLS, ACLs exatas de tabelas e sequências (incluindo MAINTAIN), SECURITY DEFINER, views, Storage e default privileges passaram a baseline live.";
 
   if (!dbControls.ok) {
     const errorText = `${dbControls.stderr}\n${dbControls.stdout}`;

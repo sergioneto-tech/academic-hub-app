@@ -30,6 +30,8 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       SUPABASE_PROJECT_REF: apgoyzfzuukkpmuxiqvy
+      SUPABASE_DB_POOLER_HOST: aws-1-eu-west-1.pooler.supabase.com
+      SUPABASE_DB_POOLER_USER: postgres.apgoyzfzuukkpmuxiqvy
 
     steps:
       - name: Checkout repository
@@ -67,11 +69,32 @@ jobs:
 
           echo "Destino e token Supabase validados para o Academic Hub atual."
 
-      - name: Link production project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+      # O `supabase link` consulta chaves/configuração adicionais do projeto e pode
+      # falhar com scoped PATs mesmo quando o token tem apenas as permissões de CI
+      # necessárias. Para migrações usamos diretamente o Session Pooler IPv4,
+      # recomendado para ambientes como GitHub Actions sem IPv6 garantido.
+      - name: Build secure IPv4 database URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          db_url=$(python - <<'PY'
+          import os
+          from urllib.parse import quote
+
+          password = quote(os.environ["SUPABASE_DB_PASSWORD"], safe="")
+          user = os.environ["SUPABASE_DB_POOLER_USER"]
+          host = os.environ["SUPABASE_DB_POOLER_HOST"]
+          print(f"postgresql://{user}:{password}@{host}:5432/postgres")
+          PY
+          )
+          echo "::add-mask::$db_url"
+          echo "SUPABASE_DB_URL=$db_url" >> "$GITHUB_ENV"
 
       - name: Apply database migrations
-        run: supabase db push --linked --include-all
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --db-url "$SUPABASE_DB_URL" --include-all
 
       # Não usamos `supabase config push` em CI: o comando consulta recursos de
       # infraestrutura que não fazem parte da configuração do Academic Hub e

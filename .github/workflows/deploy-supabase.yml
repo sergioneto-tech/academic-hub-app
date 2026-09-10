@@ -29,9 +29,6 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      # Produção atual sob controlo direto do utilizador. O antigo dayett...
-      # pertence ao backend legado Lovable Cloud e não deve receber deploys.
-      # O token de CI é limitado ao projeto academichub e às permissões necessárias.
       SUPABASE_PROJECT_REF: apgoyzfzuukkpmuxiqvy
 
     steps:
@@ -77,12 +74,10 @@ jobs:
         run: supabase db push --linked --include-all
 
       # Não usamos `supabase config push` em CI: o comando consulta recursos de
-      # infraestrutura (incluindo add-ons) que não fazem parte da configuração
-      # do Academic Hub e obrigariam a alargar desnecessariamente o token.
-      # O único ajuste remoto de Auth mantido em config.toml é aplicado aqui de
-      # forma explícita e com privilégios mínimos. As opções verify_jwt das
-      # Edge Functions são lidas diretamente de config.toml por functions deploy.
-      - name: Apply Academic Hub auth hook
+      # infraestrutura que não fazem parte da configuração do Academic Hub e
+      # obrigaria a alargar desnecessariamente o token. Mantemos explicitamente
+      # apenas as opções remotas de Auth necessárias à aplicação e à auditoria.
+      - name: Apply Academic Hub auth security configuration
         shell: bash
         run: |
           set -euo pipefail
@@ -91,9 +86,17 @@ jobs:
             "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
             --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             --header "Content-Type: application/json" \
-            --data '{"hook_before_user_created_enabled":true,"hook_before_user_created_uri":"pg-functions://postgres/public/hook_restrict_signup_to_uab"}' \
+            --data '{"hook_before_user_created_enabled":true,"hook_before_user_created_uri":"pg-functions://postgres/public/hook_restrict_signup_to_uab","audit_log_disable_postgres":false}' \
             > /dev/null
-          echo "Auth Hook do Academic Hub aplicado."
+
+          current=$(curl --silent --show-error --fail-with-body \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN")
+          if [ "$(printf '%s' "$current" | jq -r '.audit_log_disable_postgres')" != "false" ]; then
+            echo "::error::A escrita dos Auth Audit Logs no Postgres não ficou ativa."
+            exit 4
+          fi
+          echo "Auth Hook e escrita de Auth Audit Logs no Postgres confirmados."
 
       - name: Apply Academic Hub email templates
         shell: bash

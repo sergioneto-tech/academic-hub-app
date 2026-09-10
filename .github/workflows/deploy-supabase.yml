@@ -76,8 +76,9 @@ jobs:
       # Não usamos `supabase config push` em CI: o comando consulta recursos de
       # infraestrutura que não fazem parte da configuração do Academic Hub e
       # obrigaria a alargar desnecessariamente o token. Mantemos explicitamente
-      # apenas as opções remotas de Auth necessárias à aplicação e à auditoria.
-      - name: Apply Academic Hub auth security configuration
+      # apenas o Auth Hook suportado pela Management API. Os Auth Audit Logs são
+      # monitorizados através da API de Logs com um token separado e read-only.
+      - name: Apply Academic Hub auth hook
         shell: bash
         run: |
           set -euo pipefail
@@ -86,17 +87,9 @@ jobs:
             "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
             --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             --header "Content-Type: application/json" \
-            --data '{"hook_before_user_created_enabled":true,"hook_before_user_created_uri":"pg-functions://postgres/public/hook_restrict_signup_to_uab","audit_log_disable_postgres":false}' \
+            --data '{"hook_before_user_created_enabled":true,"hook_before_user_created_uri":"pg-functions://postgres/public/hook_restrict_signup_to_uab"}' \
             > /dev/null
-
-          current=$(curl --silent --show-error --fail-with-body \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
-            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN")
-          if [ "$(printf '%s' "$current" | jq -r '.audit_log_disable_postgres')" != "false" ]; then
-            echo "::error::A escrita dos Auth Audit Logs no Postgres não ficou ativa."
-            exit 4
-          fi
-          echo "Auth Hook e escrita de Auth Audit Logs no Postgres confirmados."
+          echo "Auth Hook do Academic Hub aplicado."
 
       - name: Apply Academic Hub email templates
         shell: bash

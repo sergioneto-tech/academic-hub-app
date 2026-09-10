@@ -314,6 +314,9 @@ function markOpenStudentRequestRead() {
 }
 
 function renderReceiptRows(container: HTMLElement, rows: ReceiptRow[]) {
+  const signature = rows.map((row) => `${row.id}:${row.created_at}:${row.read_at ?? ""}`).join("|");
+  if (container.dataset.receiptSignature === signature) return;
+  container.dataset.receiptSignature = signature;
   container.replaceChildren();
 
   const title = document.createElement("div");

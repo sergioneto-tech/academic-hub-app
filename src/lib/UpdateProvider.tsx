@@ -86,18 +86,19 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     const checkForUpdate = () => {
       const reg = regRef.current;
       if (!reg || applyingRef.current) return;
-      // Apenas verifica/prepara o worker. A ativação fica reservada ao clique do aluno
-      // quando release-notes.json anunciar uma versão superior.
+      // O script do worker não deve depender do HTTP cache. Isto é especialmente
+      // importante em Safari/iOS e em web apps instaladas no ecrã principal.
       void reg.update().catch(() => {});
     };
 
     const onFocus = () => checkForUpdate();
+    const onOnline = () => checkForUpdate();
     const onVisibility = () => {
       if (document.visibilityState === "visible") checkForUpdate();
     };
 
     navigator.serviceWorker
-      .register(swUrl)
+      .register(swUrl, { updateViaCache: "none" })
       .then((reg) => {
         if (disposed) return;
         registered = reg;
@@ -105,6 +106,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         void reg.update().catch(() => {});
 
         window.addEventListener("focus", onFocus);
+        window.addEventListener("online", onOnline);
         document.addEventListener("visibilitychange", onVisibility);
       })
       .catch(() => {
@@ -128,6 +130,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       disposed = true;
       if (registered) {
         window.removeEventListener("focus", onFocus);
+        window.removeEventListener("online", onOnline);
         document.removeEventListener("visibilitychange", onVisibility);
       }
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);

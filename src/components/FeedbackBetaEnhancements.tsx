@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getStoredSession, refreshSession, type CloudConfig } from "@/lib/cloudSync";
 import {
   FEEDBACK_BETA_EVENT,
+  feedbackHasUnreadReply,
   isFeedbackBetaManager,
   loadFeedbackStore,
   unreadFeedbackCount,
@@ -133,7 +134,8 @@ function ensureStyles() {
 
 function enhanceMenu() {
   const entries = loadFeedbackStore().entries;
-  const unread = entries.filter((entry) => !entry.readAt);
+  const manager = isFeedbackBetaManager();
+  const unread = entries.filter((entry) => manager ? !entry.readAt : feedbackHasUnreadReply(entry));
   const count = unreadFeedbackCount();
   const byKind = {
     opinion: unread.filter((entry) => entry.kind === "opinion").length,
@@ -304,7 +306,14 @@ async function markStudentRepliesRead(requestId: string) {
     rpc: (name: string, args: Record<string, string>) => Promise<{ error: { message?: string } | null }>;
   };
   const { error } = await client.rpc("mark_feedback_messages_read", { p_request_id: requestId });
-  if (error) lastReadAttempt.delete(requestId);
+  if (error) {
+    lastReadAttempt.delete(requestId);
+    return;
+  }
+
+  // Aciona uma sincronização imediata para retirar o aviso de "não lida" sem
+  // esperar pelo ciclo periódico do feedback.
+  window.dispatchEvent(new Event(FEEDBACK_BETA_EVENT));
 }
 
 function markOpenStudentRequestRead() {

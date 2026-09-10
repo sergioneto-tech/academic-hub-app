@@ -1,6 +1,10 @@
 name: Native security log watch
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/security-native-log-watch.yml"
   schedule:
     - cron: "*/5 * * * *"
   workflow_dispatch:
@@ -42,22 +46,11 @@ jobs:
           test "$code" = "200" || { echo "::error::Logs API HTTP $code"; exit 1; }
           rows=$(jq -r '.result|length' /tmp/signals.json)
           echo "Native log groups inspected: $rows"
-          processed=0
-          incidents=0
+          processed=0; incidents=0
           while IFS= read -r row; do
             [ -n "$row" ] || continue
-            bucket=$(jq -r '.bucket // empty' <<<"$row")
-            ip=$(jq -r '.ip // empty' <<<"$row")
-            country=$(jq -r '.country // empty' <<<"$row")
-            path=$(jq -r '.path // empty' <<<"$row")
-            status=$(jq -r '.status // 0' <<<"$row")
-            client=$(jq -r '.client_info // empty' <<<"$row")
-            hits=$(jq -r '.hits // 0' <<<"$row")
-            if [[ "$path" == /auth/v1/token* ]]; then
-              if [ "$status" = "429" ]; then kind=auth_rate_limited; else kind=auth_failure; fi
-            elif [ "$status" = "429" ]; then kind=api_rate_limited
-            else continue
-            fi
+            bucket=$(jq -r '.bucket // empty' <<<"$row"); ip=$(jq -r '.ip // empty' <<<"$row"); country=$(jq -r '.country // empty' <<<"$row"); path=$(jq -r '.path // empty' <<<"$row"); status=$(jq -r '.status // 0' <<<"$row"); client=$(jq -r '.client_info // empty' <<<"$row"); hits=$(jq -r '.hits // 0' <<<"$row")
+            if [[ "$path" == /auth/v1/token* ]]; then if [ "$status" = "429" ]; then kind=auth_rate_limited; else kind=auth_failure; fi; elif [ "$status" = "429" ]; then kind=api_rate_limited; else continue; fi
             signal=$(printf '%s|%s|%s|%s|%s' "$bucket" "$kind" "$ip" "$path" "$status" | sha256sum | cut -d' ' -f1)
             b64(){ printf '%s' "$1" | base64 -w0; }
             signal64=$(b64 "$signal"); kind64=$(b64 "$kind"); ip64=$(b64 "$ip"); country64=$(b64 "$country"); path64=$(b64 "$path"); bucket64=$(b64 "$bucket"); client64=$(b64 "$client")
@@ -65,12 +58,9 @@ jobs:
             payload=$(jq -n --arg q "$dbsql" '{query:$q}')
             dbcode=$(curl --silent --show-error --output /tmp/ingest.json --write-out '%{http_code}' --request POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" --header 'Content-Type: application/json' --data "$payload")
             test "$dbcode" = "201" || test "$dbcode" = "200" || { echo "::error::Native signal ingest HTTP $dbcode"; exit 1; }
-            processed=$((processed+1))
-            if jq -e '.[0].incident_new == true' /tmp/ingest.json >/dev/null 2>&1; then incidents=$((incidents+1)); fi
+            processed=$((processed+1)); if jq -e '.[0].incident_new == true' /tmp/ingest.json >/dev/null 2>&1; then incidents=$((incidents+1)); fi
           done < <(jq -c '.result[]?' /tmp/signals.json)
-          echo "processed=$processed" >> "$GITHUB_OUTPUT"
-          echo "incidents=$incidents" >> "$GITHUB_OUTPUT"
-          echo "Signals processed: $processed; new incidents: $incidents"
+          echo "processed=$processed" >> "$GITHUB_OUTPUT"; echo "incidents=$incidents" >> "$GITHUB_OUTPUT"; echo "Signals processed: $processed; new incidents: $incidents"
 
       - name: Sync monitor health alert
         if: always()
@@ -86,6 +76,4 @@ jobs:
           if [ "$OUTCOME" != "success" ]; then
             body="O vigilante dos logs nativos do Supabase não terminou corretamente. Não significa que houve uma intrusão; significa que a monitorização precisa de revisão. Execução: $RUN_URL"
             if [ -n "$issue" ]; then gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "$body"; else gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"; fi
-          elif [ -n "$issue" ]; then
-            gh issue close "$issue" --repo "$GITHUB_REPOSITORY" --comment "A monitorização dos logs nativos voltou a funcionar: $RUN_URL"
-          fi
+          elif [ -n "$issue" ]; then gh issue close "$issue" --repo "$GITHUB_REPOSITORY" --comment "A monitorização dos logs nativos voltou a funcionar: $RUN_URL"; fi

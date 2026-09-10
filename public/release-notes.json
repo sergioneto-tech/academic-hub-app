@@ -11,7 +11,7 @@
         "A partir desta transição, novas versões publicadas deixam de substituir silenciosamente a versão instalada num arranque a frio.",
         "Release notes, estado de segurança e Service Worker continuam a ser consultados pela rede para detetar atualizações sem desbloquear o novo bundle.",
         "Mantidas as fases reais de atualização e a ativação apenas após o utilizador escolher Atualizar.",
-        "Ativada de forma persistente a gravação dos Auth Audit Logs do Supabase no Postgres para reforçar a investigação de eventos de autenticação."
+        "Validado o token dedicado e read-only para consulta dos logs nativos do Supabase; a integração externa permanece condicionada à disponibilidade efetiva desses eventos no projeto."
       ]
     },
     {

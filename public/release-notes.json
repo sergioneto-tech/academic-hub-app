@@ -1,6 +1,19 @@
 {
-  "latest": "1.5.3",
+  "latest": "1.5.4",
   "versions": [
+    {
+      "version": "1.5.4",
+      "date": "2026-09-10",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "Reforçado o controlo de atualizações por dispositivo através de um app-shell gerido pelo Service Worker.",
+        "A partir desta transição, novas versões publicadas deixam de substituir silenciosamente a versão instalada num arranque a frio.",
+        "Release notes, estado de segurança e Service Worker continuam a ser consultados pela rede para detetar atualizações sem desbloquear o novo bundle.",
+        "Mantidas as fases reais de atualização e a ativação apenas após o utilizador escolher Atualizar.",
+        "Ativada de forma persistente a gravação dos Auth Audit Logs do Supabase no Postgres para reforçar a investigação de eventos de autenticação."
+      ]
+    },
     {
       "version": "1.5.3",
       "date": "2026-09-09",

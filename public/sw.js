@@ -1,16 +1,17 @@
-const SW_VERSION = "1.5.3-security-account-1";
+const SW_VERSION = "1.5.4-controlled-shell-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
 const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
 const NOTIFICATION_GOLD = "#CB9D48";
 
 const PRECACHE_URLS = [
+  "./index.html",
   "./manifest.webmanifest?v=11",
   "./academic-hub-icon-v10-192.png",
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.5.3",
+  "./release-notes.json?v=1.5.4",
 ];
 
 self.addEventListener("install", (event) => {
@@ -32,6 +33,50 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event?.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
+const NETWORK_ONLY_PATHS = new Set(["/sw.js", "/release-notes.json", "/security-status.json"]);
+
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Estes recursos têm de vir sempre da rede para a versão instalada conseguir
+  // descobrir uma nova release ou o estado de segurança mais recente.
+  if (NETWORK_ONLY_PATHS.has(url.pathname)) {
+    event.respondWith(fetch(new Request(request, { cache: "no-store" })));
+    return;
+  }
+
+  // Mantém o app-shell da versão atualmente instalada em cada dispositivo.
+  // Uma versão nova já publicada no servidor só passa a ser usada depois de o
+  // utilizador ativar explicitamente o Service Worker que está em espera.
+  if (request.mode === "navigate") {
+    event.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        const installedShell = await cache.match("./index.html");
+        if (installedShell) return installedShell;
+        const response = await fetch(request);
+        if (response.ok) await cache.put("./index.html", response.clone());
+        return response;
+      })
+    );
+    return;
+  }
+
+  // Os assets da aplicação ficam associados ao cache da versão instalada.
+  event.respondWith(
+    caches.open(CACHE).then(async (cache) => {
+      const cached = await cache.match(request);
+      if (cached) return cached;
+      const response = await fetch(request);
+      if (response.ok && response.type === "basic") await cache.put(request, response.clone());
+      return response;
+    })
+  );
 });
 
 self.addEventListener("push", (event) => {
@@ -68,8 +113,6 @@ function buildNotificationTarget(notification) {
   const rawTarget = notification?.data?.url || "./";
   const target = new URL(rawTarget, self.registration.scope);
 
-  // Para rotas internas do HashRouter, mantém o destino original e acrescenta
-  // apenas contexto temporário para a app destacar a notificação que foi aberta.
   if (target.origin === self.location.origin && target.hash.startsWith("#/")) {
     const rawRoute = target.hash.slice(1);
     const queryIndex = rawRoute.indexOf("?");
@@ -103,8 +146,6 @@ self.addEventListener("notificationclick", (event) => {
         }
       }
 
-      // Fallback importante para Safari/iPadOS quando WindowClient.navigate não
-      // consegue alterar a rota de uma PWA já aberta.
       if (!navigated && "postMessage" in client) {
         client.postMessage({ type: "ACADEMIC_HUB_NOTIFICATION_NAVIGATE", url: target });
       }

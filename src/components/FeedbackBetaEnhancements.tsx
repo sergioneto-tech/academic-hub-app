@@ -1,12 +1,30 @@
 import { useEffect } from "react";
-import { FEEDBACK_BETA_EVENT, loadFeedbackStore, unreadFeedbackCount } from "@/lib/feedbackBeta";
+import { supabase } from "@/integrations/supabase/client";
+import { getStoredSession, refreshSession, type CloudConfig } from "@/lib/cloudSync";
+import {
+  FEEDBACK_BETA_EVENT,
+  isFeedbackBetaManager,
+  loadFeedbackStore,
+  unreadFeedbackCount,
+} from "@/lib/feedbackBeta";
 
 const STYLE_ID = "academic-hub-feedback-beta-enhancements";
 const FILTER_ID = "academic-hub-feedback-filters";
+const RECEIPT_ID = "academic-hub-feedback-read-receipts";
+const RECEIPT_REFRESH_MS = 15_000;
+const READ_ATTEMPT_THROTTLE_MS = 5_000;
 
 let activeType = "all";
 let activeStatus = "all";
 let lastDeepLinkKey = "";
+const lastReadAttempt = new Map<string, number>();
+let receiptRequestInFlight = "";
+
+type ReceiptRow = {
+  id: string;
+  created_at: string;
+  read_at: string | null;
+};
 
 const KIND_META = {
   opinion: { label: "Opinião", className: "opinion" },
@@ -25,6 +43,45 @@ const STATUS_OPTIONS = [
   ["not_planned", "Não previsto"],
   ["archived", "Arquivado"],
 ] as const;
+
+function cloudConfig(): CloudConfig | null {
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
+  const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
+  return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
+}
+
+async function ensureFeedbackSession() {
+  const config = cloudConfig();
+  if (!config) return null;
+  const stored = getStoredSession(config);
+  if (!stored) return null;
+
+  let session = stored;
+  const expiresAt = Number(stored.expires_at ?? 0) * 1000;
+  if (expiresAt && expiresAt <= Date.now() + 60_000) {
+    try {
+      session = await refreshSession(config, stored);
+    } catch {
+      return null;
+    }
+  }
+
+  const { error } = await supabase.auth.setSession({
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+  });
+  return error ? null : session;
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleString("pt-PT", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 function ensureStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -58,9 +115,17 @@ function ensureStyles() {
     #${FILTER_ID} { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; margin: 0 1.5rem .8rem; padding: .7rem; border: 1px solid hsl(var(--border)); border-radius: .85rem; background: hsl(var(--muted) / .22); }
     #${FILTER_ID} label { display: grid; gap: .3rem; min-width: 0; font-size: .68rem; font-weight: 700; color: hsl(var(--muted-foreground)); }
     #${FILTER_ID} select { width: 100%; min-width: 0; height: 2.35rem; border: 1px solid hsl(var(--input)); border-radius: .7rem; padding: 0 .65rem; background: hsl(var(--background)); color: hsl(var(--foreground)); font-size: .78rem; }
+    #${RECEIPT_ID} { margin-top: 1rem; border: 1px solid hsl(var(--gold) / .28); border-radius: .85rem; padding: .85rem; background: hsl(var(--gold-soft) / .13); }
+    #${RECEIPT_ID} .ah-receipt-title { font-size: .75rem; font-weight: 750; color: hsl(var(--foreground)); }
+    #${RECEIPT_ID} .ah-receipt-help { margin-top: .18rem; font-size: .66rem; line-height: 1.35; color: hsl(var(--muted-foreground)); }
+    #${RECEIPT_ID} .ah-receipt-list { display: grid; gap: .45rem; margin-top: .65rem; }
+    #${RECEIPT_ID} .ah-receipt-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .35rem .75rem; border-top: 1px solid hsl(var(--border) / .7); padding-top: .45rem; font-size: .68rem; }
+    #${RECEIPT_ID} .ah-receipt-sent { color: hsl(var(--muted-foreground)); }
+    #${RECEIPT_ID} .ah-receipt-read { color: rgb(16 185 129); font-weight: 700; }
+    #${RECEIPT_ID} .ah-receipt-pending { color: hsl(var(--muted-foreground)); font-weight: 650; }
     @keyframes ah-feedback-pulse { 0%,100% { box-shadow: 0 0 0 1px hsl(var(--gold) / .18), 0 0 0 hsl(var(--gold) / 0); } 50% { box-shadow: 0 0 0 1px hsl(var(--gold) / .42), 0 0 20px hsl(var(--gold) / .22); } }
     @keyframes ah-feedback-deeplink { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
-    @media (max-width: 639px) { #${FILTER_ID} { grid-template-columns: minmax(0, 1fr); margin-inline: 1rem; } .ah-feedback-kind-counts { gap: .18rem; } }
+    @media (max-width: 639px) { #${FILTER_ID} { grid-template-columns: minmax(0, 1fr); margin-inline: 1rem; } .ah-feedback-kind-counts { gap: .18rem; } #${RECEIPT_ID} .ah-receipt-row { display: grid; } }
     @media (prefers-reduced-motion: reduce) { a[href$="/feedback"][data-feedback-unread="true"], button[data-feedback-deeplink="true"] { animation: none; } }
   `;
   document.head.appendChild(style);
@@ -75,15 +140,19 @@ function enhanceMenu() {
     suggestion: unread.filter((entry) => entry.kind === "suggestion").length,
     bug: unread.filter((entry) => entry.kind === "bug").length,
   };
+
   document.querySelectorAll<HTMLAnchorElement>('a[href$="/feedback"]').forEach((link) => {
     link.dataset.feedbackUnread = count > 0 ? "true" : "false";
     link.dataset.feedbackCount = String(count);
-    const desired = (Object.keys(KIND_META) as Array<keyof typeof KIND_META>).filter((kind) => byKind[kind] > 0).map((kind) => `${kind}:${byKind[kind]}`).join("|");
-    const current = link.dataset.feedbackKinds || "";
-    if (current === desired) return;
+    const desired = (Object.keys(KIND_META) as Array<keyof typeof KIND_META>)
+      .filter((kind) => byKind[kind] > 0)
+      .map((kind) => `${kind}:${byKind[kind]}`)
+      .join("|");
+    if ((link.dataset.feedbackKinds || "") === desired) return;
     link.dataset.feedbackKinds = desired;
     link.querySelector(".ah-feedback-kind-counts")?.remove();
     if (!desired) return;
+
     const group = document.createElement("span");
     group.className = "ah-feedback-kind-counts";
     (Object.keys(KIND_META) as Array<keyof typeof KIND_META>).forEach((kind) => {
@@ -107,22 +176,32 @@ function createFilters(card: HTMLElement) {
     suggestion: entries.filter((entry) => entry.kind === "suggestion").length,
     bug: entries.filter((entry) => entry.kind === "bug").length,
   };
+
   const filters = document.createElement("div");
   filters.id = FILTER_ID;
+
   const typeLabel = document.createElement("label");
   typeLabel.textContent = "Tipo";
   const typeSelect = document.createElement("select");
   typeSelect.innerHTML = `<option value="all">Todos os tipos (${entries.length})</option><option value="opinion">Opiniões (${counts.opinion})</option><option value="suggestion">Sugestões (${counts.suggestion})</option><option value="bug">Problemas (${counts.bug})</option>`;
   typeSelect.value = activeType;
-  typeSelect.addEventListener("change", () => { activeType = typeSelect.value; enhanceFeedbackPage(); });
+  typeSelect.addEventListener("change", () => {
+    activeType = typeSelect.value;
+    enhanceFeedbackPage();
+  });
   typeLabel.appendChild(typeSelect);
+
   const statusLabel = document.createElement("label");
   statusLabel.textContent = "Estado";
   const statusSelect = document.createElement("select");
   statusSelect.innerHTML = STATUS_OPTIONS.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
   statusSelect.value = activeStatus;
-  statusSelect.addEventListener("change", () => { activeStatus = statusSelect.value; enhanceFeedbackPage(); });
+  statusSelect.addEventListener("change", () => {
+    activeStatus = statusSelect.value;
+    enhanceFeedbackPage();
+  });
   statusLabel.appendChild(statusSelect);
+
   filters.append(typeLabel, statusLabel);
   const header = card.firstElementChild;
   if (header?.nextSibling) card.insertBefore(filters, header.nextSibling);
@@ -131,15 +210,19 @@ function createFilters(card: HTMLElement) {
 
 function enhanceInbox() {
   const entries = loadFeedbackStore().entries;
-  const title = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,div")).find((node) => node.textContent?.trim() === "Caixa de feedback");
+  const title = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,div")).find(
+    (node) => node.textContent?.trim() === "Caixa de feedback",
+  );
   const card = title?.closest<HTMLElement>(".premium-card");
   if (!card) return;
+
   createFilters(card);
   card.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
     const entry = entries.find((item) => button.textContent?.includes(item.reference));
     if (!entry) return;
     button.dataset.feedbackListKind = entry.kind;
     button.dataset.feedbackListStatus = entry.status;
+    button.dataset.feedbackRequestId = entry.id;
     button.hidden = !((activeType === "all" || entry.kind === activeType) && (activeStatus === "all" || entry.status === activeStatus));
   });
 }
@@ -182,8 +265,8 @@ function handleFeedbackDeepLink() {
   activeType = "all";
   activeStatus = "all";
   enhanceInbox();
-  const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-feedback-list-kind]')).find((item) =>
-    item.textContent?.includes(entry.reference),
+  const button = Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-feedback-request-id]')).find(
+    (item) => item.dataset.feedbackRequestId === entry.id,
   );
   if (!button) return;
 
@@ -195,9 +278,137 @@ function handleFeedbackDeepLink() {
   window.setTimeout(() => { delete button.dataset.feedbackDeeplink; }, 4500);
 }
 
+function openFeedbackDetail() {
+  if (!window.location.hash.includes("/feedback")) return null;
+  const entries = loadFeedbackStore().entries;
+  const cards = Array.from(document.querySelectorAll<HTMLElement>(".premium-card"));
+  for (const card of cards) {
+    const text = card.textContent || "";
+    if (!text.includes("Informação técnica")) continue;
+    const entry = entries.find((item) => text.includes(item.reference));
+    if (entry) return { card, entry };
+  }
+  return null;
+}
+
+async function markStudentRepliesRead(requestId: string) {
+  if (isFeedbackBetaManager()) return;
+  const now = Date.now();
+  if (now - (lastReadAttempt.get(requestId) ?? 0) < READ_ATTEMPT_THROTTLE_MS) return;
+  lastReadAttempt.set(requestId, now);
+
+  const session = await ensureFeedbackSession();
+  if (!session) return;
+
+  const client = supabase as unknown as {
+    rpc: (name: string, args: Record<string, string>) => Promise<{ error: { message?: string } | null }>;
+  };
+  const { error } = await client.rpc("mark_feedback_messages_read", { p_request_id: requestId });
+  if (error) lastReadAttempt.delete(requestId);
+}
+
+function markOpenStudentRequestRead() {
+  if (isFeedbackBetaManager()) return;
+  const detail = openFeedbackDetail();
+  if (detail) void markStudentRepliesRead(detail.entry.id);
+}
+
+function renderReceiptRows(container: HTMLElement, rows: ReceiptRow[]) {
+  container.replaceChildren();
+
+  const title = document.createElement("div");
+  title.className = "ah-receipt-title";
+  title.textContent = "Confirmação de leitura das respostas";
+  container.appendChild(title);
+
+  const help = document.createElement("div");
+  help.className = "ah-receipt-help";
+  help.textContent = "Indica apenas se o aluno abriu este pedido depois da resposta. Não significa que tenha de responder novamente.";
+  container.appendChild(help);
+
+  const list = document.createElement("div");
+  list.className = "ah-receipt-list";
+  rows.forEach((row, index) => {
+    const item = document.createElement("div");
+    item.className = "ah-receipt-row";
+
+    const sent = document.createElement("span");
+    sent.className = "ah-receipt-sent";
+    sent.textContent = `Resposta ${index + 1} · enviada ${formatDate(row.created_at)}`;
+
+    const status = document.createElement("span");
+    if (row.read_at) {
+      status.className = "ah-receipt-read";
+      status.textContent = `✓✓ Visualizado · ${formatDate(row.read_at)}`;
+    } else {
+      status.className = "ah-receipt-pending";
+      status.textContent = "✓ Enviado · ainda não visualizado";
+    }
+
+    item.append(sent, status);
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+
+async function enhanceManagerReadReceipts() {
+  if (!isFeedbackBetaManager() || !window.location.hash.includes("/feedback")) {
+    document.getElementById(RECEIPT_ID)?.remove();
+    return;
+  }
+
+  const detail = openFeedbackDetail();
+  if (!detail) {
+    document.getElementById(RECEIPT_ID)?.remove();
+    return;
+  }
+  if (receiptRequestInFlight === detail.entry.id) return;
+  receiptRequestInFlight = detail.entry.id;
+
+  try {
+    const session = await ensureFeedbackSession();
+    if (!session) return;
+    const client = supabase as unknown as {
+      from: (table: string) => {
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            eq: (column: string, value: string) => {
+              order: (column: string, options: { ascending: boolean }) => Promise<{ data: ReceiptRow[] | null; error: { message?: string } | null }>;
+            };
+          };
+        };
+      };
+    };
+    const { data, error } = await client
+      .from("feedback_messages")
+      .select("id,created_at,read_at")
+      .eq("request_id", detail.entry.id)
+      .eq("author", "academic_hub")
+      .order("created_at", { ascending: true });
+    if (error || !data?.length) {
+      document.getElementById(RECEIPT_ID)?.remove();
+      return;
+    }
+
+    const current = openFeedbackDetail();
+    if (!current || current.entry.id !== detail.entry.id) return;
+    let container = document.getElementById(RECEIPT_ID) as HTMLElement | null;
+    if (!container) {
+      container = document.createElement("div");
+      container.id = RECEIPT_ID;
+      const cardContent = current.card.children.item(1) as HTMLElement | null;
+      (cardContent ?? current.card).appendChild(container);
+    }
+    renderReceiptRows(container, data);
+  } finally {
+    receiptRequestInFlight = "";
+  }
+}
+
 function enhanceFeedbackPage() {
   enhanceMenu();
   if (!window.location.hash.includes("/feedback")) return;
+
   document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
     const text = (button.textContent || "").trim();
     if (text === "Opinião") button.dataset.feedbackKind = "opinion";
@@ -206,8 +417,11 @@ function enhanceFeedbackPage() {
     if (button.dataset.feedbackKind) button.dataset.selected = button.className.includes("bg-primary/10") ? "true" : "false";
     if (text.startsWith("Som interno")) button.hidden = true;
   });
+
   enhanceInbox();
   handleFeedbackDeepLink();
+  window.setTimeout(markOpenStudentRequestRead, 40);
+  void enhanceManagerReadReceipts();
 }
 
 function scheduleEnhance() {
@@ -220,15 +434,45 @@ export default function FeedbackBetaEnhancements() {
   useEffect(() => {
     ensureStyles();
     scheduleEnhance();
+
     const handler = () => scheduleEnhance();
+    const onFeedbackClick = (event: MouseEvent) => {
+      if (isFeedbackBetaManager() || !window.location.hash.includes("/feedback")) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const button = target?.closest<HTMLButtonElement>("button[data-feedback-request-id]");
+      const requestId = button?.dataset.feedbackRequestId;
+      if (!requestId) return;
+      window.setTimeout(() => {
+        const detail = openFeedbackDetail();
+        if (detail?.entry.id === requestId) void markStudentRepliesRead(requestId);
+      }, 60);
+    };
+
     window.addEventListener(FEEDBACK_BETA_EVENT, handler);
     window.addEventListener("hashchange", handler);
     window.addEventListener("storage", handler);
+    document.addEventListener("click", onFeedbackClick, true);
+
+    const observer = new MutationObserver(() => scheduleEnhance());
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    const receiptInterval = window.setInterval(() => {
+      if (document.visibilityState === "visible" && window.location.hash.includes("/feedback")) {
+        if (isFeedbackBetaManager()) void enhanceManagerReadReceipts();
+        else markOpenStudentRequestRead();
+      }
+    }, RECEIPT_REFRESH_MS);
+
     return () => {
       window.removeEventListener(FEEDBACK_BETA_EVENT, handler);
       window.removeEventListener("hashchange", handler);
       window.removeEventListener("storage", handler);
+      document.removeEventListener("click", onFeedbackClick, true);
+      observer.disconnect();
+      window.clearInterval(receiptInterval);
+      document.getElementById(RECEIPT_ID)?.remove();
     };
   }, []);
+
   return null;
 }

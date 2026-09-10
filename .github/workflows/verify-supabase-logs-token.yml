@@ -12,19 +12,13 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate secret is configured
+      - name: Validate token and inspect non-sensitive log field names
         env:
           SUPABASE_LOGS_TOKEN: ${{ secrets.SUPABASE_LOGS_TOKEN }}
         run: |
           test -n "$SUPABASE_LOGS_TOKEN" || { echo "SUPABASE_LOGS_TOKEN is missing"; exit 1; }
-
-      - name: Verify logs read permission and inspect Auth field names only
-        env:
-          SUPABASE_LOGS_TOKEN: ${{ secrets.SUPABASE_LOGS_TOKEN }}
-        run: |
           end=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           start=$(date -u -d '23 hours 55 minutes ago' +'%Y-%m-%dT%H:%M:%SZ')
-
           query_source () {
             local source="$1"
             local output="/tmp/${source}.json"
@@ -32,13 +26,12 @@ jobs:
             code=$(curl --silent --show-error --output "$output" --write-out '%{http_code}' \
               --get 'https://api.supabase.com/v1/projects/apgoyzfzuukkpmuxiqvy/analytics/endpoints/logs' \
               --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" \
-              --data-urlencode "sql=select arrayJoin(mapKeys(log_attributes)) as key, count() as n from logs where source = '$source' group by key order by n desc limit 100" \
+              --data-urlencode "sql=select arrayJoin(mapKeys(log_attributes)) as key, count() as n from logs where source = '$source' group by key order by n desc limit 120" \
               --data-urlencode "iso_timestamp_start=$start" \
               --data-urlencode "iso_timestamp_end=$end")
             echo "SOURCE=$source HTTP=$code"
             test "$code" = "200" || exit 1
             jq -r '.result[]? | (.key // empty)' "$output" | sed '/^$/d'
           }
-
-          query_source auth_logs
-          query_source auth_audit_logs
+          query_source edge_logs
+          query_source postgres_logs

@@ -1,0 +1,91 @@
+name: Native security log watch
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: academic-hub-native-security-log-watch
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    environment: production
+    env:
+      PROJECT_REF: apgoyzfzuukkpmuxiqvy
+      SUPABASE_LOGS_TOKEN: ${{ secrets.SUPABASE_LOGS_TOKEN }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Validate credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_LOGS_TOKEN" || { echo "::error::Missing SUPABASE_LOGS_TOKEN"; exit 1; }
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
+
+      - name: Read and ingest native security signals
+        id: watch
+        shell: bash
+        run: |
+          set -euo pipefail
+          end=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          start=$(date -u -d '20 minutes ago' +'%Y-%m-%dT%H:%M:%SZ')
+          sql="select toStartOfFiveMinutes(timestamp) as bucket, log_attributes['request.headers.x_real_ip'] as ip, log_attributes['request.cf.country'] as country, log_attributes['request.path'] as path, toInt32OrZero(log_attributes['response.status_code']) as status, log_attributes['request.headers.x_client_info'] as client_info, count() as hits from logs where source='edge_logs' and ((log_attributes['request.path'] like '/auth/v1/token%' and toInt32OrZero(log_attributes['response.status_code']) in (400,401,403,429)) or toInt32OrZero(log_attributes['response.status_code'])=429) group by bucket,ip,country,path,status,client_info having hits >= 3 order by bucket desc limit 100"
+          code=$(curl --silent --show-error --output /tmp/signals.json --write-out '%{http_code}' --get "https://api.supabase.com/v1/projects/$PROJECT_REF/analytics/endpoints/logs" --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" --data-urlencode "sql=$sql" --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end")
+          test "$code" = "200" || { echo "::error::Logs API HTTP $code"; exit 1; }
+          rows=$(jq -r '.result|length' /tmp/signals.json)
+          echo "Native log groups inspected: $rows"
+          processed=0
+          incidents=0
+          while IFS= read -r row; do
+            [ -n "$row" ] || continue
+            bucket=$(jq -r '.bucket // empty' <<<"$row")
+            ip=$(jq -r '.ip // empty' <<<"$row")
+            country=$(jq -r '.country // empty' <<<"$row")
+            path=$(jq -r '.path // empty' <<<"$row")
+            status=$(jq -r '.status // 0' <<<"$row")
+            client=$(jq -r '.client_info // empty' <<<"$row")
+            hits=$(jq -r '.hits // 0' <<<"$row")
+            if [[ "$path" == /auth/v1/token* ]]; then
+              if [ "$status" = "429" ]; then kind=auth_rate_limited; else kind=auth_failure; fi
+            elif [ "$status" = "429" ]; then kind=api_rate_limited
+            else continue
+            fi
+            signal=$(printf '%s|%s|%s|%s|%s' "$bucket" "$kind" "$ip" "$path" "$status" | sha256sum | cut -d' ' -f1)
+            b64(){ printf '%s' "$1" | base64 -w0; }
+            signal64=$(b64 "$signal"); kind64=$(b64 "$kind"); ip64=$(b64 "$ip"); country64=$(b64 "$country"); path64=$(b64 "$path"); bucket64=$(b64 "$bucket"); client64=$(b64 "$client")
+            dbsql="select * from public.security_ingest_native_signal(convert_from(decode('$signal64','base64'),'utf8'),convert_from(decode('$kind64','base64'),'utf8'),nullif(convert_from(decode('$ip64','base64'),'utf8'),''),nullif(convert_from(decode('$country64','base64'),'utf8'),''),nullif(convert_from(decode('$path64','base64'),'utf8'),''),$status,$hits,convert_from(decode('$bucket64','base64'),'utf8')::timestamptz,convert_from(decode('$bucket64','base64'),'utf8')::timestamptz + interval '5 minutes',nullif(convert_from(decode('$client64','base64'),'utf8'),''));"
+            payload=$(jq -n --arg q "$dbsql" '{query:$q}')
+            dbcode=$(curl --silent --show-error --output /tmp/ingest.json --write-out '%{http_code}' --request POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" --header 'Content-Type: application/json' --data "$payload")
+            test "$dbcode" = "201" || test "$dbcode" = "200" || { echo "::error::Native signal ingest HTTP $dbcode"; exit 1; }
+            processed=$((processed+1))
+            if jq -e '.[0].incident_new == true' /tmp/ingest.json >/dev/null 2>&1; then incidents=$((incidents+1)); fi
+          done < <(jq -c '.result[]?' /tmp/signals.json)
+          echo "processed=$processed" >> "$GITHUB_OUTPUT"
+          echo "incidents=$incidents" >> "$GITHUB_OUTPUT"
+          echo "Signals processed: $processed; new incidents: $incidents"
+
+      - name: Sync monitor health alert
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.watch.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          title="Native security log watch requires attention"
+          issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$title in:title" --json number,title --jq '.[0].number // empty')
+          if [ "$OUTCOME" != "success" ]; then
+            body="O vigilante dos logs nativos do Supabase não terminou corretamente. Não significa que houve uma intrusão; significa que a monitorização precisa de revisão. Execução: $RUN_URL"
+            if [ -n "$issue" ]; then gh issue comment "$issue" --repo "$GITHUB_REPOSITORY" --body "$body"; else gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body "$body"; fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --repo "$GITHUB_REPOSITORY" --comment "A monitorização dos logs nativos voltou a funcionar: $RUN_URL"
+          fi

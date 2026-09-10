@@ -12,21 +12,24 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Verify legacy project logs stream
+      - name: Inspect active log sources without personal data
         env:
           SUPABASE_LOGS_TOKEN: ${{ secrets.SUPABASE_LOGS_TOKEN }}
         run: |
-          test -n "$SUPABASE_LOGS_TOKEN" || exit 1
+          set -euo pipefail
+          test -n "$SUPABASE_LOGS_TOKEN" || { echo "SUPABASE_LOGS_TOKEN is missing"; exit 1; }
           end=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           start=$(date -u -d '23 hours 55 minutes ago' +'%Y-%m-%dT%H:%M:%SZ')
-          for source in edge_logs auth_logs postgres_logs; do
-            out="/tmp/${source}.json"
-            code=$(curl --silent --show-error --output "$out" --write-out '%{http_code}' \
-              --get 'https://api.supabase.com/v1/projects/apgoyzfzuukkpmuxiqvy/analytics/endpoints/logs.all' \
-              --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" \
-              --data-urlencode "sql=select count(1) as n from $source" \
-              --data-urlencode "iso_timestamp_start=$start" \
-              --data-urlencode "iso_timestamp_end=$end")
-            echo "$source HTTP=$code rows=$(jq '.result | length' "$out" 2>/dev/null || echo unknown) count=$(jq -r '.result[0].n // "none"' "$out" 2>/dev/null || echo none)"
-            if [ "$code" != "200" ]; then jq -r '.error // .message // "query rejected"' "$out" 2>/dev/null || true; fi
-          done
+          out=/tmp/log-sources.json
+          code=$(curl --silent --show-error --output "$out" --write-out '%{http_code}' \
+            --get 'https://api.supabase.com/v1/projects/apgoyzfzuukkpmuxiqvy/analytics/endpoints/logs' \
+            --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" \
+            --data-urlencode "sql=select source, count() as n from logs group by source order by n desc limit 50" \
+            --data-urlencode "iso_timestamp_start=$start" \
+            --data-urlencode "iso_timestamp_end=$end")
+          echo "Supabase Logs API HTTP $code"
+          if [ "$code" != "200" ]; then
+            jq -r '.error // .message // "Logs API request failed"' "$out" 2>/dev/null || true
+            exit 1
+          fi
+          jq -r '.result[]? | "source=" + (.source // "unknown") + " count=" + ((.n // 0)|tostring)' "$out"

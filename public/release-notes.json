@@ -4,15 +4,18 @@
     {
       "version": "1.5.4",
       "date": "2026-09-10",
-      "kind": "app",
+      "kind": "mixed",
       "pushNotify": false,
       "changes": [
         "Reforçado o controlo de atualizações por dispositivo através de um app-shell gerido pelo Service Worker.",
         "A partir desta transição, novas versões publicadas deixam de substituir silenciosamente a versão instalada num arranque a frio.",
-        "Release notes, estado de segurança e Service Worker continuam a ser consultados pela rede para detetar atualizações sem desbloquear o novo bundle.",
-        "Mantidas as fases reais de atualização e a ativação apenas após o utilizador escolher Atualizar.",
-        "Validado o token dedicado e read-only para consulta dos logs nativos do Supabase; a integração externa permanece condicionada à disponibilidade efetiva desses eventos no projeto."
-      ]
+        "Ativado o vigilante dos logs nativos do Supabase para detetar padrões repetidos de falhas de autenticação e rate limiting fora do formulário do Academic Hub.",
+        "A telemetria do formulário passa a servir apenas para correlação com a conta; a criação de incidentes de tentativas falhadas depende dos sinais nativos de maior confiança.",
+        "Incidentes nativos são deduplicados, registados na área privada e podem desencadear alerta ao aluno, alerta administrativo e mini-vistoria estrutural.",
+        "Mantidas as fases reais de atualização, sem percentagens simuladas, e sem impacto permanente de processamento no dispositivo."
+      ],
+      "securityLevel": "2026.09",
+      "securitySummary": "Ativa a correlação com logs nativos do Supabase e reforça o controlo real das atualizações por dispositivo."
     },
     {
       "version": "1.5.3",

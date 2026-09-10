@@ -7,7 +7,7 @@ const SOUND_KEY = "academic_hub_notification_sound";
 
 export type FeedbackKind = "opinion" | "suggestion" | "bug";
 export type FeedbackStatus = "new" | "reviewing" | "waiting_user" | "planned" | "in_development" | "completed" | "not_planned" | "archived";
-export type FeedbackMessage = { id: string; author: "student" | "academic_hub"; body: string; createdAt: string };
+export type FeedbackMessage = { id: string; author: "student" | "academic_hub"; body: string; createdAt: string; readAt?: string };
 export type FeedbackHistoryItem = { id: string; status: FeedbackStatus; note?: string; createdAt: string };
 export type FeedbackAttachment = { id: string; name: string; type: string; size: number; previewUrl?: string };
 export type FeedbackEntry = {
@@ -84,9 +84,14 @@ export function saveFeedbackStore(store: FeedbackStore, emitChange = true) {
   if (emitChange) window.dispatchEvent(new Event(FEEDBACK_BETA_EVENT));
 }
 
+export function feedbackHasUnreadReply(entry: FeedbackEntry): boolean {
+  return entry.messages.some((message) => message.author === "academic_hub" && !message.readAt);
+}
+
 export function unreadFeedbackCount(): number {
-  if (!isFeedbackBetaManager()) return 0;
-  return loadFeedbackStore().entries.filter((entry) => !entry.readAt).length;
+  const entries = loadFeedbackStore().entries;
+  if (isFeedbackBetaManager()) return entries.filter((entry) => !entry.readAt).length;
+  return entries.filter(feedbackHasUnreadReply).length;
 }
 
 export function createFeedback(input: Omit<FeedbackEntry, "id" | "reference" | "status" | "createdAt" | "updatedAt" | "readAt" | "messages" | "history">): FeedbackEntry {

@@ -1,9 +1,8 @@
-const SW_VERSION = "1.5.4-safari-recovery-2";
+const SW_VERSION = "1.5.4-safari-recovery-3";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
 const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
-const NOTIFICATION_GOLD = "#CB9D48";
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
@@ -23,7 +22,7 @@ self.addEventListener("install", (event) => {
 
     // Recuperação extraordinária da versão 1.5.4: alguns clientes Safari/iOS
     // ficaram presos no worker anterior e nem conseguem abrir a UI para clicar
-    // em "Atualizar". Esta release técnica tem de assumir controlo sem interação.
+    // em "Atualizar". Esta release técnica assume controlo sem interação.
     await self.skipWaiting();
   })());
 });

@@ -12,18 +12,21 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate token and inspect safe Logs API shape
+      - name: Verify current unified logs source field
         env:
           SUPABASE_LOGS_TOKEN: ${{ secrets.SUPABASE_LOGS_TOKEN }}
         run: |
-          test -n "$SUPABASE_LOGS_TOKEN" || { echo "SUPABASE_LOGS_TOKEN is missing"; exit 1; }
+          test -n "$SUPABASE_LOGS_TOKEN" || exit 1
           end=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
           start=$(date -u -d '23 hours 55 minutes ago' +'%Y-%m-%dT%H:%M:%SZ')
-          curl --silent --show-error --get \
-            'https://api.supabase.com/v1/projects/apgoyzfzuukkpmuxiqvy/analytics/endpoints/logs' \
-            --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" \
-            --data-urlencode "sql=select source, count() as n from logs group by source order by n desc limit 30" \
-            --data-urlencode "iso_timestamp_start=$start" \
-            --data-urlencode "iso_timestamp_end=$end" \
-            > /tmp/sources.json
-          jq '{top_level_keys: keys, result_type:(.result|type), result_count:(.result|length), result:.result, error:.error}' /tmp/sources.json
+          for field in source source_name; do
+            out="/tmp/${field}.json"
+            code=$(curl --silent --show-error --output "$out" --write-out '%{http_code}' \
+              --get 'https://api.supabase.com/v1/projects/apgoyzfzuukkpmuxiqvy/analytics/endpoints/logs' \
+              --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" \
+              --data-urlencode "sql=select $field, count() as n from logs group by $field order by n desc limit 30" \
+              --data-urlencode "iso_timestamp_start=$start" \
+              --data-urlencode "iso_timestamp_end=$end")
+            echo "$field HTTP=$code rows=$(jq '.result | length' "$out" 2>/dev/null || echo unknown)"
+            if [ "$code" != "200" ]; then jq -r '.error // "query rejected"' "$out" 2>/dev/null || true; fi
+          done

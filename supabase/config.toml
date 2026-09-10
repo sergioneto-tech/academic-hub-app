@@ -9,12 +9,16 @@ uri = "pg-functions://postgres/public/hook_restrict_signup_to_uab"
 # - POST de cron/trigger é autenticado dentro da própria função por x-cron-secret;
 # - academic-push valida internamente x-cron-secret ou o JWT do utilizador;
 # - feedback-push aceita apenas o segredo interno usado pelo trigger da base de dados;
+# - feedback-student-push aceita apenas o segredo interno usado pelos triggers de resposta/estado;
 # - survey-push aceita apenas o segredo interno usado pelo trigger das avaliações;
 # - security-event recebe telemetria de autenticação e faz a validação necessária dentro da função.
 [functions.academic-push]
 verify_jwt = false
 
 [functions.feedback-push]
+verify_jwt = false
+
+[functions.feedback-student-push]
 verify_jwt = false
 
 [functions.survey-push]

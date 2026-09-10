@@ -42,6 +42,7 @@ type FeedbackMessageRow = {
   author: "student" | "academic_hub";
   body: string;
   created_at: string;
+  read_at: string | null;
 };
 
 type FeedbackHistoryRow = {
@@ -187,7 +188,13 @@ async function pullFromCloud() {
 
   const entries = requests.map((row) => rowToEntry(
     row,
-    (messageRows ?? []).filter((message) => message.request_id === row.id).map((message) => ({ id: message.id, author: message.author, body: message.body, createdAt: message.created_at })),
+    (messageRows ?? []).filter((message) => message.request_id === row.id).map((message) => ({
+      id: message.id,
+      author: message.author,
+      body: message.body,
+      createdAt: message.created_at,
+      readAt: message.read_at ?? undefined,
+    })),
     (historyRows ?? []).filter((item) => item.request_id === row.id).map((item) => ({ id: item.id, status: item.status, note: item.note ?? undefined, createdAt: item.created_at })),
     (attachmentRows ?? []).filter((attachment) => attachment.request_id === row.id).map((attachment) => ({ id: attachment.id, name: attachment.name, type: attachment.mime_type ?? "", size: Number(attachment.size_bytes) || 0 })),
   ));

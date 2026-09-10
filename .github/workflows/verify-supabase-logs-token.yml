@@ -27,8 +27,21 @@ jobs:
             --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" \
             --data-urlencode "sql=select timestamp, source from logs order by timestamp desc limit 1")
           echo "Supabase Logs API HTTP $code"
-          if [ "$code" != "200" ]; then
-            jq -r '.error // .message // "Logs API request failed"' /tmp/logs-response.json 2>/dev/null || true
-            exit 1
-          fi
+          test "$code" = "200" || exit 1
           echo "analytics_logs_read verified"
+
+      - name: Inspect Auth log field names only
+        env:
+          SUPABASE_LOGS_TOKEN: ${{ secrets.SUPABASE_LOGS_TOKEN }}
+        run: |
+          query_source () {
+            local source="$1"
+            curl --silent --show-error --get \
+              'https://api.supabase.com/v1/projects/apgoyzfzuukkpmuxiqvy/analytics/endpoints/logs' \
+              --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" \
+              --data-urlencode "sql=select arrayJoin(mapKeys(log_attributes)) as key, count() as n from logs where source = '$source' group by key order by n desc limit 100" \
+              | jq -r --arg source "$source" '"SOURCE=" + $source, (.result[]? | (.key // empty))' \
+              | sed '/^$/d'
+          }
+          query_source auth_logs
+          query_source auth_audit_logs

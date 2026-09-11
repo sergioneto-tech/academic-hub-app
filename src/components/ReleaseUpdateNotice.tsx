@@ -77,13 +77,13 @@ export default function ReleaseUpdateNotice({ entry, available, deferred, onBack
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button size="sm" variant="secondary" onClick={onBackup}>Backup</Button>
-          <Button size="sm" variant="outline" onClick={onLater}>Mais tarde</Button>
-          <Button size="sm" onClick={onUpdate}>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <Button size="sm" className="w-full sm:order-3 sm:w-auto" onClick={onUpdate}>
             {kind === "security" ? <ShieldCheck className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Atualizar
+            Atualizar agora
           </Button>
+          <Button size="sm" variant="secondary" className="w-full sm:order-1 sm:w-auto" onClick={onBackup}>Backup</Button>
+          <Button size="sm" variant="outline" className="w-full sm:order-2 sm:w-auto" onClick={onLater}>Mais tarde</Button>
         </div>
       </div>
     </section>

@@ -56,6 +56,14 @@ export function registerUpdateStartup(currentVersion: string, href: string) {
   if (explicitCompletion) {
     safeSet(UPDATE_COMPLETED_VERSION_KEY, currentVersion);
     safeRemove(UPDATE_TARGET_VERSION_KEY);
+    if (safeGet(LOCAL_LAST_SEEN_VERSION_KEY) === currentVersion) {
+      safeRemove(LOCAL_LAST_SEEN_VERSION_KEY);
+    }
+  } else if (safeGet(UPDATE_COMPLETED_VERSION_KEY) !== currentVersion) {
+    // Se o bundle novo entrou antes de existir um reinício confirmado pelo
+    // atualizador, impede o Layout antigo de mostrar "O que mudou" como se a
+    // versão já estivesse realmente instalada neste dispositivo.
+    safeSet(LOCAL_LAST_SEEN_VERSION_KEY, currentVersion);
   }
 
   return explicitCompletion;

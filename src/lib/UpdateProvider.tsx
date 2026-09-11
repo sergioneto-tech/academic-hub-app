@@ -75,6 +75,15 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
 
   useEffect(() => {
+    // O parâmetro serve apenas para quebrar caches durante o reinício da atualização.
+    // Assim que a nova aplicação arranca, o URL volta ao endereço normal.
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("ah_update")) return;
+    url.searchParams.delete("ah_update");
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, []);
+
+  useEffect(() => {
     if (!isSupported) return;
     if (!import.meta.env.PROD) return;
 

@@ -27,6 +27,7 @@ const DAY_OPTIONS=[1,2,3,5,7,10,14];
 export default function PushNotificationSettings(){
   const {toast}=useToast();
   const [prefs,setPrefs]=useState<PushPreferences>(DEFAULT_PUSH_PREFERENCES);
+  const [prefsRegistered,setPrefsRegistered]=useState(false);
   const [subscribed,setSubscribed]=useState(false);
   const [devices,setDevices]=useState<RegisteredPushDevice[]>([]);
   const [busy,setBusy]=useState(false);
@@ -42,25 +43,76 @@ export default function PushNotificationSettings(){
     try{
       let sub=await currentPushSubscription();
       if(supported&&Notification.permission==="granted"){
-        // Mesmo que a subscrição local tenha desaparecido, recria-a e volta a
-        // associá-la à conta. Este é o caso que estava a falhar no iPad.
+        // Repara instalações antigas/incompletas: recria a subscrição local,
+        // associa-a à conta e garante que push_preferences existe no servidor.
         sub=await reconcilePushOnThisDevice();
       }
       setSubscribed(Boolean(sub));
       await refreshDevices();
       const p=await loadPushPreferences();
+      setPrefsRegistered(Boolean(p));
       if(p)setPrefs(p);
     }catch{}
   })()},[]);
 
-  async function persist(next:PushPreferences){setPrefs(next);try{await savePushPreferences(next);}catch(error){toast({title:"Não foi possível guardar",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"})}}
-  async function enable(){setBusy(true);try{await enablePushOnThisDevice();setSubscribed(true);await refreshDevices();toast({title:"Notificações ativadas",description:"Este dispositivo já pode receber alertas do Academic Hub."});}catch(error){toast({title:"Não foi possível ativar",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"})}finally{setBusy(false)}}
-  async function disable(){setBusy(true);try{await disablePushOnThisDevice();setSubscribed(false);await refreshDevices();toast({title:"Notificações desativadas neste dispositivo"});}finally{setBusy(false)}}
-  async function test(){setBusy(true);try{const sent=await sendPushTest();await refreshDevices();toast({title:"Teste enviado",description:sent>0?`Enviado para ${sent} ${sent===1?"dispositivo ativo":"dispositivos ativos"}.`:"Não existe ainda nenhum dispositivo ativo registado."});}catch(error){toast({title:"Falha no teste",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"})}finally{setBusy(false)}}
+  async function persist(next:PushPreferences){
+    setPrefs(next);
+    try{
+      await savePushPreferences(next);
+      setPrefsRegistered(true);
+    }catch(error){
+      toast({title:"Não foi possível guardar",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"});
+    }
+  }
+
+  async function enable(){
+    setBusy(true);
+    try{
+      await enablePushOnThisDevice();
+      setSubscribed(true);
+      setPrefsRegistered(true);
+      const p=await loadPushPreferences();
+      if(p)setPrefs(p);
+      await refreshDevices();
+      toast({title:"Notificações Push ativadas",description:"Este dispositivo ficou registado e já pode receber alertas do Academic Hub."});
+    }catch(error){
+      toast({title:"Não foi possível ativar",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"});
+    }finally{setBusy(false)}
+  }
+
+  async function disable(){
+    setBusy(true);
+    try{
+      await disablePushOnThisDevice();
+      setSubscribed(false);
+      await refreshDevices();
+      toast({title:"Push desativado neste dispositivo"});
+    }finally{setBusy(false)}
+  }
+
+  async function test(){
+    setBusy(true);
+    try{
+      const sent=await sendPushTest();
+      const p=await loadPushPreferences();
+      setPrefsRegistered(Boolean(p));
+      if(p)setPrefs(p);
+      await refreshDevices();
+      toast({title:"Teste enviado",description:sent>0?`Enviado para ${sent} ${sent===1?"dispositivo ativo":"dispositivos ativos"}.`:"Não existe ainda nenhum dispositivo Push ativo registado."});
+    }catch(error){
+      toast({title:"Falha no teste",description:error instanceof Error?error.message:"Tenta novamente.",variant:"destructive"});
+    }finally{setBusy(false)}
+  }
+
+  const pushReady=subscribed&&prefsRegistered;
 
   return <Card className="premium-card border-primary/25"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><BellRing className="h-4 w-4 text-primary"/>Notificações no dispositivo</CardTitle></CardHeader><CardContent className="space-y-4">
     {!supported?<div className="flex gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-xs"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0"/><div>Este navegador não disponibiliza Web Push.</div></div>:(!standalone&&appleMobile)?<div className="flex gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-xs"><Smartphone className="mt-0.5 h-4 w-4 shrink-0"/><div>No iPhone/iPad, adiciona primeiro o Academic Hub ao ecrã principal e abre-o como aplicação para ativar notificações.</div></div>:null}
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div className="min-w-0"><div className="flex items-center gap-2 text-sm font-medium"><span className="shrink-0">{subscribed?<CheckCircle2 className="h-4 w-4 text-emerald-500"/>:<Smartphone className="h-4 w-4"/>}</span><span className="whitespace-nowrap">{subscribed?"Ativas neste dispositivo":"Ativar neste dispositivo"}</span></div><div className="mt-1 text-xs text-muted-foreground">Os alertas podem aparecer mesmo com o ecrã bloqueado, conforme as permissões do sistema.</div>{devices.length>0&&<div className="mt-2 text-[11px] text-muted-foreground">Registados na conta: {devices.map((d,i)=><span key={`${d.device_label}-${d.updated_at}-${i}`} className="mr-2 inline-flex whitespace-nowrap rounded-full border px-2 py-0.5">{d.device_label||"Dispositivo"}</span>)}</div>}</div><div className="flex shrink-0 flex-wrap gap-2">{subscribed&&<Button size="sm" variant="outline" className="whitespace-nowrap" disabled={busy} onClick={()=>void test()}><Send className="mr-2 h-3.5 w-3.5"/>Teste em todos</Button>}<Button size="sm" variant={subscribed?"secondary":"default"} className="whitespace-nowrap" disabled={busy||!supported} onClick={()=>void (subscribed?disable():enable())}>{subscribed?"Desativar":"Ativar notificações"}</Button></div></div>
+
+    {supported&&!pushReady&&<div className="flex gap-2 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3 text-xs"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0"/><div><div className="font-medium">Este dispositivo ainda não está ligado ao Push.</div><div className="mt-1 text-muted-foreground">As opções de e-fólios, exames e datas UAb podem aparecer configuradas, mas só recebes alertas depois de ativares o Push neste dispositivo.</div></div></div>}
+
+    <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 ${pushReady?"border-emerald-500/30 bg-emerald-500/5":""}`}><div className="min-w-0"><div className="flex items-center gap-2 text-sm font-medium"><span className="shrink-0">{pushReady?<CheckCircle2 className="h-4 w-4 text-emerald-500"/>:<Smartphone className="h-4 w-4"/>}</span><span className="whitespace-nowrap">{pushReady?"Push ativo neste dispositivo":"Push não ativo neste dispositivo"}</span></div><div className="mt-1 text-xs text-muted-foreground">{pushReady?"A subscrição deste dispositivo e as preferências estão registadas no servidor.":"Ativa o Push para que os avisos configurados abaixo possam ser realmente entregues."}</div>{devices.length>0&&<div className="mt-2 text-[11px] text-muted-foreground">Registados na conta: {devices.map((d,i)=><span key={`${d.device_label}-${d.updated_at}-${i}`} className="mr-2 inline-flex whitespace-nowrap rounded-full border px-2 py-0.5">{d.device_label||"Dispositivo"}</span>)}</div>}</div><div className="flex shrink-0 flex-wrap gap-2">{pushReady&&<Button size="sm" variant="outline" className="whitespace-nowrap" disabled={busy} onClick={()=>void test()}><Send className="mr-2 h-3.5 w-3.5"/>Testar Push</Button>}<Button size="sm" variant={pushReady?"secondary":"default"} className="whitespace-nowrap" disabled={busy||!supported} onClick={()=>void (pushReady?disable():enable())}>{pushReady?"Desativar neste dispositivo":"Ativar Push"}</Button></div></div>
+
     <SettingRow title="E-fólios" description="Aviso quando começam, antes do fim e no último dia." checked={prefs.deadlines_enabled} onChange={v=>void persist({...prefs,deadlines_enabled:v})} days={prefs.efinal_lead_days} onDays={v=>void persist({...prefs,efinal_lead_days:v})}/>
     <SettingRow title="Exames e recursos" description="Aviso com antecedência e no próprio dia; mostra a hora quando estiver registada." checked={prefs.exams_enabled} onChange={v=>void persist({...prefs,exams_enabled:v})} days={prefs.exam_lead_days} onDays={v=>void persist({...prefs,exam_lead_days:v})}/>
     <SettingRow title="Datas oficiais da UAb" description="Avisos sobre inscrições/matrículas e início das atividades letivas, sempre a partir do calendário oficial." checked={prefs.uab_enabled} onChange={v=>void persist({...prefs,uab_enabled:v})} days={prefs.uab_lead_days} onDays={v=>void persist({...prefs,uab_lead_days:v})}/>

@@ -1,6 +1,20 @@
 {
-  "latest": "1.5.4",
+  "latest": "1.5.5",
   "versions": [
+    {
+      "version": "1.5.5",
+      "date": "2026-09-11",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "O pedido de avaliação passa a aparecer apenas depois de 7 dias de utilização da conta, mantendo exatamente as três perguntas atuais.",
+        "O aluno pode adiar a avaliação duas vezes, por períodos de 7 dias; na terceira apresentação é necessário responder para continuar.",
+        "Os adiamentos da avaliação ficam sincronizados pela conta, evitando novos adiamentos ao alternar entre computador, tablet e telemóvel.",
+        "No computador, quando o Push ainda não está ativo, passa a existir um aviso próprio para ativar notificações neste dispositivo ou voltar a lembrar mais tarde.",
+        "O processo de atualização passa a mostrar uma barra segmentada baseada nas etapas reais do Service Worker, reinicia automaticamente no final e abre o resumo O que mudou já na nova versão.",
+        "Restaurado o fluxo controlado de atualizações: a nova versão fica em espera até o aluno confirmar Atualizar, removendo a exceção temporária de recuperação usada na 1.5.4."
+      ]
+    },
     {
       "version": "1.5.4",
       "date": "2026-09-10",

@@ -15,6 +15,9 @@ export default function UpdateProgressModal() {
   if (updatePhase === "idle") return null;
 
   const error = updatePhase === "error";
+  const activeIndex = error ? -1 : STEPS.findIndex((step) => step.phase === updatePhase);
+  const completedCount = STEPS.filter((step) => completedUpdatePhases.includes(step.phase)).length;
+  const currentStepNumber = activeIndex >= 0 ? activeIndex + 1 : Math.min(STEPS.length, completedCount + 1);
 
   return (
     <div className="fixed inset-0 z-[120] grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm" role="status" aria-live="polite">
@@ -23,39 +26,71 @@ export default function UpdateProgressModal() {
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
             {error ? <RefreshCw className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h2 className="font-semibold">{error ? "Não foi possível concluir a atualização" : "A atualizar o Academic Hub"}</h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {error
                 ? "A atualização foi interrompida antes de reiniciar. Os teus dados locais não foram apagados."
-                : "As etapas abaixo correspondem ao processo real do browser. Não é apresentada uma percentagem artificial."}
+                : `Etapa ${currentStepNumber} de ${STEPS.length}. A barra avança apenas quando cada fase real do processo é concluída.`}
             </p>
           </div>
         </div>
 
         {!error && (
-          <div className="mt-5 space-y-2">
-            {STEPS.map((step) => {
-              const done = completedUpdatePhases.includes(step.phase);
-              const active = updatePhase === step.phase;
-              return (
-                <div key={step.phase} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", active && "border-primary/35 bg-primary/5")}>
-                  {done ? (
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                  ) : active ? (
-                    <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" />
-                  ) : (
-                    <span className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/35" />
-                  )}
-                  <span className={cn("text-xs", active ? "font-semibold" : "text-muted-foreground")}>{step.label}</span>
-                </div>
-              );
-            })}
-          </div>
+          <>
+            <div
+              className="mt-5 grid grid-cols-5 gap-1.5"
+              role="progressbar"
+              aria-label="Progresso real da atualização"
+              aria-valuemin={0}
+              aria-valuemax={STEPS.length}
+              aria-valuenow={completedCount}
+              aria-valuetext={`${completedCount} de ${STEPS.length} etapas concluídas`}
+            >
+              {STEPS.map((step) => {
+                const done = completedUpdatePhases.includes(step.phase);
+                const active = updatePhase === step.phase;
+                return (
+                  <span
+                    key={step.phase}
+                    className={cn(
+                      "h-2 rounded-full border transition-colors",
+                      done && "border-primary bg-primary",
+                      active && !done && "border-primary/70 bg-primary/35 animate-pulse motion-reduce:animate-none",
+                      !done && !active && "border-border bg-muted",
+                    )}
+                  />
+                );
+              })}
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+              <span>{completedCount} concluídas</span>
+              <span>{STEPS.length} etapas reais</span>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {STEPS.map((step) => {
+                const done = completedUpdatePhases.includes(step.phase);
+                const active = updatePhase === step.phase;
+                return (
+                  <div key={step.phase} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", active && "border-primary/35 bg-primary/5")}>
+                    {done ? (
+                      <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    ) : active ? (
+                      <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-primary motion-reduce:animate-none" />
+                    ) : (
+                      <span className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/35" />
+                    )}
+                    <span className={cn("text-xs", active ? "font-semibold" : "text-muted-foreground")}>{step.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         <p className="mt-4 text-[10px] leading-relaxed text-muted-foreground">
-          Não feches a aplicação durante este processo. O Academic Hub voltará a abrir automaticamente quando a nova versão estiver ativa.
+          Não feches a aplicação durante este processo. O Academic Hub reinicia automaticamente quando a nova versão estiver ativa e, ao voltar a abrir, apresenta o resumo das alterações.
         </p>
       </section>
     </div>

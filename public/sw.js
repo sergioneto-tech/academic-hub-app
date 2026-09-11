@@ -1,4 +1,4 @@
-const SW_VERSION = "1.5.5-controlled-update-1";
+const SW_VERSION = "1.5.6-controlled-update-2";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -10,19 +10,52 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.5.5",
+  "./release-notes.json?v=1.5.6",
 ];
+
+async function makeRedirectSafeResponse(response) {
+  if (!response.redirected) return response;
+
+  const headers = new Headers(response.headers);
+  headers.delete("content-encoding");
+  headers.delete("content-length");
+  headers.delete("transfer-encoding");
+  headers.delete("location");
+
+  return new Response(await response.blob(), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function fetchFreshAppShell() {
+  const shellUrl = new URL("./", self.registration.scope).href;
+  const response = await fetch(new Request(shellUrl, {
+    cache: "no-store",
+    redirect: "follow",
+  }));
+  if (!response.ok) throw new Error(`App shell HTTP ${response.status}`);
+  return makeRedirectSafeResponse(response);
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
-    // Não pré-cacheia index.html: em Safari uma resposta que tenha passado por
-    // redirect pode ficar marcada como redirected no Cache Storage e ser
-    // rejeitada mais tarde numa navegação controlada pelo Service Worker.
-    await caches.open(CACHE).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {});
+    const cache = await caches.open(CACHE);
+    await cache.addAll(PRECACHE_URLS).catch(() => {});
 
-    // Desde a 1.5.5 as atualizações voltam ao fluxo controlado: quando já existe
-    // uma versão ativa, o novo worker permanece em waiting até o aluno confirmar
-    // a atualização. O SKIP_WAITING é enviado apenas pelo botão Atualizar.
+    // Cada Service Worker guarda o HTML correspondente à sua própria release.
+    // Enquanto este worker estiver em waiting, o worker anterior continua a
+    // servir o app-shell anterior e não deixa entrar bundles da versão nova.
+    try {
+      const appShell = await fetchFreshAppShell();
+      await cache.put(APP_SHELL_KEY, appShell.clone());
+    } catch {
+      // Se o shell não puder ser obtido durante a instalação, a navegação faz
+      // fallback à rede depois da ativação, sem bloquear a atualização.
+    }
+
+    // Não chama skipWaiting aqui. A ativação continua dependente do botão Atualizar.
   })());
 });
 
@@ -44,25 +77,6 @@ self.addEventListener("message", (event) => {
 
 const NETWORK_ONLY_PATHS = new Set(["/sw.js", "/release-notes.json", "/security-status.json"]);
 
-async function makeRedirectSafeResponse(response) {
-  // WebKit/Safari pode recusar em event.respondWith() uma Response proveniente
-  // do Cache Storage quando response.redirected === true. Reconstruir a resposta
-  // remove os metadados internos do redirect sem alterar o HTML entregue à app.
-  if (!response.redirected) return response;
-
-  const headers = new Headers(response.headers);
-  headers.delete("content-encoding");
-  headers.delete("content-length");
-  headers.delete("transfer-encoding");
-  headers.delete("location");
-
-  return new Response(await response.blob(), {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
-
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -70,41 +84,35 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Estes recursos têm de vir sempre da rede para a versão instalada conseguir
-  // descobrir uma nova release ou o estado de segurança mais recente.
   if (NETWORK_ONLY_PATHS.has(url.pathname)) {
     event.respondWith(fetch(new Request(request, { cache: "no-store" })));
     return;
   }
 
-  // Navegação: network-first e app-shell de fallback. A resposta guardada é
-  // sempre normalizada quando existiu redirect, evitando o erro WebKit
-  // "Response served by service worker has redirections".
+  // Navegação: serve primeiro o app-shell da versão ativa. Assim o HTML/JS novo
+  // só entra depois de o Service Worker novo ter sido ativado pelo utilizador.
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
+      const installedShell = await cache.match(APP_SHELL_KEY);
+      if (installedShell) return makeRedirectSafeResponse(installedShell.clone());
+
       try {
         const networkResponse = await fetch(new Request(request, {
           cache: "no-store",
           redirect: "follow",
         }));
-
         if (!networkResponse.ok) return networkResponse;
-
         const safeResponse = await makeRedirectSafeResponse(networkResponse);
         await cache.put(APP_SHELL_KEY, safeResponse.clone());
         return safeResponse;
       } catch (error) {
-        const installedShell = await cache.match(APP_SHELL_KEY);
-        if (installedShell) return makeRedirectSafeResponse(installedShell);
         throw error;
       }
     })());
     return;
   }
 
-  // Assets da aplicação: cache-first. Caches antigos são removidos na ativação,
-  // por isso não se misturam bundles de releases diferentes.
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(request);

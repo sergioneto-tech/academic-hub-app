@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useUpdate } from "@/lib/UpdateProvider";
 import { APP_VERSION } from "@/lib/version";
+import { deferReleaseUpdate } from "@/lib/updateLifecycle";
 
 const PUSH_KEYS = ["_push", "_pushTitle", "_pushBody"] as const;
 
@@ -27,16 +28,21 @@ export default function PushDeepLinkNotice() {
 
   const updateNow = () => {
     dismiss();
-    void applyUpdate();
+    void applyUpdate(releaseVersion || undefined);
+  };
+
+  const updateLater = () => {
+    deferReleaseUpdate(releaseVersion || undefined);
+    dismiss();
   };
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || releaseNeedsUpdate) return;
     const timer = window.setTimeout(dismiss, 12000);
     return () => window.clearTimeout(timer);
     // O temporizador deve reiniciar apenas quando muda o contexto da Push.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, title, body, location.pathname, location.search]);
+  }, [active, releaseNeedsUpdate, title, body, location.pathname, location.search]);
 
   if (!active) return null;
 
@@ -58,7 +64,10 @@ export default function PushDeepLinkNotice() {
         </div>
 
         {releaseNeedsUpdate ? (
-          <div className="mt-3 flex justify-end">
+          <div className="mt-3 grid gap-2 sm:flex sm:justify-end">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={updateLater}>
+              Mais tarde
+            </Button>
             <Button type="button" className="w-full sm:w-auto" onClick={updateNow}>
               <RefreshCw className="mr-2 h-4 w-4" />
               Atualizar agora

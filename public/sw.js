@@ -1,4 +1,4 @@
-const SW_VERSION = "1.5.6-controlled-update-2";
+const SW_VERSION = "1.5.7-controlled-update-3";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -10,7 +10,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.5.6",
+  "./release-notes.json?v=1.5.7",
 ];
 
 async function makeRedirectSafeResponse(response) {
@@ -44,18 +44,15 @@ self.addEventListener("install", (event) => {
     const cache = await caches.open(CACHE);
     await cache.addAll(PRECACHE_URLS).catch(() => {});
 
-    // Cada Service Worker guarda o HTML correspondente à sua própria release.
-    // Enquanto este worker estiver em waiting, o worker anterior continua a
-    // servir o app-shell anterior e não deixa entrar bundles da versão nova.
     try {
       const appShell = await fetchFreshAppShell();
       await cache.put(APP_SHELL_KEY, appShell.clone());
     } catch {
-      // Se o shell não puder ser obtido durante a instalação, a navegação faz
-      // fallback à rede depois da ativação, sem bloquear a atualização.
+      // Se o shell falhar durante a instalação, a navegação tenta a rede depois
+      // da ativação. A versão anterior continua ativa até o utilizador atualizar.
     }
 
-    // Não chama skipWaiting aqui. A ativação continua dependente do botão Atualizar.
+    // A atualização continua em waiting até existir confirmação do utilizador.
   })());
 });
 
@@ -89,26 +86,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navegação: serve primeiro o app-shell da versão ativa. Assim o HTML/JS novo
-  // só entra depois de o Service Worker novo ter sido ativado pelo utilizador.
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const installedShell = await cache.match(APP_SHELL_KEY);
       if (installedShell) return makeRedirectSafeResponse(installedShell.clone());
 
-      try {
-        const networkResponse = await fetch(new Request(request, {
-          cache: "no-store",
-          redirect: "follow",
-        }));
-        if (!networkResponse.ok) return networkResponse;
-        const safeResponse = await makeRedirectSafeResponse(networkResponse);
-        await cache.put(APP_SHELL_KEY, safeResponse.clone());
-        return safeResponse;
-      } catch (error) {
-        throw error;
-      }
+      const networkResponse = await fetch(new Request(request, {
+        cache: "no-store",
+        redirect: "follow",
+      }));
+      if (!networkResponse.ok) return networkResponse;
+      const safeResponse = await makeRedirectSafeResponse(networkResponse);
+      await cache.put(APP_SHELL_KEY, safeResponse.clone());
+      return safeResponse;
     })());
     return;
   }
@@ -135,6 +126,7 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Academic Hub";
   const body = payload.body || "";
   const suppliedData = payload.data && typeof payload.data === "object" ? payload.data : {};
+  const isRelease = suppliedData.kind === "release";
   const options = {
     body,
     icon: payload.icon || NOTIFICATION_ICON,
@@ -149,6 +141,7 @@ self.addEventListener("push", (event) => {
     renotify: Boolean(payload.tag),
     silent: false,
     vibrate: payload.vibrate || [180, 80, 180],
+    actions: isRelease ? [{ action: "update", title: "Atualizar agora" }] : undefined,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));

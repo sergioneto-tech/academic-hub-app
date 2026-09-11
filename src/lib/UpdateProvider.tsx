@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { APP_VERSION } from "@/lib/version";
 import {
   clearUpdateTarget,
@@ -93,7 +93,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
   const [updateAvailable, setUpdateAvailable] = useState(() => Boolean(isSupported && import.meta.env.PROD));
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     registerUpdateStartup(APP_VERSION, window.location.href);
     const url = new URL(window.location.href);
     if (!url.searchParams.has(UPDATE_RESTART_PARAM)) return;

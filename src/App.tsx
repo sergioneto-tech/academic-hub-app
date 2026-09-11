@@ -16,6 +16,7 @@ import FeedbackGlobalSyncPulse from "./components/FeedbackGlobalSyncPulse";
 import AppSatisfactionSurvey from "./components/AppSatisfactionSurvey";
 import AdminSurveyResults from "./components/AdminSurveyResults";
 import PushDeepLinkNotice from "./components/PushDeepLinkNotice";
+import DesktopPushPrompt from "./components/DesktopPushPrompt";
 import SecurityStatusBadge from "./components/SecurityStatusBadge";
 import UpdateProgressModal from "./components/UpdateProgressModal";
 import Dashboard from "./pages/Dashboard";
@@ -68,6 +69,7 @@ function AcademicHubApp() {
       <CloudSyncNotice />
       <CloudSyncStatusBadge />
       <PushDeepLinkNotice />
+      <DesktopPushPrompt />
       <MobileExitGuard />
       <AdminUserMonitor />
       <FeedbackCloudBridge />

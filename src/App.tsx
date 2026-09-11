@@ -7,7 +7,6 @@ import CloudSyncNotice from "./components/CloudSyncNotice";
 import CloudSyncStatusBadge from "./components/CloudSyncStatusBadge";
 import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
-import MobileExitGuard from "./components/MobileExitGuard";
 import AdminUserMonitor from "./components/AdminUserMonitor";
 import AdminFeedbackMonitor from "./components/AdminFeedbackMonitor";
 import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
@@ -70,7 +69,6 @@ function AcademicHubApp() {
       <CloudSyncStatusBadge />
       <PushDeepLinkNotice />
       <DesktopPushPrompt />
-      <MobileExitGuard />
       <AdminUserMonitor />
       <FeedbackCloudBridge />
       <FeedbackGlobalSyncPulse />

@@ -2,7 +2,8 @@ import { createClient } from "supabase";
 import webpush from "web-push";
 
 type Pref = { user_id:string; deadlines_enabled:boolean; exams_enabled:boolean; uab_enabled:boolean; efinal_lead_days:number; exam_lead_days:number; uab_lead_days:number; timezone:string };
-type Sub = { id:string; user_id:string; endpoint:string; p256dh:string; auth:string; enabled:boolean };
+type Sub = { id:string; user_id:string; endpoint:string; p256dh:string; auth:string; enabled:boolean; device_label:string|null };
+type Attempt = { user_id:string; subscription_id:string; event_key:string; status:"accepted"|"error"|"gone"; attempt_count:number };
 type Due = { key:string; title:string; body:string; url:string };
 type UabPeriod = { id:string; label:string; open:string; close:string; kind:"enrollment"|"classes" };
 type Slot = { status:string; dateTime:string|null };
@@ -24,6 +25,8 @@ function validGrade(a:any){return typeof a?.grade==="number"&&Number.isFinite(a.
 function max(a:any){return Math.max(0,Number(a?.maxPoints)||0);}
 function grade(a:any){return validGrade(a)?Math.max(0,Math.min(Number(a.grade),max(a))):0;}
 function total(items:any[],selector:(a:any)=>number){return items.reduce((sum,a)=>sum+selector(a),0);}
+function safeErrorMessage(err:any){const raw=String(err?.message??err??"Push error");return raw.slice(0,500);}
+function attemptKey(subscriptionId:string,eventKey:string){return `${subscriptionId}|${eventKey}`;}
 
 function extractUabPeriods(rows:any[]):UabPeriod[]{
   const periods:UabPeriod[]=[];
@@ -36,13 +39,7 @@ function extractUabPeriods(rows:any[]):UabPeriod[]{
       if(!isEnrollment&&!isClasses)continue;
       if(typeof event.startDate!=="string"||typeof event.endDate!=="string")continue;
       const semester=id.endsWith("1sem")?"1.º":"2.º";
-      periods.push({
-        id:`${year}:${id}`,
-        label:isClasses?`Aulas do ${semester} semestre`:`Inscrições do ${semester} semestre`,
-        open:event.startDate.slice(0,10),
-        close:event.endDate.slice(0,10),
-        kind:isClasses?"classes":"enrollment",
-      });
+      periods.push({id:`${year}:${id}`,label:isClasses?`Aulas do ${semester} semestre`:`Inscrições do ${semester} semestre`,open:event.startDate.slice(0,10),close:event.endDate.slice(0,10),kind:isClasses?"classes":"enrollment"});
     }
   }
   return periods;
@@ -81,22 +78,8 @@ function buildDue(state:any,pref:Pref,now:Date,uabPeriods:UabPeriod[],schedule:M
   if(pref.uab_enabled){
     for(const p of uabPeriods){
       const openLeft=daysBetween(today,p.open);
-      if(openLeft===pref.uab_lead_days){
-        due.push({
-          key:`uab:${p.id}:open-lead:${openLeft}`,
-          title:p.kind==="classes"?`${p.label} começam em ${openLeft} dias`:`${p.label} abrem em ${openLeft} dias`,
-          body:"Universidade Aberta",
-          url:UAB_URL,
-        });
-      }
-      if(openLeft===0){
-        due.push({
-          key:`uab:${p.id}:open`,
-          title:p.kind==="classes"?`${p.label} começam hoje`:`${p.label} abrem hoje`,
-          body:p.kind==="classes"?"Bom início de semestre! Consulta o calendário oficial da UAb.":"Consulta o calendário oficial da UAb.",
-          url:UAB_URL,
-        });
-      }
+      if(openLeft===pref.uab_lead_days)due.push({key:`uab:${p.id}:open-lead:${openLeft}`,title:p.kind==="classes"?`${p.label} começam em ${openLeft} dias`:`${p.label} abrem em ${openLeft} dias`,body:"Universidade Aberta",url:UAB_URL});
+      if(openLeft===0)due.push({key:`uab:${p.id}:open`,title:p.kind==="classes"?`${p.label} começam hoje`:`${p.label} abrem hoje`,body:p.kind==="classes"?"Bom início de semestre! Consulta o calendário oficial da UAb.":"Consulta o calendário oficial da UAb.",url:UAB_URL});
       if(p.kind==="enrollment"){
         const closeLeft=daysBetween(today,p.close);
         if(closeLeft===pref.uab_lead_days)due.push({key:`uab:${p.id}:close-lead:${closeLeft}`,title:`${p.label}: faltam ${closeLeft} dias`,body:"Prazo de inscrição a terminar.",url:UAB_URL});
@@ -108,12 +91,93 @@ function buildDue(state:any,pref:Pref,now:Date,uabPeriods:UabPeriod[],schedule:M
 }
 
 export default{async fetch(req:Request){
-  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:CORS_HEADERS});if(req.method!=="POST")return jsonResponse({error:"Method not allowed"},405);
-  const url=Deno.env.get("SUPABASE_URL")!,service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,db=createClient(url,service,{auth:{persistSession:false}});const{data:cfg}=await db.from("push_server_config").select("key,value").in("key",["vapid_public","vapid_private","cron_secret"]);const config=Object.fromEntries((cfg??[]).map((r:any)=>[r.key,r.value]));if(!config.vapid_public||!config.vapid_private)return jsonResponse({error:"Push not configured"},503);webpush.setVapidDetails("mailto:sergioneto78@gmail.com",config.vapid_public,config.vapid_private);
-  const cronOk=req.headers.get("x-cron-secret")===config.cron_secret,auth=req.headers.get("authorization")??"";let onlyUser:string|null=null;if(!cronOk){if(!auth.startsWith("Bearer "))return jsonResponse({error:"Unauthorized"},401);const{data}=await db.auth.getUser(auth.slice(7));onlyUser=data.user?.id??null;if(!onlyUser)return jsonResponse({error:"Unauthorized"},401);}
-  const body=await req.json().catch(()=>({})),targetEndpoint=body.mode==="test"&&typeof body.targetEndpoint==="string"?body.targetEndpoint:null;let prefQ=db.from("push_preferences").select("*");if(onlyUser)prefQ=prefQ.eq("user_id",onlyUser);const{data:prefs}=await prefQ;if(!prefs?.length)return jsonResponse({sent:0});const ids=prefs.map((p:any)=>p.user_id);
-  const[{data:states},{data:subs},{data:logs},{data:calendarRows},{data:examRows}]=await Promise.all([db.from("user_state").select("user_id,state").in("user_id",ids),db.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth,enabled").in("user_id",ids).eq("enabled",true),db.from("push_delivery_log").select("user_id,event_key").in("user_id",ids),db.from("uab_academic_calendars").select("academic_year,payload").eq("is_valid",true).order("academic_year",{ascending:false}).limit(2),db.from("uab_exam_schedules").select("semester,payload").eq("academic_year","2026/2027").eq("is_valid",true)]);
-  const stateMap=new Map((states??[]).map((r:any)=>[r.user_id,r.state])),sentKeys=new Set((logs??[]).map((r:any)=>`${r.user_id}|${r.event_key}`)),uabPeriods=extractUabPeriods(calendarRows??[]),schedule=buildScheduleMap(examRows??[]);let sent=0;
-  for(const pref of prefs as Pref[]){let userSubs=(subs??[]).filter((s:any)=>s.user_id===pref.user_id)as Sub[];if(body.mode==="test"&&onlyUser===pref.user_id&&targetEndpoint)userSubs=userSubs.filter(s=>s.endpoint===targetEndpoint);if(!userSubs.length)continue;const events=body.mode==="test"&&onlyUser===pref.user_id?[{key:`test:${Date.now()}`,title:"Academic Hub",body:"Notificações ativadas com sucesso neste dispositivo.",url:"/#/definicoes"}]:buildDue(stateMap.get(pref.user_id)??{},pref,new Date(),uabPeriods,schedule);for(const event of events){if(body.mode!=="test"&&sentKeys.has(`${pref.user_id}|${event.key}`))continue;let ok=false;const payload=JSON.stringify({title:event.title,body:event.body,url:event.url,icon:"/academic-hub-icon-v10-192.png",badge:"/academic-hub-notification-badge.png"});for(const s of userSubs){try{await webpush.sendNotification({endpoint:s.endpoint,keys:{p256dh:s.p256dh,auth:s.auth}},payload,{TTL:86400});ok=true;sent++;}catch(err:any){if(err?.statusCode===404||err?.statusCode===410)await db.from("push_subscriptions").delete().eq("id",s.id);else console.error("push",err?.statusCode??err);}}if(ok&&body.mode!=="test")await db.from("push_delivery_log").insert({user_id:pref.user_id,event_key:event.key});}}
-  return jsonResponse({sent});
+  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:CORS_HEADERS});
+  if(req.method!=="POST")return jsonResponse({error:"Method not allowed"},405);
+
+  const url=Deno.env.get("SUPABASE_URL")!,service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,db=createClient(url,service,{auth:{persistSession:false}});
+  const{data:cfg}=await db.from("push_server_config").select("key,value").in("key",["vapid_public","vapid_private","cron_secret"]);
+  const config=Object.fromEntries((cfg??[]).map((r:any)=>[r.key,r.value]));
+  if(!config.vapid_public||!config.vapid_private)return jsonResponse({error:"Push not configured"},503);
+  webpush.setVapidDetails("mailto:sergioneto78@gmail.com",config.vapid_public,config.vapid_private);
+
+  const cronOk=req.headers.get("x-cron-secret")===config.cron_secret,auth=req.headers.get("authorization")??"";
+  let onlyUser:string|null=null;
+  if(!cronOk){if(!auth.startsWith("Bearer "))return jsonResponse({error:"Unauthorized"},401);const{data}=await db.auth.getUser(auth.slice(7));onlyUser=data.user?.id??null;if(!onlyUser)return jsonResponse({error:"Unauthorized"},401);}
+
+  const body=await req.json().catch(()=>({})),targetEndpoint=body.mode==="test"&&typeof body.targetEndpoint==="string"?body.targetEndpoint:null;
+  let prefQ=db.from("push_preferences").select("*");if(onlyUser)prefQ=prefQ.eq("user_id",onlyUser);
+  const{data:prefs}=await prefQ;if(!prefs?.length)return jsonResponse({sent:0,accepted:0,errors:0,gone:0});
+  const ids=prefs.map((p:any)=>p.user_id);
+
+  const[{data:states},{data:subs},{data:logs},{data:attemptRows},{data:calendarRows},{data:examRows}]=await Promise.all([
+    db.from("user_state").select("user_id,state").in("user_id",ids),
+    db.from("push_subscriptions").select("id,user_id,endpoint,p256dh,auth,enabled,device_label").in("user_id",ids).eq("enabled",true),
+    db.from("push_delivery_log").select("user_id,event_key").in("user_id",ids),
+    db.from("push_delivery_attempts").select("user_id,subscription_id,event_key,status,attempt_count").in("user_id",ids),
+    db.from("uab_academic_calendars").select("academic_year,payload").eq("is_valid",true).order("academic_year",{ascending:false}).limit(2),
+    db.from("uab_exam_schedules").select("semester,payload").eq("academic_year","2026/2027").eq("is_valid",true)
+  ]);
+
+  const stateMap=new Map((states??[]).map((r:any)=>[r.user_id,r.state]));
+  const legacySentKeys=new Set((logs??[]).map((r:any)=>`${r.user_id}|${r.event_key}`));
+  const attempts=new Map<string,Attempt>((attemptRows??[]).map((r:any)=>[attemptKey(r.subscription_id,r.event_key),r as Attempt]));
+  const attemptsByUserEvent=new Set((attemptRows??[]).map((r:any)=>`${r.user_id}|${r.event_key}`));
+  const uabPeriods=extractUabPeriods(calendarRows??[]),schedule=buildScheduleMap(examRows??[]);
+  let sent=0,accepted=0,errors=0,gone=0,skippedAccepted=0,legacySkipped=0;
+
+  async function recordAttempt(pref:Pref,s:Sub,eventKey:string,status:"accepted"|"error"|"gone",statusCode:number|null,lastError:string|null){
+    const key=attemptKey(s.id,eventKey),previous=attempts.get(key),now=new Date().toISOString();
+    const row={user_id:pref.user_id,subscription_id:s.id,device_label:s.device_label,event_key:eventKey,status,status_code:statusCode,attempt_count:(previous?.attempt_count??0)+1,last_error:lastError,first_attempt_at:previous?undefined:now,last_attempt_at:now,accepted_at:status==="accepted"?now:null};
+    const payload=Object.fromEntries(Object.entries(row).filter(([,v])=>v!==undefined));
+    const{error}=await db.from("push_delivery_attempts").upsert(payload,{onConflict:"subscription_id,event_key"});
+    if(error)console.error("push_attempt_log",error.message);
+    const next={user_id:pref.user_id,subscription_id:s.id,event_key:eventKey,status,attempt_count:(previous?.attempt_count??0)+1} as Attempt;
+    attempts.set(key,next);attemptsByUserEvent.add(`${pref.user_id}|${eventKey}`);
+  }
+
+  for(const pref of prefs as Pref[]){
+    let userSubs=(subs??[]).filter((s:any)=>s.user_id===pref.user_id) as Sub[];
+    if(body.mode==="test"&&onlyUser===pref.user_id&&targetEndpoint)userSubs=userSubs.filter(s=>s.endpoint===targetEndpoint);
+    if(!userSubs.length)continue;
+
+    const isTest=body.mode==="test"&&onlyUser===pref.user_id;
+    const events=isTest?[{key:`test:${Date.now()}`,title:"Academic Hub",body:"Notificações ativadas com sucesso neste dispositivo.",url:"/#/definicoes"}]:buildDue(stateMap.get(pref.user_id)??{},pref,new Date(),uabPeriods,schedule);
+
+    for(const event of events){
+      const userEventKey=`${pref.user_id}|${event.key}`;
+      if(!isTest&&legacySentKeys.has(userEventKey)&&!attemptsByUserEvent.has(userEventKey)){legacySkipped++;continue;}
+
+      const payload=JSON.stringify({title:event.title,body:event.body,url:event.url,icon:"/academic-hub-icon-v10-192.png",badge:"/academic-hub-notification-badge.png"});
+      let eventAccepted=false;
+
+      for(const s of userSubs){
+        const existing=attempts.get(attemptKey(s.id,event.key));
+        if(!isTest&&existing?.status==="accepted"){skippedAccepted++;eventAccepted=true;continue;}
+
+        try{
+          await webpush.sendNotification({endpoint:s.endpoint,keys:{p256dh:s.p256dh,auth:s.auth}},payload,{TTL:86400});
+          sent++;accepted++;eventAccepted=true;
+          if(!isTest)await recordAttempt(pref,s,event.key,"accepted",201,null);
+        }catch(err:any){
+          const statusCode=Number(err?.statusCode)||null;
+          if(statusCode===404||statusCode===410){
+            gone++;
+            if(!isTest)await recordAttempt(pref,s,event.key,"gone",statusCode,safeErrorMessage(err));
+            await db.from("push_subscriptions").delete().eq("id",s.id);
+          }else{
+            errors++;
+            if(!isTest)await recordAttempt(pref,s,event.key,"error",statusCode,safeErrorMessage(err));
+            console.error("push",statusCode??err);
+          }
+        }
+      }
+
+      if(!isTest&&eventAccepted){
+        const{error}=await db.from("push_delivery_log").upsert({user_id:pref.user_id,event_key:event.key},{onConflict:"user_id,event_key",ignoreDuplicates:true});
+        if(error)console.error("push_delivery_log",error.message);
+      }
+    }
+  }
+
+  return jsonResponse({sent,accepted,errors,gone,skippedAccepted,legacySkipped});
 }};

@@ -1,8 +1,13 @@
-const SW_VERSION = "1.5.7-controlled-update-3";
+const APP_VERSION = "1.5.7";
+const SW_VERSION = "1.5.7-controlled-update-4-repair";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
 const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
+const APP_SHELL_VERSION_MARKER = `<meta name="academic-hub-version" content="${APP_VERSION}"`;
+const APP_SHELL_FETCH_ATTEMPTS = 4;
+const APP_SHELL_RETRY_MS = 650;
+const REPAIR_BUILD_AUTO_ACTIVATE = true;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
@@ -13,30 +18,55 @@ const PRECACHE_URLS = [
   "./release-notes.json?v=1.5.7",
 ];
 
-async function makeRedirectSafeResponse(response) {
-  if (!response.redirected) return response;
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
+function responseFromText(response, text) {
   const headers = new Headers(response.headers);
   headers.delete("content-encoding");
   headers.delete("content-length");
   headers.delete("transfer-encoding");
   headers.delete("location");
 
-  return new Response(await response.blob(), {
+  return new Response(text, {
     status: response.status,
     statusText: response.statusText,
     headers,
   });
 }
 
-async function fetchFreshAppShell() {
-  const shellUrl = new URL("./", self.registration.scope).href;
-  const response = await fetch(new Request(shellUrl, {
-    cache: "no-store",
-    redirect: "follow",
-  }));
-  if (!response.ok) throw new Error(`App shell HTTP ${response.status}`);
-  return makeRedirectSafeResponse(response);
+async function makeRedirectSafeResponse(response) {
+  if (!response.redirected) return response;
+  return responseFromText(response, await response.text());
+}
+
+async function fetchVerifiedAppShell() {
+  const shellUrl = new URL("./", self.registration.scope);
+  let lastError = new Error("App shell não verificado");
+
+  for (let attempt = 1; attempt <= APP_SHELL_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      shellUrl.searchParams.set("ah_shell", `${APP_VERSION}-${Date.now()}-${attempt}`);
+      const response = await fetch(new Request(shellUrl.href, {
+        cache: "no-store",
+        redirect: "follow",
+      }));
+      if (!response.ok) throw new Error(`App shell HTTP ${response.status}`);
+
+      const text = await response.text();
+      if (!text.includes(APP_SHELL_VERSION_MARKER)) {
+        throw new Error(`App shell não corresponde à versão ${APP_VERSION}`);
+      }
+
+      return responseFromText(response, text);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < APP_SHELL_FETCH_ATTEMPTS) await delay(APP_SHELL_RETRY_MS);
+    }
+  }
+
+  throw lastError;
 }
 
 self.addEventListener("install", (event) => {
@@ -44,15 +74,16 @@ self.addEventListener("install", (event) => {
     const cache = await caches.open(CACHE);
     await cache.addAll(PRECACHE_URLS).catch(() => {});
 
-    try {
-      const appShell = await fetchFreshAppShell();
-      await cache.put(APP_SHELL_KEY, appShell.clone());
-    } catch {
-      // Se o shell falhar durante a instalação, a navegação tenta a rede depois
-      // da ativação. A versão anterior continua ativa até o utilizador atualizar.
-    }
+    // Uma release só pode ficar pronta se o HTML obtido corresponder à mesma
+    // versão do Service Worker. Isto evita o estado Android em que um worker
+    // novo ficava associado ao app-shell da release anterior.
+    const appShell = await fetchVerifiedAppShell();
+    await cache.put(APP_SHELL_KEY, appShell.clone());
 
-    // A atualização continua em waiting até existir confirmação do utilizador.
+    // Este build é uma reparação da própria 1.5.7, sem mudança funcional de
+    // versão. Ativa-se sozinho para substituir caches 1.5.7 inconsistentes.
+    // Nas releases seguintes esta flag deve voltar a false/removida.
+    if (REPAIR_BUILD_AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });
 
@@ -70,6 +101,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event?.data?.type === "SKIP_WAITING") self.skipWaiting();
+  if (event?.data?.type === "GET_VERSION" && event.ports?.[0]) {
+    event.ports[0].postMessage({ appVersion: APP_VERSION, swVersion: SW_VERSION });
+  }
 });
 
 const NETWORK_ONLY_PATHS = new Set(["/sw.js", "/release-notes.json", "/security-status.json"]);
@@ -90,16 +124,17 @@ self.addEventListener("fetch", (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const installedShell = await cache.match(APP_SHELL_KEY);
-      if (installedShell) return makeRedirectSafeResponse(installedShell.clone());
+      if (installedShell) return installedShell.clone();
 
+      // Não grava HTML não verificado em caso de perda inesperada do cache.
+      // Serve a rede apenas como fallback temporário; um novo ciclo de registo
+      // voltará a construir um app-shell validado.
       const networkResponse = await fetch(new Request(request, {
         cache: "no-store",
         redirect: "follow",
       }));
       if (!networkResponse.ok) return networkResponse;
-      const safeResponse = await makeRedirectSafeResponse(networkResponse);
-      await cache.put(APP_SHELL_KEY, safeResponse.clone());
-      return safeResponse;
+      return makeRedirectSafeResponse(networkResponse);
     })());
     return;
   }

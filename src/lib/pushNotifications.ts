@@ -174,7 +174,7 @@ export function isStandalonePwa() {
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-export async function loadPushPreferences() {
+export async function loadPushPreferences(): Promise<PushPreferences | null> {
   let context: CloudAuthContext;
   try {
     context = await getCloudAuthContext();
@@ -186,7 +186,7 @@ export async function loadPushPreferences() {
   const response = await cloudFetch(context, url, { cache: "no-store" });
   await assertOk(response, "Não foi possível carregar as preferências de notificações.");
   const rows = await response.json() as Array<PushPreferences & { user_id: string }>;
-  return rows[0] ? { ...DEFAULT_PUSH_PREFERENCES, ...rows[0] } : DEFAULT_PUSH_PREFERENCES;
+  return rows[0] ? { ...DEFAULT_PUSH_PREFERENCES, ...rows[0] } : null;
 }
 
 export async function savePushPreferences(prefs: PushPreferences) {
@@ -199,6 +199,13 @@ export async function savePushPreferences(prefs: PushPreferences) {
     body: JSON.stringify({ user_id: context.session.user.id, ...prefs }),
   });
   await assertOk(response, "Não foi possível guardar as preferências de notificações.");
+}
+
+async function ensurePushPreferences(): Promise<PushPreferences> {
+  const existing = await loadPushPreferences();
+  if (existing) return existing;
+  await savePushPreferences(DEFAULT_PUSH_PREFERENCES);
+  return DEFAULT_PUSH_PREFERENCES;
 }
 
 export async function loadRegisteredPushDevices(): Promise<RegisteredPushDevice[]> {
@@ -256,6 +263,9 @@ export async function reconcilePushOnThisDevice(deviceLabel = defaultDeviceLabel
   const context = await getCloudAuthContext();
   const subscription = await ensureLocalPushSubscription();
   await registerSubscription(context, subscription, deviceLabel);
+  // Uma subscrição sem push_preferences nunca entra no envio agendado. Garante
+  // que instalações antigas ou recuperadas ficam completas no servidor.
+  await ensurePushPreferences();
   return subscription;
 }
 
@@ -268,8 +278,7 @@ export async function enablePushOnThisDevice(deviceLabel = defaultDeviceLabel())
 
   const subscription = await ensureLocalPushSubscription();
   await registerSubscription(context, subscription, deviceLabel);
-  const preferences = await loadPushPreferences() ?? DEFAULT_PUSH_PREFERENCES;
-  await savePushPreferences(preferences);
+  await ensurePushPreferences();
   return subscription;
 }
 
@@ -288,11 +297,12 @@ export async function sendPushTest() {
   const context = await getCloudAuthContext();
 
   // Antes do teste, garante que o dispositivo onde o botão foi premido também está
-  // registado. Isto repara automaticamente instalações iOS/iPadOS que já tinham
-  // permissão concedida mas perderam a associação ao servidor.
+  // registado e que a conta tem preferências no servidor. Isto repara automaticamente
+  // instalações antigas que tinham permissão concedida mas ficaram incompletas.
   if (pushSupported() && Notification.permission === "granted") {
     const subscription = await ensureLocalPushSubscription();
     await registerSubscription(context, subscription);
+    await ensurePushPreferences();
   }
 
   // O teste serve para validar a conta inteira: envia para todos os dispositivos

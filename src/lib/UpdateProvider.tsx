@@ -12,23 +12,7 @@ type Ctx = {
 
 const UpdateCtx = createContext<Ctx | null>(null);
 
-async function clearAcademicHubCaches() {
-  if (typeof window === "undefined" || !("caches" in window)) return;
-
-  try {
-    const keys = await window.caches.keys();
-    await Promise.all(
-      keys
-        .filter((key) => key.startsWith("academic-hub"))
-        .map((key) => window.caches.delete(key))
-    );
-  } catch {
-    // A atualização não deve falhar só porque a limpeza de cache falhou.
-  }
-}
-
 function hardReload() {
-  // Recarrega a app sem tocar no localStorage/IndexedDB onde estão cadeiras, notas e histórico.
   const url = new URL(window.location.href);
   url.searchParams.set("ah_update", Date.now().toString());
   window.location.replace(url.toString());
@@ -73,10 +57,12 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const [completedUpdatePhases, setCompletedUpdatePhases] = useState<UpdatePhase[]>([]);
 
   const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
+  // Em produção, enquanto o primeiro check do Service Worker ainda não terminou,
+  // tratamos o estado como potencial atualização. Isto impede o cartão "O que mudou"
+  // de aparecer antes de sabermos se existe um worker novo em waiting.
+  const [updateAvailable, setUpdateAvailable] = useState(() => Boolean(isSupported && import.meta.env.PROD));
 
   useEffect(() => {
-    // O parâmetro serve apenas para quebrar caches durante o reinício da atualização.
-    // Assim que a nova aplicação arranca, o URL volta ao endereço normal.
     const url = new URL(window.location.href);
     if (!url.searchParams.has("ah_update")) return;
     url.searchParams.delete("ah_update");
@@ -84,26 +70,52 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isSupported) return;
-    if (!import.meta.env.PROD) return;
+    if (!isSupported || !import.meta.env.PROD) {
+      setUpdateAvailable(false);
+      return;
+    }
 
     const swUrl = `${import.meta.env.BASE_URL ?? "./"}sw.js`;
     let disposed = false;
     let registered: ServiceWorkerRegistration | null = null;
+    let observedInstalling: ServiceWorker | null = null;
     let hasControlledPage = Boolean(navigator.serviceWorker.controller);
 
-    const checkForUpdate = () => {
-      const reg = regRef.current;
-      if (!reg || applyingRef.current) return;
-      // O script do worker não deve depender do HTTP cache. Isto é especialmente
-      // importante em Safari/iOS e em web apps instaladas no ecrã principal.
-      void reg.update().catch(() => {});
+    const syncRegistrationState = (reg: ServiceWorkerRegistration | null) => {
+      if (disposed) return;
+      const hasPendingUpdate = Boolean(reg?.waiting || (reg?.installing && navigator.serviceWorker.controller));
+      setUpdateAvailable(hasPendingUpdate);
     };
 
-    const onFocus = () => checkForUpdate();
-    const onOnline = () => checkForUpdate();
+    const onInstallingStateChange = () => {
+      const reg = regRef.current;
+      syncRegistrationState(reg);
+    };
+
+    const observeInstallingWorker = (reg: ServiceWorkerRegistration) => {
+      if (observedInstalling) observedInstalling.removeEventListener("statechange", onInstallingStateChange);
+      observedInstalling = reg.installing;
+      observedInstalling?.addEventListener("statechange", onInstallingStateChange);
+      syncRegistrationState(reg);
+    };
+
+    const runUpdateCheck = async () => {
+      const reg = regRef.current;
+      if (!reg || applyingRef.current) return;
+      try {
+        await reg.update();
+      } catch {
+        // Mantém a app funcional mesmo se a verificação pontual falhar.
+      } finally {
+        if (reg.installing) observeInstallingWorker(reg);
+        else syncRegistrationState(reg);
+      }
+    };
+
+    const onFocus = () => void runUpdateCheck();
+    const onOnline = () => void runUpdateCheck();
     const onVisibility = () => {
-      if (document.visibilityState === "visible") checkForUpdate();
+      if (document.visibilityState === "visible") void runUpdateCheck();
     };
 
     navigator.serviceWorker
@@ -112,23 +124,36 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         if (disposed) return;
         registered = reg;
         regRef.current = reg;
-        void reg.update().catch(() => {});
+        syncRegistrationState(reg);
 
+        const onUpdateFound = () => observeInstallingWorker(reg);
+        reg.addEventListener("updatefound", onUpdateFound);
+        (reg as ServiceWorkerRegistration & { __ahUpdateFoundHandler?: () => void }).__ahUpdateFoundHandler = onUpdateFound;
+
+        void runUpdateCheck();
         window.addEventListener("focus", onFocus);
         window.addEventListener("online", onOnline);
         document.addEventListener("visibilitychange", onVisibility);
       })
       .catch(() => {
-        // Sem Service Worker não há atualização controlada, mas a app continua utilizável.
+        setUpdateAvailable(false);
       });
 
     const onControllerChange = () => {
       if (!hasControlledPage) {
         hasControlledPage = true;
+        setUpdateAvailable(false);
         return;
       }
-      if (refreshingRef.current || !applyingRef.current) return;
+
+      if (!applyingRef.current) {
+        setUpdateAvailable(false);
+        return;
+      }
+
+      if (refreshingRef.current) return;
       refreshingRef.current = true;
+      setUpdateAvailable(false);
       setUpdatePhase("restarting");
       hardReload();
     };
@@ -141,7 +166,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         window.removeEventListener("focus", onFocus);
         window.removeEventListener("online", onOnline);
         document.removeEventListener("visibilitychange", onVisibility);
+        const handler = (registered as ServiceWorkerRegistration & { __ahUpdateFoundHandler?: () => void }).__ahUpdateFoundHandler;
+        if (handler) registered.removeEventListener("updatefound", handler);
       }
+      observedInstalling?.removeEventListener("statechange", onInstallingStateChange);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };
   }, [isSupported]);
@@ -158,18 +186,16 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
 
     try {
       setUpdatePhase("preparing");
-      await clearAcademicHubCaches();
+      const reg = regRef.current;
       completePhase("preparing");
 
-      const reg = regRef.current;
       if (reg) {
         setUpdatePhase("checking");
         try {
           await reg.update();
           completePhase("checking");
         } catch {
-          // Se a verificação direta falhar, o reload com cache-buster continua a ser
-          // um fallback real para obter o HTML/bundle atual do servidor.
+          // Se o check direto falhar, o reload com cache-buster continua como fallback.
         }
 
         const installing = reg.installing;
@@ -202,10 +228,6 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       setUpdatePhase("error");
     }
   };
-
-  // A interface anuncia uma nova versão apenas quando release-notes.json contém
-  // uma versão superior. Um worker técnico, por si só, não cria um falso aviso.
-  const updateAvailable = false;
 
   return (
     <UpdateCtx.Provider value={{ updateAvailable, applyUpdate, isSupported, updatePhase, completedUpdatePhases }}>

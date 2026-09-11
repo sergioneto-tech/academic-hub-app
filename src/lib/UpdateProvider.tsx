@@ -57,9 +57,9 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const [completedUpdatePhases, setCompletedUpdatePhases] = useState<UpdatePhase[]>([]);
 
   const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
-  // Em produção, enquanto o primeiro check do Service Worker ainda não terminou,
-  // tratamos o estado como potencial atualização. Isto impede o cartão "O que mudou"
-  // de aparecer antes de sabermos se existe um worker novo em waiting.
+  // Em produção o estado começa como potencial atualização. Só passa a false
+  // depois do primeiro reg.update() terminar e confirmar que não existe worker
+  // novo em installing/waiting. Isto bloqueia "O que mudou" durante esse check.
   const [updateAvailable, setUpdateAvailable] = useState(() => Boolean(isSupported && import.meta.env.PROD));
 
   useEffect(() => {
@@ -79,6 +79,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     let disposed = false;
     let registered: ServiceWorkerRegistration | null = null;
     let observedInstalling: ServiceWorker | null = null;
+    let onUpdateFoundHandler: (() => void) | null = null;
     let hasControlledPage = Boolean(navigator.serviceWorker.controller);
 
     const syncRegistrationState = (reg: ServiceWorkerRegistration | null) => {
@@ -88,15 +89,16 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     };
 
     const onInstallingStateChange = () => {
-      const reg = regRef.current;
-      syncRegistrationState(reg);
+      syncRegistrationState(regRef.current);
     };
 
     const observeInstallingWorker = (reg: ServiceWorkerRegistration) => {
       if (observedInstalling) observedInstalling.removeEventListener("statechange", onInstallingStateChange);
       observedInstalling = reg.installing;
       observedInstalling?.addEventListener("statechange", onInstallingStateChange);
-      syncRegistrationState(reg);
+      // Se existe um worker a instalar por cima de uma página já controlada,
+      // existe uma atualização real pendente mesmo antes de chegar a waiting.
+      if (observedInstalling && navigator.serviceWorker.controller) setUpdateAvailable(true);
     };
 
     const runUpdateCheck = async () => {
@@ -108,7 +110,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         // Mantém a app funcional mesmo se a verificação pontual falhar.
       } finally {
         if (reg.installing) observeInstallingWorker(reg);
-        else syncRegistrationState(reg);
+        syncRegistrationState(reg);
       }
     };
 
@@ -124,12 +126,13 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         if (disposed) return;
         registered = reg;
         regRef.current = reg;
-        syncRegistrationState(reg);
 
-        const onUpdateFound = () => observeInstallingWorker(reg);
-        reg.addEventListener("updatefound", onUpdateFound);
-        (reg as ServiceWorkerRegistration & { __ahUpdateFoundHandler?: () => void }).__ahUpdateFoundHandler = onUpdateFound;
+        onUpdateFoundHandler = () => observeInstallingWorker(reg);
+        reg.addEventListener("updatefound", onUpdateFoundHandler);
 
+        // Não baixa updateAvailable antes deste check terminar. É esta barreira
+        // que impede mostrar a release como instalada enquanto o worker novo
+        // ainda está a ser descoberto/instalado.
         void runUpdateCheck();
         window.addEventListener("focus", onFocus);
         window.addEventListener("online", onOnline);
@@ -162,13 +165,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       disposed = true;
-      if (registered) {
-        window.removeEventListener("focus", onFocus);
-        window.removeEventListener("online", onOnline);
-        document.removeEventListener("visibilitychange", onVisibility);
-        const handler = (registered as ServiceWorkerRegistration & { __ahUpdateFoundHandler?: () => void }).__ahUpdateFoundHandler;
-        if (handler) registered.removeEventListener("updatefound", handler);
-      }
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (registered && onUpdateFoundHandler) registered.removeEventListener("updatefound", onUpdateFoundHandler);
       observedInstalling?.removeEventListener("statechange", onInstallingStateChange);
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };

@@ -1,5 +1,5 @@
 const APP_VERSION = "1.5.7";
-const SW_VERSION = "1.5.7-controlled-update-5-self-heal";
+const SW_VERSION = "1.5.7-controlled-update-6-native-exit";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -81,8 +81,8 @@ self.addEventListener("install", (event) => {
     await cache.put(APP_SHELL_KEY, appShell.clone());
 
     // Este build é uma reparação da própria 1.5.7, sem mudança funcional de
-    // versão. Ativa-se sozinho para substituir caches 1.5.7 inconsistentes e
-    // distribuir o mecanismo de autorrecuperação aos dispositivos existentes.
+    // versão. Ativa-se sozinho para substituir caches inconsistentes, distribuir
+    // a autorrecuperação e remover o antigo bloqueio artificial do botão Voltar.
     if (REPAIR_BUILD_AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });

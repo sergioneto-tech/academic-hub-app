@@ -1,4 +1,4 @@
-const SW_VERSION = "1.5.4-safari-recovery-3";
+const SW_VERSION = "1.5.5-controlled-update-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -10,7 +10,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.5.4",
+  "./release-notes.json?v=1.5.5",
 ];
 
 self.addEventListener("install", (event) => {
@@ -20,10 +20,9 @@ self.addEventListener("install", (event) => {
     // rejeitada mais tarde numa navegação controlada pelo Service Worker.
     await caches.open(CACHE).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {});
 
-    // Recuperação extraordinária da versão 1.5.4: alguns clientes Safari/iOS
-    // ficaram presos no worker anterior e nem conseguem abrir a UI para clicar
-    // em "Atualizar". Esta release técnica assume controlo sem interação.
-    await self.skipWaiting();
+    // Desde a 1.5.5 as atualizações voltam ao fluxo controlado: quando já existe
+    // uma versão ativa, o novo worker permanece em waiting até o aluno confirmar
+    // a atualização. O SKIP_WAITING é enviado apenas pelo botão Atualizar.
   })());
 });
 

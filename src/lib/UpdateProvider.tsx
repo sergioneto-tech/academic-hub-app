@@ -2,9 +2,12 @@ import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, u
 import { APP_VERSION } from "@/lib/version";
 import {
   clearUpdateTarget,
+  getUpdateTargetVersion,
   markUpdateTarget,
   registerUpdateStartup,
+  UPDATE_REPAIR_PARAM,
   UPDATE_RESTART_PARAM,
+  type UpdateStartupStatus,
 } from "@/lib/updateLifecycle";
 
 export type UpdatePhase = "idle" | "preparing" | "checking" | "installing" | "activating" | "restarting" | "error";
@@ -34,6 +37,52 @@ function nextPaint() {
 function hardReload() {
   const url = new URL(window.location.href);
   url.searchParams.set(UPDATE_RESTART_PARAM, Date.now().toString());
+  url.searchParams.delete(UPDATE_REPAIR_PARAM);
+  window.location.replace(url.toString());
+}
+
+async function resolvePublishedTargetVersion(explicitVersion?: string) {
+  const explicit = explicitVersion?.trim();
+  if (explicit) return explicit;
+
+  try {
+    const notesUrl = `${import.meta.env.BASE_URL ?? "./"}release-notes.json?update_target=${Date.now()}`;
+    const response = await fetch(notesUrl, { cache: "no-store" });
+    if (!response.ok) return "";
+    const data = await response.json() as { latest?: unknown };
+    return typeof data.latest === "string" ? data.latest.trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+async function repairStaleInstallation() {
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    const origin = window.location.origin;
+    await Promise.all(
+      registrations
+        .filter((registration) => registration.scope.startsWith(origin))
+        .map((registration) => registration.unregister().catch(() => false)),
+    );
+  } catch {
+    // A limpeza de caches abaixo continua mesmo que o unregister falhe.
+  }
+
+  try {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter((key) => key.startsWith("academic-hub-"))
+        .map((key) => caches.delete(key)),
+    );
+  } catch {
+    // O reload de reparação ainda força uma navegação nova pela rede.
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.delete(UPDATE_RESTART_PARAM);
+  url.searchParams.set(UPDATE_REPAIR_PARAM, Date.now().toString());
   window.location.replace(url.toString());
 }
 
@@ -87,23 +136,31 @@ function waitForControllerChange(timeoutMs = 8_000) {
 export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const regRef = useRef<ServiceWorkerRegistration | null>(null);
   const applyingRef = useRef(false);
+  const startupStatusRef = useRef<UpdateStartupStatus>("normal");
   const [updatePhase, setUpdatePhase] = useState<UpdatePhase>("idle");
   const [completedUpdatePhases, setCompletedUpdatePhases] = useState<UpdatePhase[]>([]);
 
   const isSupported = typeof window !== "undefined" && "serviceWorker" in navigator;
-  const [updateAvailable, setUpdateAvailable] = useState(() => Boolean(isSupported && import.meta.env.PROD));
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   useLayoutEffect(() => {
-    registerUpdateStartup(APP_VERSION, window.location.href);
+    startupStatusRef.current = registerUpdateStartup(APP_VERSION, window.location.href);
     const url = new URL(window.location.href);
-    if (!url.searchParams.has(UPDATE_RESTART_PARAM)) return;
+    const hadLifecycleParam = url.searchParams.has(UPDATE_RESTART_PARAM) || url.searchParams.has(UPDATE_REPAIR_PARAM);
+    if (!hadLifecycleParam) return;
     url.searchParams.delete(UPDATE_RESTART_PARAM);
+    url.searchParams.delete(UPDATE_REPAIR_PARAM);
     window.history.replaceState(window.history.state, "", url.toString());
   }, []);
 
   useEffect(() => {
     if (!isSupported || !import.meta.env.PROD) {
       setUpdateAvailable(false);
+      return;
+    }
+
+    if (startupStatusRef.current === "repair-needed") {
+      void repairStaleInstallation();
       return;
     }
 
@@ -115,8 +172,9 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
 
     const syncRegistrationState = (reg: ServiceWorkerRegistration | null) => {
       if (disposed) return;
-      const hasPendingUpdate = Boolean(reg?.waiting || (reg?.installing && navigator.serviceWorker.controller));
-      setUpdateAvailable(hasPendingUpdate);
+      const targetVersion = getUpdateTargetVersion();
+      const hasPendingWorker = Boolean(reg?.waiting || (reg?.installing && navigator.serviceWorker.controller));
+      setUpdateAvailable(Boolean(hasPendingWorker && targetVersion && targetVersion !== APP_VERSION));
     };
 
     const onInstallingStateChange = () => syncRegistrationState(regRef.current);
@@ -125,7 +183,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       if (observedInstalling) observedInstalling.removeEventListener("statechange", onInstallingStateChange);
       observedInstalling = reg.installing;
       observedInstalling?.addEventListener("statechange", onInstallingStateChange);
-      if (observedInstalling && navigator.serviceWorker.controller) setUpdateAvailable(true);
+      syncRegistrationState(reg);
     };
 
     const runUpdateCheck = async () => {
@@ -163,9 +221,6 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       .catch(() => setUpdateAvailable(false));
 
     const onControllerChange = () => {
-      // A troca do controller já não provoca reload imediato. Quando a atualização
-      // foi iniciada pelo aluno, applyUpdate espera este evento, conclui a barra
-      // e só depois reinicia. Fora de uma atualização, apenas sincroniza o estado.
       if (!applyingRef.current) setUpdateAvailable(false);
     };
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
@@ -188,13 +243,16 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
   const applyUpdate = async (targetVersion?: string) => {
     if (applyingRef.current) return;
     applyingRef.current = true;
-    markUpdateTarget(targetVersion);
     setCompletedUpdatePhases([]);
     const startedAt = performance.now();
+    let resolvedTargetVersion = "";
 
     try {
       setUpdatePhase("preparing");
       await nextPaint();
+      resolvedTargetVersion = await resolvePublishedTargetVersion(targetVersion);
+      if (!resolvedTargetVersion) throw new Error("Versão-alvo indisponível");
+      markUpdateTarget(resolvedTargetVersion);
       completePhase("preparing");
 
       const reg = regRef.current;
@@ -207,27 +265,20 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         completePhase("checking");
 
         if (reg.installing) {
+          const installingWorker = reg.installing;
           setUpdatePhase("installing");
           await nextPaint();
-          await waitForWorkerInstall(reg.installing);
-          if (reg.installing?.state === "redundant") throw new Error("Instalação rejeitada pelo navegador");
+          await waitForWorkerInstall(installingWorker);
+          if (installingWorker.state === "redundant") throw new Error("Instalação rejeitada pelo navegador");
           completePhase("installing");
         } else if (reg.waiting) {
-          // Se já está em waiting, o browser descarregou e instalou os ficheiros
-          // em segundo plano antes do clique. Mostramos esse facto como concluído,
-          // sem inventar uma transferência que já aconteceu.
           setUpdatePhase("installing");
           await nextPaint();
           completePhase("installing");
           await nextPaint();
         }
 
-        if (!reg.waiting) {
-          // Dá uma pequena oportunidade ao estado installing -> waiting de ficar
-          // refletido na Registration antes de considerar a atualização falhada.
-          await delay(120);
-        }
-
+        if (!reg.waiting) await delay(120);
         if (!reg.waiting) throw new Error("Nova versão não ficou pronta para ativação");
 
         setUpdatePhase("activating");
@@ -238,8 +289,6 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         completePhase("activating");
         setUpdateAvailable(false);
       } else {
-        // Navegadores sem Service Worker só podem obter os novos ficheiros através
-        // de uma navegação integral; ainda assim a interface não finge instalação.
         completePhase("checking");
         completePhase("installing");
         completePhase("activating");
@@ -255,7 +304,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       await delay(FINAL_STATE_VISIBLE_MS);
       hardReload();
     } catch {
-      clearUpdateTarget(targetVersion);
+      clearUpdateTarget(resolvedTargetVersion || targetVersion);
       applyingRef.current = false;
       setUpdatePhase("error");
     }

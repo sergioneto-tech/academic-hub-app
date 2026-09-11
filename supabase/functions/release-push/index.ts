@@ -49,12 +49,7 @@ function normaliseRelease(input: ReleaseEntry): ReleaseEntry | null {
   const kind: ReleaseKind = isReleaseKind(input.kind) ? input.kind : "app";
   const securityLevel = input.securityLevel ? String(input.securityLevel).trim() : undefined;
   if ((kind === "security" || kind === "mixed") && !/^\d{4}\.\d{2}$/.test(securityLevel ?? "")) return null;
-  return {
-    ...input,
-    version,
-    kind,
-    securityLevel,
-  };
+  return { ...input, version, kind, securityLevel };
 }
 
 function notificationFor(entry: ReleaseEntry) {
@@ -109,7 +104,6 @@ export default {
   async fetch(req: Request) {
     if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
-    // Rejeita chamadas sem credencial antes de qualquer leitura privilegiada.
     const suppliedSecret = req.headers.get("x-cron-secret") ?? "";
     if (!suppliedSecret) return jsonResponse({ error: "Unauthorized" }, 401);
 
@@ -141,8 +135,6 @@ export default {
     const entry = suppliedRelease ?? await releaseFromPublishedMetadata();
     if (!entry) return jsonResponse({ error: "Release metadata unavailable or invalid" }, 502);
 
-    // A partir da 1.5.5, toda release funcional, de segurança ou mista gera Push.
-    // A barreira de versão impede notificações retroativas das releases anteriores.
     if (compareVersions(entry.version, FIRST_AUTOMATIC_PUSH_VERSION) < 0) {
       return jsonResponse({ sent: 0, skipped: true, reason: "release-before-automatic-push", version: entry.version });
     }
@@ -177,7 +169,7 @@ export default {
     }
 
     let sent = 0;
-    let usersNotified = 0;
+    const successfulUserIds: string[] = [];
     for (const [userId, userSubs] of grouped.entries()) {
       let userSucceeded = false;
       const payload = JSON.stringify({
@@ -213,15 +205,29 @@ export default {
         }
       }
 
-      if (userSucceeded) {
-        usersNotified += 1;
-        await db.from("push_delivery_log").insert({ user_id: userId, event_key: eventKey });
+      if (userSucceeded) successfulUserIds.push(userId);
+    }
+
+    if (successfulUserIds.length) {
+      const deliveryRows = successfulUserIds.map((userId) => ({ user_id: userId, event_key: eventKey }));
+      const { error: deliveryLogError } = await db
+        .from("push_delivery_log")
+        .upsert(deliveryRows, { onConflict: "user_id,event_key", ignoreDuplicates: true });
+      if (deliveryLogError) {
+        console.error("release-push-delivery-log", deliveryLogError.message);
+        return jsonResponse({
+          error: "Push sent but delivery deduplication log failed",
+          sent,
+          usersNotified: successfulUserIds.length,
+          version: entry.version,
+          kind,
+        }, 503);
       }
     }
 
     return jsonResponse({
       sent,
-      usersNotified,
+      usersNotified: successfulUserIds.length,
       alreadyNotifiedUsers: deliveredUsers.size,
       version: entry.version,
       kind,

@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
-import { Check, Star } from "lucide-react";
+import { Check, Clock3, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { APP_SURVEY_CHANGED_EVENT, getCurrentSurveyState, submitCurrentSurvey } from "@/lib/appSurvey";
+import {
+  APP_SURVEY_CHANGED_EVENT,
+  APP_SURVEY_MAX_DEFERRALS,
+  deferCurrentSurvey,
+  getCurrentSurveyState,
+  submitCurrentSurvey,
+} from "@/lib/appSurvey";
 
 export default function AppSatisfactionSurvey() {
   const [visible, setVisible] = useState(false);
@@ -9,7 +15,10 @@ export default function AppSatisfactionSurvey() {
   const [likesApp, setLikesApp] = useState<boolean | null>(null);
   const [recommendsApp, setRecommendsApp] = useState<boolean | null>(null);
   const [rating, setRating] = useState(0);
+  const [canDefer, setCanDefer] = useState(false);
+  const [deferralCount, setDeferralCount] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [deferring, setDeferring] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -18,7 +27,11 @@ export default function AppSatisfactionSurvey() {
       setChecking(true);
       try {
         const state = await getCurrentSurveyState();
-        if (!cancelled) setVisible(Boolean(state.authenticated && !state.answered));
+        if (!cancelled) {
+          setVisible(Boolean(state.authenticated && state.shouldShow && !state.answered));
+          setCanDefer(state.canDefer);
+          setDeferralCount(state.deferralCount);
+        }
       } catch (err) {
         console.warn("[AppSurvey][check]", err);
         if (!cancelled) setVisible(false);
@@ -65,6 +78,20 @@ export default function AppSatisfactionSurvey() {
     }
   };
 
+  const defer = async () => {
+    if (!canDefer) return;
+    setDeferring(true);
+    setError("");
+    try {
+      await deferCurrentSurvey();
+      setVisible(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível adiar o inquérito.");
+    } finally {
+      setDeferring(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[140] grid place-items-center overflow-y-auto bg-slate-950/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="app-survey-title">
       <section className="premium-surface my-auto w-full max-w-xl overflow-hidden border-primary/30 shadow-2xl">
@@ -106,10 +133,24 @@ export default function AppSatisfactionSurvey() {
             O inquérito não pede nome nem comentário livre. A resposta fica associada tecnicamente à tua conta apenas para impedir respostas duplicadas.
           </div>
 
-          <Button type="button" className="w-full" disabled={!complete || saving} onClick={() => void save()}>
-            <Check className="mr-2 h-4 w-4" />
-            {saving ? "A guardar…" : "Enviar resposta e continuar"}
-          </Button>
+          {!canDefer && (
+            <div className="rounded-xl border border-primary/25 bg-primary/[0.06] p-3 text-xs text-muted-foreground">
+              Já utilizaste os {APP_SURVEY_MAX_DEFERRALS} adiamentos disponíveis. Para continuar, responde às 3 perguntas acima.
+            </div>
+          )}
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {canDefer && (
+              <Button type="button" variant="outline" disabled={saving || deferring} onClick={() => void defer()}>
+                <Clock3 className="mr-2 h-4 w-4" />
+                {deferring ? "A adiar…" : `Agora não (${deferralCount + 1}/${APP_SURVEY_MAX_DEFERRALS})`}
+              </Button>
+            )}
+            <Button type="button" className={canDefer ? "w-full" : "w-full sm:col-span-2"} disabled={!complete || saving || deferring} onClick={() => void save()}>
+              <Check className="mr-2 h-4 w-4" />
+              {saving ? "A guardar…" : "Enviar resposta e continuar"}
+            </Button>
+          </div>
         </div>
       </section>
     </div>

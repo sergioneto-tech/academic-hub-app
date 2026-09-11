@@ -35,6 +35,13 @@ export function markUpdateTarget(version: string | undefined) {
   if (safeGet(UPDATE_DEFER_KEY) === normalized) safeRemove(UPDATE_DEFER_KEY);
 }
 
+export function clearUpdateTarget(version?: string) {
+  const normalized = version?.trim();
+  if (!normalized || safeGet(UPDATE_TARGET_VERSION_KEY) === normalized) {
+    safeRemove(UPDATE_TARGET_VERSION_KEY);
+  }
+}
+
 export function registerUpdateStartup(currentVersion: string, href: string) {
   let restartedFromUpdater = false;
   try {

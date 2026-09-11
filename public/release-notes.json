@@ -1,6 +1,20 @@
 {
-  "latest": "1.5.5",
+  "latest": "1.5.6",
   "versions": [
+    {
+      "version": "1.5.6",
+      "date": "2026-09-11",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "Corrigida a atualização controlada para impedir que o HTML e o JavaScript de uma versão nova sejam carregados antes de o respetivo Service Worker ser ativado.",
+        "O Academic Hub passa a detetar explicitamente um Service Worker novo em espera e mantém a atualização pendente até o aluno escolher Atualizar agora.",
+        "O cartão O que mudou deixa de surgir prematuramente enquanto existe uma atualização ainda por instalar no dispositivo.",
+        "Ao abrir o Academic Hub através de uma notificação de nova versão, o destaque da notificação passa a incluir o botão Atualizar agora em vez de funcionar apenas como mensagem informativa.",
+        "No telemóvel, o botão Atualizar agora passa a ser a ação principal e ocupa toda a largura para ficar imediatamente visível.",
+        "A barra de atualização continua baseada nas fases reais do Service Worker e aparece assim que o aluno inicia a atualização."
+      ]
+    },
     {
       "version": "1.5.5",
       "date": "2026-09-11",

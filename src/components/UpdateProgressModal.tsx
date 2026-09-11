@@ -7,7 +7,7 @@ const STEPS: Array<{ phase: Exclude<UpdatePhase, "idle" | "error">; label: strin
   { phase: "checking", label: "Verificar a nova versão" },
   { phase: "installing", label: "Instalar os novos ficheiros" },
   { phase: "activating", label: "Ativar a nova versão" },
-  { phase: "restarting", label: "Reiniciar o Academic Hub" },
+  { phase: "restarting", label: "Preparar o reinício" },
 ];
 
 export default function UpdateProgressModal() {
@@ -17,6 +17,7 @@ export default function UpdateProgressModal() {
   const error = updatePhase === "error";
   const activeIndex = error ? -1 : STEPS.findIndex((step) => step.phase === updatePhase);
   const completedCount = STEPS.filter((step) => completedUpdatePhases.includes(step.phase)).length;
+  const completed = !error && completedCount === STEPS.length;
   const currentStepNumber = activeIndex >= 0 ? activeIndex + 1 : Math.min(STEPS.length, completedCount + 1);
 
   return (
@@ -24,14 +25,18 @@ export default function UpdateProgressModal() {
       <section className="premium-surface w-full max-w-md p-5 shadow-2xl">
         <div className="flex items-start gap-3">
           <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-            {error ? <RefreshCw className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+            {error ? <RefreshCw className="h-5 w-5" /> : completed ? <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" /> : <ShieldCheck className="h-5 w-5" />}
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="font-semibold">{error ? "Não foi possível concluir a atualização" : "A atualizar o Academic Hub"}</h2>
+            <h2 className="font-semibold">
+              {error ? "Não foi possível concluir a atualização" : completed ? "Atualização concluída" : "A atualizar o Academic Hub"}
+            </h2>
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {error
                 ? "A atualização foi interrompida antes de reiniciar. Os teus dados locais não foram apagados."
-                : `Etapa ${currentStepNumber} de ${STEPS.length}. A barra avança apenas quando cada fase real do processo é concluída.`}
+                : completed
+                  ? "As 5 etapas foram confirmadas. O Academic Hub vai reiniciar automaticamente com a nova versão."
+                  : `Etapa ${currentStepNumber} de ${STEPS.length}. A barra avança apenas quando cada fase real do processo é concluída.`}
             </p>
           </div>
         </div>
@@ -49,14 +54,14 @@ export default function UpdateProgressModal() {
             >
               {STEPS.map((step) => {
                 const done = completedUpdatePhases.includes(step.phase);
-                const active = updatePhase === step.phase;
+                const active = updatePhase === step.phase && !done;
                 return (
                   <span
                     key={step.phase}
                     className={cn(
                       "h-2 rounded-full border transition-colors",
                       done && "border-primary bg-primary",
-                      active && !done && "border-primary/70 bg-primary/35 animate-pulse motion-reduce:animate-none",
+                      active && "border-primary/70 bg-primary/35 animate-pulse motion-reduce:animate-none",
                       !done && !active && "border-border bg-muted",
                     )}
                   />
@@ -71,9 +76,9 @@ export default function UpdateProgressModal() {
             <div className="mt-4 space-y-2">
               {STEPS.map((step) => {
                 const done = completedUpdatePhases.includes(step.phase);
-                const active = updatePhase === step.phase;
+                const active = updatePhase === step.phase && !done;
                 return (
-                  <div key={step.phase} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", active && "border-primary/35 bg-primary/5")}>
+                  <div key={step.phase} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", active && "border-primary/35 bg-primary/5", done && completed && "border-emerald-500/20")}>
                     {done ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     ) : active ? (
@@ -81,7 +86,7 @@ export default function UpdateProgressModal() {
                     ) : (
                       <span className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/35" />
                     )}
-                    <span className={cn("text-xs", active ? "font-semibold" : "text-muted-foreground")}>{step.label}</span>
+                    <span className={cn("text-xs", active ? "font-semibold" : "text-muted-foreground", done && completed && "text-foreground")}>{step.label}</span>
                   </div>
                 );
               })}
@@ -90,7 +95,9 @@ export default function UpdateProgressModal() {
         )}
 
         <p className="mt-4 text-[10px] leading-relaxed text-muted-foreground">
-          Não feches a aplicação durante este processo. O Academic Hub reinicia automaticamente quando a nova versão estiver ativa e, ao voltar a abrir, apresenta o resumo das alterações.
+          {completed
+            ? "O pequeno intervalo antes do reinício serve apenas para confirmares visualmente que a atualização terminou; não representa uma etapa simulada."
+            : "Não feches a aplicação durante este processo. O Academic Hub reinicia automaticamente quando a nova versão estiver ativa."}
         </p>
       </section>
     </div>

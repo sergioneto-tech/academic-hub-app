@@ -1,6 +1,20 @@
 {
-  "latest": "1.5.6",
+  "latest": "1.5.7",
   "versions": [
+    {
+      "version": "1.5.7",
+      "date": "2026-09-11",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "Corrigido o reinício demasiado rápido: a troca do Service Worker deixa de recarregar a aplicação imediatamente e passa a aguardar a confirmação real de ativação.",
+        "A barra de atualização fica visível tempo suficiente para acompanhar o processo e apresenta no final 5 de 5 etapas concluídas antes do reinício automático.",
+        "Quando o navegador já descarregou a nova versão em segundo plano, a etapa de instalação é apresentada como concluída sem simular uma nova transferência.",
+        "O resumo O que mudou fica bloqueado quando o bundle novo entra sem um reinício confirmado pelo atualizador e só é libertado após uma atualização realmente concluída.",
+        "As notificações de release abertas dentro da aplicação deixam de desaparecer automaticamente enquanto a atualização está pendente e mostram Atualizar agora e Mais tarde.",
+        "Em navegadores compatíveis, a própria notificação do sistema passa também a poder apresentar a ação Atualizar agora."
+      ]
+    },
     {
       "version": "1.5.6",
       "date": "2026-09-11",

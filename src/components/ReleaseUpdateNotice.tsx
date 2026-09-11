@@ -1,5 +1,6 @@
 import { RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useUpdate } from "@/lib/UpdateProvider";
 import { cn } from "@/lib/utils";
 
 export type ReleaseKind = "app" | "security" | "mixed";
@@ -51,7 +52,8 @@ function releasePresentation(entry: ReleaseUpdateEntry | null) {
   };
 }
 
-export default function ReleaseUpdateNotice({ entry, available, deferred, onBackup, onLater, onUpdate }: Props) {
+export default function ReleaseUpdateNotice({ entry, available, deferred, onBackup, onLater }: Props) {
+  const { applyUpdate } = useUpdate();
   if (!available || deferred || !entry) return null;
   const presentation = releasePresentation(entry);
   const Icon = presentation.Icon;
@@ -78,7 +80,7 @@ export default function ReleaseUpdateNotice({ entry, available, deferred, onBack
           </div>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-          <Button size="sm" className="w-full sm:order-3 sm:w-auto" onClick={onUpdate}>
+          <Button size="sm" className="w-full sm:order-3 sm:w-auto" onClick={() => void applyUpdate(entry.version)}>
             {kind === "security" ? <ShieldCheck className="mr-2 h-4 w-4" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Atualizar agora
           </Button>

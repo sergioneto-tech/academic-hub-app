@@ -1,4 +1,4 @@
-import { Suspense, lazy, type ReactNode } from "react";
+import { Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import MigrationNotice from "./components/MigrationNotice";
@@ -23,6 +23,7 @@ import MaintenancePage from "./pages/Maintenance";
 import { useAutoSync } from "./hooks/useAutoSync";
 import { useRealtimeSync } from "./hooks/useRealtimeSync";
 import { useUabOfficialAssessmentSync } from "./hooks/useUabOfficialAssessmentSync";
+import { reconcilePushOnThisDevice } from "./lib/pushNotifications";
 
 const CalendarPage = lazy(() => import("./pages/Calendar"));
 const HistoryPage = lazy(() => import("./pages/History"));
@@ -51,6 +52,15 @@ function AcademicHubApp() {
   useAutoSync();
   useRealtimeSync();
   useUabOfficialAssessmentSync();
+
+  useEffect(() => {
+    // Não pede permissões nem mostra diálogos. Se o utilizador já autorizou Push
+    // neste dispositivo, revalida silenciosamente a subscrição e garante que a
+    // conta também tem push_preferences no servidor. Assim uma instalação antiga
+    // ou recuperada deixa de ficar com "alertas ativos" apenas no estado local.
+    void reconcilePushOnThisDevice().catch(() => {});
+  }, []);
+
   return (
     <>
       <MigrationNotice />

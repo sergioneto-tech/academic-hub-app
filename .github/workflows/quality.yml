@@ -44,6 +44,7 @@ jobs:
           const match = versionSource.match(/APP_VERSION\s*=\s*["']([^"']+)["']/);
           if (!match) throw new Error('APP_VERSION não encontrado em src/lib/version.ts');
           const appVersion = match[1];
+
           const notes = JSON.parse(fs.readFileSync('public/release-notes.json', 'utf8'));
           if (notes.latest !== appVersion) {
             throw new Error(`release-notes.json latest=${notes.latest} mas APP_VERSION=${appVersion}`);
@@ -51,6 +52,24 @@ jobs:
           if (!Array.isArray(notes.versions) || !notes.versions.some((item) => item?.version === appVersion)) {
             throw new Error(`release-notes.json não contém a entrada da versão ${appVersion}`);
           }
+
+          const indexHtml = fs.readFileSync('index.html', 'utf8');
+          const shellMatch = indexHtml.match(/<meta\s+name=["']academic-hub-version["']\s+content=["']([^"']+)["']/i);
+          if (!shellMatch) throw new Error('index.html não contém o marcador academic-hub-version');
+          if (shellMatch[1] !== appVersion) {
+            throw new Error(`index.html academic-hub-version=${shellMatch[1]} mas APP_VERSION=${appVersion}`);
+          }
+
+          const swSource = fs.readFileSync('public/sw.js', 'utf8');
+          const swMatch = swSource.match(/const\s+APP_VERSION\s*=\s*["']([^"']+)["']/);
+          if (!swMatch) throw new Error('public/sw.js não declara APP_VERSION');
+          if (swMatch[1] !== appVersion) {
+            throw new Error(`public/sw.js APP_VERSION=${swMatch[1]} mas APP_VERSION=${appVersion}`);
+          }
+          if (!swSource.includes('APP_SHELL_VERSION_MARKER') || !swSource.includes('fetchVerifiedAppShell')) {
+            throw new Error('public/sw.js não contém a validação do app-shell antes da instalação');
+          }
+
           for (const entry of notes.versions ?? []) {
             const kind = entry?.kind ?? 'app';
             if (!['app', 'security', 'mixed'].includes(kind)) {
@@ -63,7 +82,7 @@ jobs:
               throw new Error(`pushNotify inválido em ${entry?.version ?? 'desconhecida'}`);
             }
           }
-          console.log(`Release metadata aligned with v${appVersion}.`);
+          console.log(`Release metadata, app shell and service worker aligned with v${appVersion}.`);
           NODE
 
       - name: TypeScript project check
@@ -91,6 +110,7 @@ jobs:
           src/components/FeedbackCloudBridge.tsx
           src/components/Layout.tsx
           src/components/ProfileAvatarEditor.tsx
+          src/components/PushDeepLinkNotice.tsx
           src/components/ReleaseUpdateNotice.tsx
           src/components/SecurityStatusBadge.tsx
           src/components/SecurityStatusCard.tsx
@@ -111,6 +131,7 @@ jobs:
           src/lib/storage.ts
           src/lib/theme.ts
           src/lib/types.ts
+          src/lib/updateLifecycle.ts
           src/lib/version.ts
           src/pages/AcademicReport.tsx
           src/pages/CourseDetailPremium.tsx
@@ -122,3 +143,4 @@ jobs:
           src/pages/SettingsPremium.tsx
           src/test/cloud-sync-reliability.test.ts
           src/test/regulation-2026.test.ts
+          src/test/update-lifecycle.test.ts

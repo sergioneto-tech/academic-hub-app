@@ -12,12 +12,50 @@ type ReleaseEntry = {
   pushNotify?: boolean;
 };
 type ReleaseNotes = { latest?: string; versions?: ReleaseEntry[] };
+type ReleasePushRequest = { release?: ReleaseEntry };
 type Subscription = { id: string; user_id: string; endpoint: string; p256dh: string; auth: string };
+
+const FIRST_AUTOMATIC_PUSH_VERSION = "1.5.5";
 
 const jsonResponse = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
   status,
   headers: { "Content-Type": "application/json" },
 });
+
+function parseVersion(value: string) {
+  return value.split(".").map((part) => Number.parseInt(part.replace(/\D/g, ""), 10) || 0);
+}
+
+function compareVersions(left: string, right: string) {
+  const a = parseVersion(left);
+  const b = parseVersion(right);
+  const size = Math.max(a.length, b.length);
+  for (let index = 0; index < size; index += 1) {
+    const av = a[index] ?? 0;
+    const bv = b[index] ?? 0;
+    if (av > bv) return 1;
+    if (av < bv) return -1;
+  }
+  return 0;
+}
+
+function isReleaseKind(value: unknown): value is ReleaseKind {
+  return value === "app" || value === "security" || value === "mixed";
+}
+
+function normaliseRelease(input: ReleaseEntry): ReleaseEntry | null {
+  const version = String(input?.version ?? "").trim();
+  if (!/^\d+\.\d+\.\d+$/.test(version)) return null;
+  const kind: ReleaseKind = isReleaseKind(input.kind) ? input.kind : "app";
+  const securityLevel = input.securityLevel ? String(input.securityLevel).trim() : undefined;
+  if ((kind === "security" || kind === "mixed") && !/^\d{4}\.\d{2}$/.test(securityLevel ?? "")) return null;
+  return {
+    ...input,
+    version,
+    kind,
+    securityLevel,
+  };
+}
 
 function notificationFor(entry: ReleaseEntry) {
   const kind: ReleaseKind = entry.kind ?? "app";
@@ -25,22 +63,46 @@ function notificationFor(entry: ReleaseEntry) {
     return {
       title: "Atualização de segurança disponível",
       body: entry.securityLevel
-        ? `Segurança ${entry.securityLevel} · App v${entry.version}. Abre o Academic Hub para atualizar.`
-        : `App v${entry.version} inclui uma atualização de segurança. Abre o Academic Hub para atualizar.`,
+        ? `Segurança ${entry.securityLevel} · App v${entry.version}. Toca para atualizar e ver os reforços aplicados.`
+        : `App v${entry.version} inclui uma atualização de segurança. Toca para atualizar.`,
     };
   }
   if (kind === "mixed") {
     return {
       title: "Nova versão + segurança",
       body: entry.securityLevel
-        ? `App v${entry.version} · Segurança ${entry.securityLevel}. Abre o Academic Hub para atualizar.`
-        : `App v${entry.version} inclui melhorias e reforços de segurança.`,
+        ? `App v${entry.version} · Segurança ${entry.securityLevel}. Toca para atualizar e ver o que mudou.`
+        : `App v${entry.version} inclui melhorias e reforços de segurança. Toca para atualizar.`,
     };
   }
   return {
     title: "Nova versão do Academic Hub",
-    body: `Versão ${entry.version} disponível. Abre o Academic Hub para atualizar.`,
+    body: `Versão ${entry.version} disponível. Toca para atualizar e ver o que mudou.`,
   };
+}
+
+function eventKeyFor(entry: ReleaseEntry) {
+  const kind: ReleaseKind = entry.kind ?? "app";
+  if (kind === "security") return `release:security:${entry.securityLevel ?? "unknown"}:app:${entry.version}`;
+  if (kind === "mixed") return `release:mixed:${entry.version}:security:${entry.securityLevel ?? "unknown"}`;
+  return `release:app:${entry.version}`;
+}
+
+async function releaseFromPublishedMetadata(): Promise<ReleaseEntry | null> {
+  const releaseUrl = `https://academichub.sergioneto.pt/release-notes.json?release_check=${Date.now()}`;
+  let notes: ReleaseNotes;
+  try {
+    const response = await fetch(releaseUrl, { headers: { "Cache-Control": "no-cache" } });
+    if (!response.ok) return null;
+    notes = await response.json() as ReleaseNotes;
+  } catch {
+    return null;
+  }
+
+  const latest = String(notes.latest ?? "").trim();
+  const entry = (notes.versions ?? []).find((item) => item?.version === latest);
+  if (!latest || !entry) return null;
+  return normaliseRelease(entry);
 }
 
 export default {
@@ -66,45 +128,42 @@ export default {
     if (suppliedSecret !== config.cron_secret) return jsonResponse({ error: "Unauthorized" }, 401);
     if (!config.vapid_public || !config.vapid_private) return jsonResponse({ error: "Push not configured" }, 503);
 
-    const releaseUrl = `https://academichub.sergioneto.pt/release-notes.json?release_check=${Date.now()}`;
-    let notes: ReleaseNotes;
+    let requestBody: ReleasePushRequest = {};
     try {
-      const response = await fetch(releaseUrl, { headers: { "Cache-Control": "no-cache" } });
-      if (!response.ok) return jsonResponse({ error: `Release metadata HTTP ${response.status}` }, 502);
-      notes = await response.json() as ReleaseNotes;
+      requestBody = await req.json() as ReleasePushRequest;
     } catch {
-      return jsonResponse({ error: "Release metadata unavailable" }, 502);
+      requestBody = {};
     }
 
-    const latest = String(notes.latest ?? "").trim();
-    const entry = (notes.versions ?? []).find((item) => item?.version === latest);
-    if (!latest || !entry) return jsonResponse({ error: "Invalid release metadata" }, 502);
+    const suppliedRelease = requestBody.release ? normaliseRelease(requestBody.release) : null;
+    if (requestBody.release && !suppliedRelease) return jsonResponse({ error: "Invalid release payload" }, 400);
 
-    // O envio é sempre opt-in por release. Evita notificações retroativas/acidentais.
-    if (entry.pushNotify !== true) {
-      return jsonResponse({ sent: 0, skipped: true, reason: "release-not-marked-for-push", version: latest });
+    const entry = suppliedRelease ?? await releaseFromPublishedMetadata();
+    if (!entry) return jsonResponse({ error: "Release metadata unavailable or invalid" }, 502);
+
+    // A partir da 1.5.5, toda release funcional, de segurança ou mista gera Push.
+    // A barreira de versão impede notificações retroativas das releases anteriores.
+    if (compareVersions(entry.version, FIRST_AUTOMATIC_PUSH_VERSION) < 0) {
+      return jsonResponse({ sent: 0, skipped: true, reason: "release-before-automatic-push", version: entry.version });
     }
 
     const kind: ReleaseKind = entry.kind ?? "app";
-    const eventKey = kind === "security"
-      ? `release:security:${entry.securityLevel ?? "unknown"}:app:${entry.version}`
-      : kind === "mixed"
-        ? `release:mixed:${entry.version}:security:${entry.securityLevel ?? "unknown"}`
-        : `release:app:${entry.version}`;
+    const eventKey = eventKeyFor(entry);
 
     const { data: subscriptions, error: subError } = await db
       .from("push_subscriptions")
       .select("id,user_id,endpoint,p256dh,auth")
       .eq("enabled", true);
     if (subError) return jsonResponse({ error: "Push subscriptions unavailable" }, 503);
-    if (!subscriptions?.length) return jsonResponse({ sent: 0, version: latest });
+    if (!subscriptions?.length) return jsonResponse({ sent: 0, usersNotified: 0, version: entry.version, kind });
 
     const userIds = [...new Set((subscriptions as Subscription[]).map((item) => item.user_id))];
-    const { data: existingLogs } = await db
+    const { data: existingLogs, error: logError } = await db
       .from("push_delivery_log")
       .select("user_id,event_key")
       .eq("event_key", eventKey)
       .in("user_id", userIds);
+    if (logError) return jsonResponse({ error: "Push delivery history unavailable" }, 503);
     const deliveredUsers = new Set((existingLogs ?? []).map((row: any) => row.user_id));
 
     webpush.setVapidDetails("mailto:sergioneto78@gmail.com", config.vapid_public, config.vapid_private);
@@ -127,7 +186,7 @@ export default {
         url: `/#/?release=${encodeURIComponent(entry.version)}`,
         icon: "/academic-hub-icon-v10-192.png",
         badge: "/academic-hub-notification-badge.png",
-        tag: `academic-hub-release-${entry.version}-${kind}`,
+        tag: `academic-hub-release-${entry.version}-${kind}-${entry.securityLevel ?? "app"}`,
         data: {
           kind: "release",
           releaseKind: kind,
@@ -163,9 +222,11 @@ export default {
     return jsonResponse({
       sent,
       usersNotified,
+      alreadyNotifiedUsers: deliveredUsers.size,
       version: entry.version,
       kind,
       securityLevel: entry.securityLevel ?? null,
+      source: suppliedRelease ? "internal-release-payload" : "published-release-metadata",
     });
   },
 };

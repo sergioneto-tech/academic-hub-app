@@ -12,7 +12,8 @@ uri = "pg-functions://postgres/public/hook_restrict_signup_to_uab"
 # - feedback-student-push aceita apenas o segredo interno usado pelos triggers de resposta/estado;
 # - survey-push aceita apenas o segredo interno usado pelo trigger das avaliações;
 # - admin-user-registration-push aceita apenas o segredo interno do trigger de novos registos;
-# - security-event recebe telemetria de autenticação e faz a validação necessária dentro da função.
+# - security-event recebe telemetria de autenticação e faz a validação necessária dentro da função;
+# - security-native-ingest valida um token scoped com Logs Read antes de ingerir sinais nativos.
 [functions.academic-push]
 verify_jwt = false
 
@@ -35,6 +36,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.security-event]
+verify_jwt = false
+
+[functions.security-native-ingest]
 verify_jwt = false
 
 # Endpoints autenticados: mantêm a barreira JWT do gateway e voltam a validar

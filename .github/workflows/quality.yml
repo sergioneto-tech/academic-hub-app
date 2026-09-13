@@ -114,6 +114,7 @@ jobs:
           src/components/ReleaseUpdateNotice.tsx
           src/components/SecurityStatusBadge.tsx
           src/components/SecurityStatusCard.tsx
+          src/components/SecurityVerificationPanel.tsx
           src/components/UpdateProgressModal.tsx
           src/components/ui/card.tsx
           src/components/ui/pt-datetime-input.tsx
@@ -127,6 +128,7 @@ jobs:
           src/lib/cloudSyncState.ts
           src/lib/degreeTheme.ts
           src/lib/realtimeSync.ts
+          src/lib/securitySelfCheck.ts
           src/lib/securityTelemetry.ts
           src/lib/storage.ts
           src/lib/theme.ts
@@ -140,7 +142,9 @@ jobs:
           src/pages/Help.tsx
           src/pages/History.tsx
           src/pages/Legal.tsx
+          src/pages/SecurityPrivacy.tsx
           src/pages/SettingsPremium.tsx
           src/test/cloud-sync-reliability.test.ts
           src/test/regulation-2026.test.ts
+          src/test/security-self-check.test.ts
           src/test/update-lifecycle.test.ts

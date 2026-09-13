@@ -151,7 +151,7 @@ export default function SecurityVerificationPanel({ autoStart = false }: { autoS
 
           <div className="flex shrink-0 flex-wrap gap-2">
             {fixable && (
-              <Button size="sm" onClick={() => void repairAndVerify()} disabled={phase === "running" || phase === "repairing"}>
+              <Button size="sm" onClick={() => void repairAndVerify()}>
                 <Wrench className="h-4 w-4" /> Corrigir e verificar
               </Button>
             )}

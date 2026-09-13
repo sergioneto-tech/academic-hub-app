@@ -45,8 +45,12 @@ jobs:
 
           rows=$(jq -r '.result|length' /tmp/signals.json)
           echo "Repeated security-signal groups found: $rows"
+          echo "Sanitized repeated groups:"
+          jq -r '.result[]? | "bucket=\(.bucket) country=\(.country // "-") path=\(.path) status=\(.status) hits=\(.hits)"' /tmp/signals.json
+
           processed=0
           incidents=0
+          failures=0
           while IFS= read -r row; do
             [ -n "$row" ] || continue
             bucket=$(jq -r '.bucket // empty' <<<"$row")
@@ -69,10 +73,18 @@ jobs:
             dbsql="select * from public.security_ingest_native_signal(convert_from(decode('$signal64','base64'),'utf8'),convert_from(decode('$kind64','base64'),'utf8'),nullif(convert_from(decode('$ip64','base64'),'utf8'),''),nullif(convert_from(decode('$country64','base64'),'utf8'),''),nullif(convert_from(decode('$path64','base64'),'utf8'),''),$status,$hits,convert_from(decode('$bucket64','base64'),'utf8')::timestamptz,convert_from(decode('$bucket64','base64'),'utf8')::timestamptz + interval '5 minutes',nullif(convert_from(decode('$client64','base64'),'utf8'),''));"
             payload=$(jq -n --arg q "$dbsql" '{query:$q}')
             dbcode=$(curl --silent --show-error --output /tmp/ingest.json --write-out '%{http_code}' --request POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" --header 'Content-Type: application/json' --data "$payload")
-            test "$dbcode" = "201" || test "$dbcode" = "200" || { echo "::error::Native signal ingest HTTP $dbcode"; exit 1; }
+            if [ "$dbcode" != "201" ] && [ "$dbcode" != "200" ]; then
+              failures=$((failures+1))
+              echo "Ingest failure for kind=$kind status=$status hits=$hits: HTTP $dbcode"
+              jq -r 'if type=="object" then (.message // .error // .msg // tostring) else tostring end' /tmp/ingest.json | head -c 800
+              echo
+              continue
+            fi
             processed=$((processed+1))
             if jq -e '.[0].incident_new == true' /tmp/ingest.json >/dev/null 2>&1; then incidents=$((incidents+1)); fi
           done < <(jq -c '.result[]?' /tmp/signals.json)
 
           echo "Signals processed: $processed"
+          echo "Ingest failures: $failures"
           echo "New incidents created: $incidents"
+          test "$failures" = "0"

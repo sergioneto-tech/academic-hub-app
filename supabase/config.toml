@@ -11,6 +11,7 @@ uri = "pg-functions://postgres/public/hook_restrict_signup_to_uab"
 # - feedback-push aceita apenas o segredo interno usado pelo trigger da base de dados;
 # - feedback-student-push aceita apenas o segredo interno usado pelos triggers de resposta/estado;
 # - survey-push aceita apenas o segredo interno usado pelo trigger das avaliações;
+# - admin-user-registration-push aceita apenas o segredo interno do trigger de novos registos;
 # - security-event recebe telemetria de autenticação e faz a validação necessária dentro da função.
 [functions.academic-push]
 verify_jwt = false
@@ -22,6 +23,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.survey-push]
+verify_jwt = false
+
+[functions.admin-user-registration-push]
 verify_jwt = false
 
 [functions.uab-calendar-sync]

@@ -1,5 +1,5 @@
 const APP_VERSION = "1.5.8";
-const SW_VERSION = "1.5.8-controlled-update-7-security-hub";
+const SW_VERSION = "1.5.8-controlled-update-8-institutional-contact";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -7,7 +7,7 @@ const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
 const APP_SHELL_VERSION_MARKER = `<meta name="academic-hub-version" content="${APP_VERSION}"`;
 const APP_SHELL_FETCH_ATTEMPTS = 4;
 const APP_SHELL_RETRY_MS = 650;
-const AUTO_ACTIVATE = false;
+const AUTO_ACTIVATE = true;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
@@ -79,8 +79,8 @@ self.addEventListener("install", (event) => {
     const appShell = await fetchVerifiedAppShell();
     await cache.put(APP_SHELL_KEY, appShell.clone());
 
-    // Releases normais ficam em espera até o aluno escolher Atualizar agora.
-    // A ativação automática fica reservada a builds de recuperação explícitos.
+    // Hotfix da própria 1.5.8: distribui apenas a correção do contacto público,
+    // sem criar uma nova release funcional nem exigir nova ação do aluno.
     if (AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });

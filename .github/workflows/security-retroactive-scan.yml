@@ -1,0 +1,78 @@
+name: One-time 72h security scan
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/security-retroactive-scan.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      PROJECT_REF: apgoyzfzuukkpmuxiqvy
+      SUPABASE_LOGS_TOKEN: ${{ secrets.SUPABASE_LOGS_TOKEN }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+    steps:
+      - name: Validate credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_LOGS_TOKEN" || { echo "::error::Missing SUPABASE_LOGS_TOKEN"; exit 1; }
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo "::error::Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
+
+      - name: Scan previous 72 hours
+        shell: bash
+        run: |
+          set -euo pipefail
+          end=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          start=$(date -u -d '72 hours ago' +'%Y-%m-%dT%H:%M:%SZ')
+
+          summary_sql="select toInt32OrZero(log_attributes['response.status_code']) as status, count() as hits, uniqExact(log_attributes['request.headers.x_real_ip']) as sources from logs where source='edge_logs' and (((log_attributes['request.path'] like '/auth/v1/token%') and toInt32OrZero(log_attributes['response.status_code']) in (400,401,403,429)) or ((log_attributes['request.path'] like '/rest/v1/%' or log_attributes['request.path'] like '/functions/v1/%' or log_attributes['request.path'] like '/storage/v1/%') and toInt32OrZero(log_attributes['response.status_code']) in (401,403,429))) group by status order by status"
+          code=$(curl --silent --show-error --output /tmp/summary.json --write-out '%{http_code}' --get "https://api.supabase.com/v1/projects/$PROJECT_REF/analytics/endpoints/logs" --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" --data-urlencode "sql=$summary_sql" --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end")
+          test "$code" = "200" || { echo "::error::Logs API summary HTTP $code"; exit 1; }
+          echo "72h status summary (status,hits,unique_sources):"
+          jq -r '.result[]? | "status=\(.status) hits=\(.hits) unique_sources=\(.sources)"' /tmp/summary.json
+
+          sql="select toStartOfFiveMinutes(timestamp) as bucket, log_attributes['request.headers.x_real_ip'] as ip, log_attributes['request.cf.country'] as country, log_attributes['request.path'] as path, toInt32OrZero(log_attributes['response.status_code']) as status, log_attributes['request.headers.x_client_info'] as client_info, count() as hits from logs where source='edge_logs' and (((log_attributes['request.path'] like '/auth/v1/token%') and toInt32OrZero(log_attributes['response.status_code']) in (400,401,403,429)) or ((log_attributes['request.path'] like '/rest/v1/%' or log_attributes['request.path'] like '/functions/v1/%' or log_attributes['request.path'] like '/storage/v1/%') and toInt32OrZero(log_attributes['response.status_code']) in (401,403,429))) group by bucket,ip,country,path,status,client_info having hits >= 3 order by bucket desc limit 2000"
+          code=$(curl --silent --show-error --output /tmp/signals.json --write-out '%{http_code}' --get "https://api.supabase.com/v1/projects/$PROJECT_REF/analytics/endpoints/logs" --header "Authorization: Bearer $SUPABASE_LOGS_TOKEN" --data-urlencode "sql=$sql" --data-urlencode "iso_timestamp_start=$start" --data-urlencode "iso_timestamp_end=$end")
+          test "$code" = "200" || { echo "::error::Logs API signal scan HTTP $code"; exit 1; }
+
+          rows=$(jq -r '.result|length' /tmp/signals.json)
+          echo "Repeated security-signal groups found: $rows"
+          processed=0
+          incidents=0
+          while IFS= read -r row; do
+            [ -n "$row" ] || continue
+            bucket=$(jq -r '.bucket // empty' <<<"$row")
+            ip=$(jq -r '.ip // empty' <<<"$row")
+            country=$(jq -r '.country // empty' <<<"$row")
+            path=$(jq -r '.path // empty' <<<"$row")
+            status=$(jq -r '.status // 0' <<<"$row")
+            client=$(jq -r '.client_info // empty' <<<"$row")
+            hits=$(jq -r '.hits // 0' <<<"$row")
+            if [[ "$path" == /auth/v1/token* ]]; then
+              if [ "$status" = "429" ]; then kind=auth_rate_limited; else kind=auth_failure; fi
+            elif [ "$status" = "429" ]; then
+              kind=api_rate_limited
+            else
+              kind=unauthorized_api
+            fi
+            signal=$(printf 'retro72|%s|%s|%s|%s|%s' "$bucket" "$kind" "$ip" "$path" "$status" | sha256sum | cut -d' ' -f1)
+            b64(){ printf '%s' "$1" | base64 -w0; }
+            signal64=$(b64 "$signal"); kind64=$(b64 "$kind"); ip64=$(b64 "$ip"); country64=$(b64 "$country"); path64=$(b64 "$path"); bucket64=$(b64 "$bucket"); client64=$(b64 "$client")
+            dbsql="select * from public.security_ingest_native_signal(convert_from(decode('$signal64','base64'),'utf8'),convert_from(decode('$kind64','base64'),'utf8'),nullif(convert_from(decode('$ip64','base64'),'utf8'),''),nullif(convert_from(decode('$country64','base64'),'utf8'),''),nullif(convert_from(decode('$path64','base64'),'utf8'),''),$status,$hits,convert_from(decode('$bucket64','base64'),'utf8')::timestamptz,convert_from(decode('$bucket64','base64'),'utf8')::timestamptz + interval '5 minutes',nullif(convert_from(decode('$client64','base64'),'utf8'),''));"
+            payload=$(jq -n --arg q "$dbsql" '{query:$q}')
+            dbcode=$(curl --silent --show-error --output /tmp/ingest.json --write-out '%{http_code}' --request POST "https://api.supabase.com/v1/projects/$PROJECT_REF/database/query" --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" --header 'Content-Type: application/json' --data "$payload")
+            test "$dbcode" = "201" || test "$dbcode" = "200" || { echo "::error::Native signal ingest HTTP $dbcode"; exit 1; }
+            processed=$((processed+1))
+            if jq -e '.[0].incident_new == true' /tmp/ingest.json >/dev/null 2>&1; then incidents=$((incidents+1)); fi
+          done < <(jq -c '.result[]?' /tmp/signals.json)
+
+          echo "Signals processed: $processed"
+          echo "New incidents created: $incidents"

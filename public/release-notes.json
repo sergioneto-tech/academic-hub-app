@@ -1,6 +1,20 @@
 {
-  "latest": "1.5.7",
+  "latest": "1.5.8",
   "versions": [
+    {
+      "version": "1.5.8",
+      "date": "2026-09-13",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "Nova área Segurança e Privacidade com apresentação premium das proteções realmente implementadas e do tratamento de dados no Academic Hub.",
+        "O botão Verificar agora executa controlos reais neste dispositivo: ligação HTTPS, integridade da versão, Service Worker, baseline central, sessão e atividade de segurança da conta e preparação dos alertas.",
+        "A verificação mostra cada controlo à medida que é concluído e distingue controlos essenciais de recomendações complementares, sem simular resultados.",
+        "Quando existe um problema recuperável localmente, surge Corrigir e verificar; problemas do servidor ou da conta permanecem visíveis até existir confirmação real da correção.",
+        "O estado de segurança no Início e nas Definições passa a abrir diretamente a nova área, mantendo acesso à política legal e de privacidade completa.",
+        "A validação da sessão tenta renovar de forma segura um token expirado antes de apresentar um aviso, reduzindo falsos alertas ao aluno."
+      ]
+    },
     {
       "version": "1.5.7",
       "date": "2026-09-11",
@@ -238,7 +252,7 @@
         "Botão ou gesto Voltar do telemóvel passa a respeitar o histórico da aplicação e, no início, apresenta confirmação antes de sair.",
         "Contraste reforçado em botões, separadores, selects e controlos no modo escuro.",
         "Relatórios académicos mantêm os dois modelos, identificação do aluno e opções de impressão vertical e horizontal.",
-        "Melhorias gerais de consistência visual, navegação e experiência PWA em computador, tablet e telemóvel."
+        "Definições, Ajuda e Guia reorganizados sem remover backups, sincronização, recuperação de conta ou dados existentes."
       ]
     },
     {

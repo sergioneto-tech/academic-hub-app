@@ -1,5 +1,5 @@
-const APP_VERSION = "1.5.7";
-const SW_VERSION = "1.5.7-controlled-update-6-native-exit";
+const APP_VERSION = "1.5.8";
+const SW_VERSION = "1.5.8-controlled-update-7-security-hub";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -7,7 +7,7 @@ const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
 const APP_SHELL_VERSION_MARKER = `<meta name="academic-hub-version" content="${APP_VERSION}"`;
 const APP_SHELL_FETCH_ATTEMPTS = 4;
 const APP_SHELL_RETRY_MS = 650;
-const REPAIR_BUILD_AUTO_ACTIVATE = true;
+const AUTO_ACTIVATE = false;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
@@ -15,7 +15,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.5.7",
+  "./release-notes.json?v=1.5.8",
 ];
 
 function delay(ms) {
@@ -75,15 +75,13 @@ self.addEventListener("install", (event) => {
     await cache.addAll(PRECACHE_URLS).catch(() => {});
 
     // Uma release só pode ficar pronta se o HTML obtido corresponder à mesma
-    // versão do Service Worker. Isto evita o estado Android em que um worker
-    // novo ficava associado ao app-shell da release anterior.
+    // versão do Service Worker. Isto evita misturar app-shell e código de releases diferentes.
     const appShell = await fetchVerifiedAppShell();
     await cache.put(APP_SHELL_KEY, appShell.clone());
 
-    // Este build é uma reparação da própria 1.5.7, sem mudança funcional de
-    // versão. Ativa-se sozinho para substituir caches inconsistentes, distribuir
-    // a autorrecuperação e remover o antigo bloqueio artificial do botão Voltar.
-    if (REPAIR_BUILD_AUTO_ACTIVATE) await self.skipWaiting();
+    // Releases normais ficam em espera até o aluno escolher Atualizar agora.
+    // A ativação automática fica reservada a builds de recuperação explícitos.
+    if (AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });
 

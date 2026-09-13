@@ -70,14 +70,14 @@ export default function SecurityStatusBadge() {
 
   return (
     <Link
-      to="/definicoes#seguranca"
+      to="/seguranca-privacidade"
       className={cn(
         "mb-5 flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-sm transition-colors hover:bg-muted/35",
         protectedStatus && "border-emerald-500/30 bg-emerald-500/5",
         status === "attention" && "border-amber-500/35 bg-amber-500/7",
         reviewStatus && "border-destructive/40 bg-destructive/5",
       )}
-      aria-label="Abrir detalhes do estado de segurança"
+      aria-label="Abrir Segurança e Privacidade"
     >
       <div className="flex min-w-0 items-center gap-3">
         <div className={cn(

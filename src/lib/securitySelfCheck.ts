@@ -1,4 +1,4 @@
-import { getStoredSession, type CloudConfig } from "@/lib/cloudSync";
+import { getStoredSession, refreshSession, storeSession, type AuthSession, type CloudConfig } from "@/lib/cloudSync";
 import { currentPushSubscription, pushSupported, reconcilePushOnThisDevice } from "@/lib/pushNotifications";
 import { APP_VERSION } from "@/lib/version";
 
@@ -183,26 +183,41 @@ async function checkCentralBaseline() {
   }
 }
 
+async function fetchSecurityActivity(cfg: CloudConfig, session: AuthSession) {
+  return fetch(`${cfg.supabaseUrl}/functions/v1/security-activity`, {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      apikey: cfg.supabaseAnonKey,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+}
+
 async function checkAccountSecurity() {
   const cfg = cloudConfig();
   if (!cfg) {
     return result("account-security", "warning", "A configuração Cloud não está disponível neste dispositivo.");
   }
 
-  const session = getStoredSession(cfg);
-  if (!session?.access_token) {
+  const storedSession = getStoredSession(cfg);
+  if (!storedSession?.access_token) {
     return result("account-security", "pass", "Não existe sessão Cloud ativa neste dispositivo; não há token remoto a validar.");
   }
 
   try {
-    const response = await fetch(`${cfg.supabaseUrl}/functions/v1/security-activity`, {
-      method: "GET",
-      cache: "no-store",
-      headers: {
-        apikey: cfg.supabaseAnonKey,
-        Authorization: `Bearer ${session.access_token}`,
-      },
-    });
+    let session = storedSession;
+    let response = await fetchSecurityActivity(cfg, session);
+
+    if (response.status === 401 && session.refresh_token) {
+      try {
+        session = await refreshSession(cfg, session);
+        storeSession(cfg, session);
+        response = await fetchSecurityActivity(cfg, session);
+      } catch {
+        return result("account-security", "warning", "A sessão Cloud expirou e não foi possível renová-la. Volta a iniciar sessão em Conta e Perfil; os dados locais não são afetados.");
+      }
+    }
 
     if (response.status === 401) {
       return result("account-security", "warning", "A sessão Cloud já não foi aceite. Volta a iniciar sessão em Conta e Perfil para renovar o acesso.");

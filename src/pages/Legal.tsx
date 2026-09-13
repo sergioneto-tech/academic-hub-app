@@ -18,7 +18,7 @@ const CIVIL_CODE_IMAGE_URL = "https://diariodarepublica.pt/dr/legislacao-consoli
 const PENAL_CODE_PHOTO_URL = "https://diariodarepublica.pt/dr/legislacao-consolidada/decreto-lei/1995-34437675-49701175";
 const CNPD_RIGHTS_URL = "https://www.cnpd.pt/cidadaos/direitos/";
 const UAB_PORTAL_URL = "https://portal.uab.pt/";
-const CONTACT_EMAIL = "sergioneto78@gmail.com";
+const CONTACT_EMAIL = "2304357@estudante.uab.pt";
 
 const creatorCommitments = ["Recolher apenas os dados necessários ao funcionamento da aplicação.","Não vender dados pessoais nem criar perfis públicos dos utilizadores.","Manter mecanismos de backup, exportação, eliminação e proteção da conta.","Corrigir falhas de segurança conhecidas e comunicar alterações relevantes.","Indicar claramente as fontes externas e a natureza não oficial da aplicação."];
 const userCommitments = ["Introduzir apenas dados próprios ou dados que esteja legitimado a tratar.","Utilizar uma fotografia própria ou cuja utilização tenha sido autorizada.","Proteger as credenciais da conta e os ficheiros de backup exportados.","Confirmar datas, avaliações e regras no PUC e nas fontes oficiais da UAb.","Não apresentar relatórios gerados pela aplicação como certificados oficiais."];

@@ -1,5 +1,7 @@
-import { AlertTriangle, CheckCircle2, ChevronDown, Clock3, ShieldAlert, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, ChevronDown, Clock3, ScanSearch, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -91,7 +93,7 @@ export default function SecurityStatusCard() {
       reviewStatus && "border-destructive/40",
     )}>
       <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
             <div className={cn(
               "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
@@ -102,15 +104,20 @@ export default function SecurityStatusCard() {
               <Icon className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-base">Estado de segurança</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
+                <CardTitle className="text-base">Estado de segurança</CardTitle>
+                {data?.securityLevel && (
+                  <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
+                    Nível {data.securityLevel}
+                  </span>
+                )}
+              </div>
               <div className="mt-1 text-sm font-semibold">{title}</div>
             </div>
           </div>
-          {data?.securityLevel && (
-            <span className="rounded-full border bg-muted/40 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground">
-              Nível {data.securityLevel}
-            </span>
-          )}
+          <Button asChild size="sm" className="w-full sm:w-auto">
+            <Link to="/seguranca-privacidade?verificar=1"><ScanSearch className="h-4 w-4" />Verificar agora</Link>
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -151,6 +158,10 @@ export default function SecurityStatusCard() {
             </div>
           </details>
         ) : null}
+
+        <Link to="/seguranca-privacidade" className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+          Segurança e Privacidade <ArrowRight className="h-3.5 w-3.5" />
+        </Link>
 
         <p className="text-[10px] leading-relaxed text-muted-foreground">
           Este indicador resume verificações automáticas e não constitui garantia absoluta de invulnerabilidade. Um estado verde significa que a última vistoria não detetou vulnerabilidades críticas/altas ou falhas de controlo consideradas bloqueantes.

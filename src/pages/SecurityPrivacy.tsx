@@ -69,7 +69,7 @@ export default function SecurityPrivacyPage() {
           <div className="pointer-events-none absolute -bottom-20 left-1/3 h-40 w-40 rounded-full bg-[hsl(var(--gold)/0.10)] blur-3xl" />
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-start gap-4">
-              <div className="grid h-13 w-13 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm sm:h-14 sm:w-14">
+              <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
                 <ShieldCheck className="h-7 w-7" />
               </div>
               <div>

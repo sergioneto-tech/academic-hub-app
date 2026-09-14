@@ -109,6 +109,7 @@ jobs:
           src/components/EvaluationModeSelector.tsx
           src/components/FeedbackCloudBridge.tsx
           src/components/Layout.tsx
+          src/components/LegacyEvaluationSavePanel.tsx
           src/components/ProfileAvatarEditor.tsx
           src/components/PushDeepLinkNotice.tsx
           src/components/ReleaseUpdateNotice.tsx

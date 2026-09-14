@@ -21,8 +21,15 @@ type Ctx = {
 };
 
 const UpdateCtx = createContext<Ctx | null>(null);
-const MIN_PROGRESS_VISIBLE_MS = 1800;
-const FINAL_STATE_VISIBLE_MS = 900;
+const PHASE_MIN_VISIBLE_MS: Partial<Record<UpdatePhase, number>> = {
+  preparing: 480,
+  checking: 620,
+  installing: 780,
+  activating: 680,
+  restarting: 520,
+};
+const PHASE_COMPLETE_HOLD_MS = 260;
+const FINAL_STATE_VISIBLE_MS = 1050;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -240,67 +247,66 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
     setCompletedUpdatePhases((current) => current.includes(phase) ? current : [...current, phase]);
   };
 
+  const runVisiblePhase = async <T,>(phase: UpdatePhase, operation: () => Promise<T> | T) => {
+    setUpdatePhase(phase);
+    await nextPaint();
+    const startedAt = performance.now();
+    const value = await operation();
+    const minimum = PHASE_MIN_VISIBLE_MS[phase] ?? 0;
+    const elapsed = performance.now() - startedAt;
+    if (elapsed < minimum) await delay(minimum - elapsed);
+    completePhase(phase);
+    await nextPaint();
+    await delay(PHASE_COMPLETE_HOLD_MS);
+    return value;
+  };
+
   const applyUpdate = async (targetVersion?: string) => {
     if (applyingRef.current) return;
     applyingRef.current = true;
     setCompletedUpdatePhases([]);
-    const startedAt = performance.now();
     let resolvedTargetVersion = "";
 
     try {
-      setUpdatePhase("preparing");
-      await nextPaint();
-      resolvedTargetVersion = await resolvePublishedTargetVersion(targetVersion);
-      if (!resolvedTargetVersion) throw new Error("Versão-alvo indisponível");
-      markUpdateTarget(resolvedTargetVersion);
-      completePhase("preparing");
+      resolvedTargetVersion = await runVisiblePhase("preparing", async () => {
+        const resolved = await resolvePublishedTargetVersion(targetVersion);
+        if (!resolved) throw new Error("Versão-alvo indisponível");
+        markUpdateTarget(resolved);
+        return resolved;
+      });
 
       const reg = regRef.current;
       if (!reg && isSupported) throw new Error("Service Worker indisponível");
 
       if (reg) {
-        setUpdatePhase("checking");
-        await nextPaint();
-        await reg.update();
-        completePhase("checking");
+        await runVisiblePhase("checking", async () => {
+          await reg.update();
+        });
 
-        if (reg.installing) {
-          const installingWorker = reg.installing;
-          setUpdatePhase("installing");
-          await nextPaint();
-          await waitForWorkerInstall(installingWorker);
-          if (installingWorker.state === "redundant") throw new Error("Instalação rejeitada pelo navegador");
-          completePhase("installing");
-        } else if (reg.waiting) {
-          setUpdatePhase("installing");
-          await nextPaint();
-          completePhase("installing");
-          await nextPaint();
-        }
+        await runVisiblePhase("installing", async () => {
+          if (reg.installing) {
+            const installingWorker = reg.installing;
+            await waitForWorkerInstall(installingWorker);
+            if (installingWorker.state === "redundant") throw new Error("Instalação rejeitada pelo navegador");
+          }
 
-        if (!reg.waiting) await delay(120);
-        if (!reg.waiting) throw new Error("Nova versão não ficou pronta para ativação");
+          if (!reg.waiting) await delay(120);
+          if (!reg.waiting) throw new Error("Nova versão não ficou pronta para ativação");
+        });
 
-        setUpdatePhase("activating");
-        await nextPaint();
-        const controllerChanged = waitForControllerChange();
-        if (!activateWaitingWorker(reg)) throw new Error("Não foi possível ativar a nova versão");
-        if (!(await controllerChanged)) throw new Error("O navegador não confirmou a ativação");
-        completePhase("activating");
+        await runVisiblePhase("activating", async () => {
+          const controllerChanged = waitForControllerChange();
+          if (!activateWaitingWorker(reg)) throw new Error("Não foi possível ativar a nova versão");
+          if (!(await controllerChanged)) throw new Error("O navegador não confirmou a ativação");
+        });
         setUpdateAvailable(false);
       } else {
-        completePhase("checking");
-        completePhase("installing");
-        completePhase("activating");
+        await runVisiblePhase("checking", async () => undefined);
+        await runVisiblePhase("installing", async () => undefined);
+        await runVisiblePhase("activating", async () => undefined);
       }
 
-      setUpdatePhase("restarting");
-      await nextPaint();
-      completePhase("restarting");
-      await nextPaint();
-
-      const elapsed = performance.now() - startedAt;
-      if (elapsed < MIN_PROGRESS_VISIBLE_MS) await delay(MIN_PROGRESS_VISIBLE_MS - elapsed);
+      await runVisiblePhase("restarting", async () => undefined);
       await delay(FINAL_STATE_VISIBLE_MS);
       hardReload();
     } catch {

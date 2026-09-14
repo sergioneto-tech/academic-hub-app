@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { CheckCircle2, LoaderCircle, RefreshCw, ShieldCheck } from "lucide-react";
 import { useUpdate, type UpdatePhase } from "@/lib/UpdateProvider";
 import { cn } from "@/lib/utils";
@@ -5,10 +6,39 @@ import { cn } from "@/lib/utils";
 const STEPS: Array<{ phase: Exclude<UpdatePhase, "idle" | "error">; label: string }> = [
   { phase: "preparing", label: "Preparar a atualização" },
   { phase: "checking", label: "Verificar a nova versão" },
-  { phase: "installing", label: "Instalar os novos ficheiros" },
+  { phase: "installing", label: "Confirmar os novos ficheiros" },
   { phase: "activating", label: "Ativar a nova versão" },
   { phase: "restarting", label: "Preparar o reinício" },
 ];
+
+function ProgressSegment({ done, active }: { done: boolean; active: boolean }) {
+  const [fill, setFill] = useState(0);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setFill(done ? 100 : active ? 68 : 0);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [active, done]);
+
+  return (
+    <span
+      className={cn(
+        "h-2 overflow-hidden rounded-full border bg-muted",
+        done ? "border-primary" : active ? "border-primary/65" : "border-border",
+      )}
+    >
+      <span
+        className={cn(
+          "block h-full rounded-full transition-[width] duration-500 ease-out",
+          done ? "bg-primary" : active ? "bg-primary/65" : "bg-transparent",
+          active && "animate-pulse motion-reduce:animate-none",
+        )}
+        style={{ width: `${fill}%` }}
+      />
+    </span>
+  );
+}
 
 export default function UpdateProgressModal() {
   const { updatePhase, completedUpdatePhases } = useUpdate();
@@ -36,7 +66,7 @@ export default function UpdateProgressModal() {
                 ? "A atualização foi interrompida antes de reiniciar. Os teus dados locais não foram apagados."
                 : completed
                   ? "As 5 etapas foram confirmadas. O Academic Hub vai reiniciar automaticamente com a nova versão."
-                  : `Etapa ${currentStepNumber} de ${STEPS.length}. A barra avança apenas quando cada fase real do processo é concluída.`}
+                  : `Etapa ${currentStepNumber} de ${STEPS.length}. Cada segmento permanece visível até a etapa real ser confirmada.`}
             </p>
           </div>
         </div>
@@ -46,7 +76,7 @@ export default function UpdateProgressModal() {
             <div
               className="mt-5 grid grid-cols-5 gap-1.5"
               role="progressbar"
-              aria-label="Progresso real da atualização"
+              aria-label="Etapas confirmadas da atualização"
               aria-valuemin={0}
               aria-valuemax={STEPS.length}
               aria-valuenow={completedCount}
@@ -55,17 +85,7 @@ export default function UpdateProgressModal() {
               {STEPS.map((step) => {
                 const done = completedUpdatePhases.includes(step.phase);
                 const active = updatePhase === step.phase && !done;
-                return (
-                  <span
-                    key={step.phase}
-                    className={cn(
-                      "h-2 rounded-full border transition-colors",
-                      done && "border-primary bg-primary",
-                      active && "border-primary/70 bg-primary/35 animate-pulse motion-reduce:animate-none",
-                      !done && !active && "border-border bg-muted",
-                    )}
-                  />
-                );
+                return <ProgressSegment key={step.phase} done={done} active={active} />;
               })}
             </div>
             <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
@@ -78,7 +98,14 @@ export default function UpdateProgressModal() {
                 const done = completedUpdatePhases.includes(step.phase);
                 const active = updatePhase === step.phase && !done;
                 return (
-                  <div key={step.phase} className={cn("flex items-center gap-3 rounded-xl border px-3 py-2.5", active && "border-primary/35 bg-primary/5", done && completed && "border-emerald-500/20")}>
+                  <div
+                    key={step.phase}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors duration-300",
+                      active && "border-primary/35 bg-primary/5",
+                      done && "border-emerald-500/20 bg-emerald-500/[0.02]",
+                    )}
+                  >
                     {done ? (
                       <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                     ) : active ? (
@@ -86,7 +113,7 @@ export default function UpdateProgressModal() {
                     ) : (
                       <span className="h-4 w-4 shrink-0 rounded-full border border-muted-foreground/35" />
                     )}
-                    <span className={cn("text-xs", active ? "font-semibold" : "text-muted-foreground", done && completed && "text-foreground")}>{step.label}</span>
+                    <span className={cn("text-xs", active ? "font-semibold text-foreground" : "text-muted-foreground", done && "text-foreground")}>{step.label}</span>
                   </div>
                 );
               })}
@@ -96,8 +123,8 @@ export default function UpdateProgressModal() {
 
         <p className="mt-4 text-[10px] leading-relaxed text-muted-foreground">
           {completed
-            ? "O pequeno intervalo antes do reinício serve apenas para confirmares visualmente que a atualização terminou; não representa uma etapa simulada."
-            : "Não feches a aplicação durante este processo. O Academic Hub reinicia automaticamente quando a nova versão estiver ativa."}
+            ? "O pequeno intervalo antes do reinício serve para confirmar visualmente que todas as etapas terminaram; não representa trabalho adicional."
+            : "Os segmentos mostram a passagem entre etapas confirmadas e não uma percentagem de bytes transferidos. Se uma operação real demorar mais, a respetiva etapa permanece ativa até terminar."}
         </p>
       </section>
     </div>

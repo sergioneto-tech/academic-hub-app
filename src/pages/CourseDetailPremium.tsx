@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 
 import EvaluationFrameworkNotice from "@/components/EvaluationFrameworkNotice";
 import EvaluationModeSelector from "@/components/EvaluationModeSelector";
+import LegacyEvaluationSavePanel from "@/components/LegacyEvaluationSavePanel";
 import { useAppStore } from "@/lib/AppStore";
 import CourseDetail from "@/pages/CourseDetail";
 import FlexibleCourseDetail from "@/pages/FlexibleCourseDetail";
@@ -34,7 +35,12 @@ export default function CourseDetailPremium() {
       {regime === "regulation-2026"
         ? <FlexibleCourseDetail courseId={id} />
         : historicalMode === "efolios-exam"
-          ? <CourseDetail />
+          ? (
+            <>
+              <CourseDetail />
+              <LegacyEvaluationSavePanel courseId={id} />
+            </>
+          )
           : <HistoricalCourseDetail courseId={id} mode={historicalMode} />}
     </>
   );

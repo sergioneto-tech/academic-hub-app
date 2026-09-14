@@ -1,5 +1,5 @@
 const APP_VERSION = "1.5.8";
-const SW_VERSION = "1.5.8-controlled-update-8-institutional-contact";
+const SW_VERSION = "1.5.8-controlled-update-9-progressive-stages";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -79,8 +79,8 @@ self.addEventListener("install", (event) => {
     const appShell = await fetchVerifiedAppShell();
     await cache.put(APP_SHELL_KEY, appShell.clone());
 
-    // Hotfix da própria 1.5.8: distribui apenas a correção do contacto público,
-    // sem criar uma nova release funcional nem exigir nova ação do aluno.
+    // Hotfix da própria 1.5.8: distribui a apresentação progressiva das etapas
+    // do atualizador sem criar uma nova release nem pedir nova ação ao aluno.
     if (AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });

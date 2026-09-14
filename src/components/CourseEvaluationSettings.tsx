@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Circle,
   Plus,
+  Save,
   Scale,
   Trash2,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAppStore } from "@/lib/AppStore";
+import { validateAssessmentSave, type AssessmentSaveCheck } from "@/lib/assessmentSaveValidation";
 import { getAssessments, getRegulationOutcome } from "@/lib/calculations";
 import { formatPtDateTime } from "@/lib/date";
 import type {
@@ -147,6 +149,8 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
     [state, courseId],
   );
   const outcome = useMemo(() => getRegulationOutcome(state, courseId), [state, courseId]);
+  const [saveReview, setSaveReview] = useState<AssessmentSaveCheck | null>(null);
+  const [savedAt, setSavedAt] = useState("");
 
   if (!course) return null;
 
@@ -154,9 +158,16 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
   const model: EvaluationModel = course.evaluationModel ?? "custom";
   const requiredMaximum = totalMaximum(assessments);
   const officialRegime = course.evaluationRegimeSource === "official";
+  const visibleOutcomeIssues = outcome?.issues.filter((issue) => !issue.startsWith("Faltam as notas de:")) ?? [];
+
+  const markEdited = () => {
+    setSaveReview(null);
+    setSavedAt("");
+  };
 
   const setRegime = (next: EvaluationRegime) => {
     if (officialRegime) return;
+    markEdited();
     updateCourse(courseId, {
       evaluationRegime: next,
       evaluationRegimeSource: "manual",
@@ -165,6 +176,7 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
   };
 
   const setModel = (next: EvaluationModel) => {
+    markEdited();
     updateCourse(courseId, { evaluationRegime: "regulation-2026", evaluationModel: next });
 
     if (next === "exam-only") {
@@ -202,6 +214,7 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
   };
 
   const addElement = () => {
+    markEdited();
     addAssessment(courseId, {
       type: "activity",
       name: `Atividade ${assessments.length + 1}`,
@@ -210,6 +223,27 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
       mode: "asynchronous",
       required: true,
     });
+  };
+
+  const finishSave = () => {
+    // As edições já são protegidas localmente a cada alteração. Este commit explícito
+    // volta a persistir o estado atual e funciona como ponto de confirmação/validação.
+    updateCourse(courseId, {});
+    setSaveReview(null);
+    setSavedAt(new Date().toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }));
+  };
+
+  const requestSave = (allowWarnings = false) => {
+    const check = validateAssessmentSave(assessments);
+    if (check.errors.length > 0) {
+      setSaveReview(check);
+      return;
+    }
+    if (check.warnings.length > 0 && !allowWarnings) {
+      setSaveReview(check);
+      return;
+    }
+    finishSave();
   };
 
   return (
@@ -337,12 +371,60 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
                   key={assessment.id}
                   assessment={assessment}
                   model={model}
-                  onChange={(patch) => updateAssessment(assessment.id, patch)}
+                  onChange={(patch) => {
+                    markEdited();
+                    updateAssessment(assessment.id, patch);
+                  }}
                   onRemove={() => {
-                    if (window.confirm(`Remover ${assessment.name}? As datas e a classificação também serão eliminadas.`)) removeAssessment(assessment.id);
+                    if (window.confirm(`Remover ${assessment.name}? As datas e a classificação também serão eliminadas.`)) {
+                      markEdited();
+                      removeAssessment(assessment.id);
+                    }
                   }}
                 />
               ))}
+            </div>
+
+            <div className="rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-semibold"><Save className="h-4 w-4 text-primary" />Gravar configuração</div>
+                  <p className="mt-1 max-w-2xl text-xs leading-5 text-muted-foreground">
+                    A data de publicação da nota é opcional. Se o professor ou o PUC não a indicar, podes gravar agora e acrescentá-la mais tarde.
+                  </p>
+                  {savedAt && <p className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">Configuração gravada às {savedAt}.</p>}
+                </div>
+                <Button type="button" className="shrink-0" onClick={() => requestSave(false)}>
+                  <Save className="mr-2 h-4 w-4" />Gravar
+                </Button>
+              </div>
+
+              {saveReview && (saveReview.errors.length > 0 || saveReview.warnings.length > 0) && (
+                <div className={`mt-4 rounded-xl border p-3 ${saveReview.errors.length > 0 ? "border-destructive/35 bg-destructive/10" : "border-warning/35 bg-warning/10"}`}>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className={`mt-0.5 h-4 w-4 shrink-0 ${saveReview.errors.length > 0 ? "text-destructive" : "text-warning"}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold">
+                        {saveReview.errors.length > 0 ? "Existem datas incoerentes" : "Há campos que podes completar mais tarde"}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {saveReview.errors.length > 0
+                          ? "Corrige os pontos abaixo antes de confirmar a gravação."
+                          : "Os dados já preenchidos podem ser gravados. Queres continuar mesmo assim?"}
+                      </p>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                        {[...saveReview.errors, ...saveReview.warnings].map((item) => <li key={item}>{item}</li>)}
+                      </ul>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant="outline" onClick={() => setSaveReview(null)}>Rever campos</Button>
+                        {saveReview.errors.length === 0 && (
+                          <Button type="button" size="sm" onClick={() => requestSave(true)}>Gravar mesmo assim</Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -373,12 +455,16 @@ export default function CourseEvaluationSettings({ courseId }: { courseId: strin
               ))}
             </div>
 
-            {outcome.issues.length > 0 && (
+            <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
+              Elementos ainda sem nota aparecem como “Por classificar”; isso é normal antes da publicação das classificações e não impede gravar as datas conhecidas.
+            </p>
+
+            {visibleOutcomeIssues.length > 0 && (
               <div className="mt-3 rounded-xl border border-warning/35 bg-warning/10 p-3">
                 <div className="flex gap-2">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                   <ul className="list-disc space-y-1 pl-4 text-xs text-muted-foreground">
-                    {outcome.issues.map((issue) => <li key={issue}>{issue}</li>)}
+                    {visibleOutcomeIssues.map((issue) => <li key={issue}>{issue}</li>)}
                   </ul>
                 </div>
               </div>
@@ -496,7 +582,11 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
             <div><Label className="mb-1 block text-[11px] text-muted-foreground">Fim</Label><PtDateInput value={assessment.endDate} onChange={(value) => onChange({ endDate: value })} /></div>
           </>
         )}
-        <div><Label className="mb-1 block text-[11px] text-muted-foreground">Publicação da nota</Label><PtDateInput value={assessment.gradeReleaseDate} onChange={(value) => onChange({ gradeReleaseDate: value })} /></div>
+        <div>
+          <Label className="mb-1 block text-[11px] text-muted-foreground">Publicação da nota <span className="font-normal opacity-70">(opcional)</span></Label>
+          <PtDateInput value={assessment.gradeReleaseDate} onChange={(value) => onChange({ gradeReleaseDate: value })} />
+          <p className="mt-1 text-[10px] leading-4 text-muted-foreground">Preenche apenas se o professor ou o PUC indicar esta data.</p>
+        </div>
       </div>
     </div>
   );
@@ -505,7 +595,7 @@ function AssessmentEditor({ assessment, model, onChange, onRemove }: {
 function OutcomeBadge({ kind }: { kind: "in-progress" | "incomplete" | "passed" | "resit" | "failed" }) {
   const labels = {
     "in-progress": "Em curso",
-    incomplete: "Configuração incompleta",
+    incomplete: "Por completar",
     passed: "Aprovado",
     resit: "Recurso",
     failed: "Reprovado",

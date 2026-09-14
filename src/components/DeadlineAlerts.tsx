@@ -39,18 +39,32 @@ function buildAlerts(state: AppState): AlertItem[] {
 
   for (const course of activeCourses) {
     const label = `${course.code} — ${course.name}`;
-    const efolios = getAssessments(state, course.id, "efolio");
-    for (const ef of efolios) {
-      if (ef.startDate) {
-        const daysStart = daysUntil(ef.startDate);
-        if (daysStart !== null && daysStart >= 0 && daysStart <= 1) {
-          alerts.push({ id: `${ef.id}-start`, courseId: course.id, courseName: label, label: `${ef.name} (início)`, daysLeft: daysStart, type: "efolio" });
+    const continuousAssessments = course.evaluationRegime === "regulation-2026"
+      ? getAssessments(state, course.id).filter((assessment) => (
+          assessment.required !== false
+          && assessment.type !== "exam"
+          && assessment.type !== "resit"
+          && assessment.type !== "special"
+        ))
+      : getAssessments(state, course.id, "efolio");
+
+    for (const assessment of continuousAssessments) {
+      if (assessment.date) {
+        const days = daysUntil(assessment.date);
+        if (days !== null && days >= 0 && days <= 1) {
+          alerts.push({ id: `${assessment.id}-date`, courseId: course.id, courseName: label, label: assessment.name, daysLeft: days, type: "efolio" });
         }
       }
-      if (ef.endDate) {
-        const daysEnd = daysUntil(ef.endDate);
+      if (assessment.startDate) {
+        const daysStart = daysUntil(assessment.startDate);
+        if (daysStart !== null && daysStart >= 0 && daysStart <= 1) {
+          alerts.push({ id: `${assessment.id}-start`, courseId: course.id, courseName: label, label: `${assessment.name} (início)`, daysLeft: daysStart, type: "efolio" });
+        }
+      }
+      if (assessment.endDate) {
+        const daysEnd = daysUntil(assessment.endDate);
         if (daysEnd !== null && daysEnd >= 0 && daysEnd <= 1) {
-          alerts.push({ id: `${ef.id}-end`, courseId: course.id, courseName: label, label: `${ef.name} (fim)`, daysLeft: daysEnd, type: "efolio" });
+          alerts.push({ id: `${assessment.id}-end`, courseId: course.id, courseName: label, label: `${assessment.name} (fim)`, daysLeft: daysEnd, type: "efolio" });
         }
       }
     }

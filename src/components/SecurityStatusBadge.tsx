@@ -11,6 +11,7 @@ type SecurityStatus = {
 };
 
 const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
+const STATUS_FETCH_TIMEOUT_MS = 8000;
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -32,8 +33,10 @@ export default function SecurityStatusBadge() {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), STATUS_FETCH_TIMEOUT_MS);
     const base = import.meta.env.BASE_URL ?? "/";
-    fetch(`${base}security-status.json?ts=${Date.now()}`, { cache: "no-store" })
+    fetch(`${base}security-status.json?ts=${Date.now()}`, { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json() as Promise<SecurityStatus>;
@@ -46,8 +49,13 @@ export default function SecurityStatusBadge() {
       .catch(() => {
         if (cancelled) return;
         setLoadFailed(true);
-      });
-    return () => { cancelled = true; };
+      })
+      .finally(() => window.clearTimeout(timer));
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      controller.abort();
+    };
   }, []);
 
   const stale = useMemo(() => {

@@ -39,6 +39,7 @@ type ActivityItem = {
 
 const EIGHT_DAYS_MS = 8 * 24 * 60 * 60 * 1000;
 const SERVICE_WORKER_REPLY_TIMEOUT_MS = 1800;
+const REMOTE_CHECK_TIMEOUT_MS = 8000;
 
 export const SECURITY_SELF_CHECKS: Array<{
   id: SecuritySelfCheckId;
@@ -80,9 +81,19 @@ function result(
   };
 }
 
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = REMOTE_CHECK_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
 async function fetchCentralStatus(): Promise<CentralSecurityStatus> {
   const base = import.meta.env.BASE_URL ?? "/";
-  const response = await fetch(`${base}security-status.json?check=${Date.now()}`, {
+  const response = await fetchWithTimeout(`${base}security-status.json?check=${Date.now()}`, {
     cache: "no-store",
   });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -184,7 +195,7 @@ async function checkCentralBaseline() {
 }
 
 async function fetchSecurityActivity(cfg: CloudConfig, session: AuthSession) {
-  return fetch(`${cfg.supabaseUrl}/functions/v1/security-activity`, {
+  return fetchWithTimeout(`${cfg.supabaseUrl}/functions/v1/security-activity`, {
     method: "GET",
     cache: "no-store",
     headers: {

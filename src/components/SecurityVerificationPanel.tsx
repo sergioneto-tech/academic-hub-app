@@ -23,6 +23,8 @@ import {
 } from "@/lib/securitySelfCheck";
 import { cn } from "@/lib/utils";
 
+const SECURITY_CHECK_TIMEOUT_MS = 12_000;
+
 function initialChecks(): SecuritySelfCheckResult[] {
   return SECURITY_SELF_CHECKS.map((item) => ({
     ...item,
@@ -32,6 +34,7 @@ function initialChecks(): SecuritySelfCheckResult[] {
 }
 
 function nextPaint() {
+  if (typeof requestAnimationFrame !== "function") return Promise.resolve();
   return new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 }
 
@@ -44,6 +47,35 @@ function formatCheckTime(value: Date | null) {
     minute: "2-digit",
     second: "2-digit",
   }).format(value);
+}
+
+function runCheckWithTimeout(definition: (typeof SECURITY_SELF_CHECKS)[number]) {
+  return new Promise<SecuritySelfCheckResult>((resolve) => {
+    let settled = false;
+    const finish = (value: SecuritySelfCheckResult) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      resolve(value);
+    };
+    const timer = window.setTimeout(() => {
+      finish({
+        ...definition,
+        status: "warning",
+        detail: "A verificação demorou demasiado neste dispositivo. Podes repetir sem bloquear o restante diagnóstico.",
+      });
+    }, SECURITY_CHECK_TIMEOUT_MS);
+
+    void runSecuritySelfCheck(definition.id)
+      .then(finish)
+      .catch(() => {
+        finish({
+          ...definition,
+          status: "warning",
+          detail: "A verificação não pôde ser concluída neste momento.",
+        });
+      });
+  });
 }
 
 export default function SecurityVerificationPanel({ autoStart = false }: { autoStart?: boolean }) {
@@ -59,33 +91,24 @@ export default function SecurityVerificationPanel({ autoStart = false }: { autoS
     setPhase("running");
     setChecks(initialChecks());
 
-    const completed: SecuritySelfCheckResult[] = [];
-    for (const definition of SECURITY_SELF_CHECKS) {
-      setChecks((current) => current.map((item) =>
-        item.id === definition.id
-          ? { ...item, status: "running", detail: "A verificar agora…" }
-          : item,
-      ));
-      await nextPaint();
+    try {
+      for (const definition of SECURITY_SELF_CHECKS) {
+        setChecks((current) => current.map((item) =>
+          item.id === definition.id
+            ? { ...item, status: "running", detail: "A verificar agora…" }
+            : item,
+        ));
+        await nextPaint();
 
-      let result: SecuritySelfCheckResult;
-      try {
-        result = await runSecuritySelfCheck(definition.id);
-      } catch {
-        result = {
-          ...definition,
-          status: "warning",
-          detail: "A verificação não pôde ser concluída neste momento.",
-        };
+        const result = await runCheckWithTimeout(definition);
+        setChecks((current) => current.map((item) => item.id === result.id ? result : item));
+        await nextPaint();
       }
-      completed.push(result);
-      setChecks((current) => current.map((item) => item.id === result.id ? result : item));
-      await nextPaint();
+    } finally {
+      setLastCheckedAt(new Date());
+      setPhase("complete");
+      runningRef.current = false;
     }
-
-    setLastCheckedAt(new Date());
-    setPhase("complete");
-    runningRef.current = false;
   }, []);
 
   const repairAndVerify = useCallback(async () => {
@@ -174,7 +197,7 @@ export default function SecurityVerificationPanel({ autoStart = false }: { autoS
         {(phase === "running" || phase === "repairing" || phase === "complete") && (
           <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground">
-              <span>{phase === "repairing" ? "A corrigir controlos locais recuperáveis" : "Verificação em curso"}</span>
+              <span>{phase === "repairing" ? "A corrigir controlos locais recuperáveis" : phase === "complete" ? "Verificação concluída" : "Verificação em curso"}</span>
               <span>{completedCount}/{checks.length}</span>
             </div>
             <div className="grid grid-cols-6 gap-1.5" aria-hidden="true">

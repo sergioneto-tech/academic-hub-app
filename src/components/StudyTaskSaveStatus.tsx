@@ -105,15 +105,28 @@ export default function StudyTaskSaveStatus() {
   })();
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between" role="status" aria-live="polite">
-      <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-        <status.Icon className={`h-4 w-4 shrink-0 ${status.spin ? "animate-spin" : ""}`} />
-        <span className="min-w-0">{status.text}</span>
+    <>
+      <style>{`
+        @media (max-width: 1023px) {
+          .study-task-save-status + .grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+          .study-task-save-status + .grid > * {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+        }
+      `}</style>
+      <div className="study-task-save-status flex flex-col gap-2 rounded-xl border bg-card/70 p-3 sm:flex-row sm:items-center sm:justify-between" role="status" aria-live="polite">
+        <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+          <status.Icon className={`h-4 w-4 shrink-0 ${status.spin ? "animate-spin" : ""}`} />
+          <span className="min-w-0">{status.text}</span>
+        </div>
+        <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" onClick={confirmSave}>
+          <Save className="mr-2 h-4 w-4" />
+          Gravar
+        </Button>
       </div>
-      <Button variant="outline" size="sm" className="w-full shrink-0 sm:w-auto" onClick={confirmSave}>
-        <Save className="mr-2 h-4 w-4" />
-        Gravar
-      </Button>
-    </div>
+    </>
   );
 }

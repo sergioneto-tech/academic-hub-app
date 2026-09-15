@@ -1,6 +1,20 @@
 {
-  "latest": "1.5.8",
+  "latest": "1.5.9",
   "versions": [
+    {
+      "version": "1.5.9",
+      "date": "2026-09-15",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "Corrigida a tela preta que podia surgir ao abrir Segurança e Privacidade numa instalação PWA que ainda estivesse a executar ficheiros da versão anterior.",
+        "A versão da aplicação e do app-shell passa efetivamente para 1.5.9, impedindo que um hotfix diferente seja aceite como se ainda fosse exatamente a mesma versão 1.5.8.",
+        "Restaurada a atualização controlada do Service Worker: a nova versão fica em espera até o aluno escolher Atualizar agora, evitando remover chunks ainda usados pela interface aberta.",
+        "A área Segurança e Privacidade fica no bundle principal e as verificações remotas têm limites de tempo, para que nenhum cartão fique indefinidamente bloqueado.",
+        "Adicionada uma proteção global de interface: se uma rota falhar, o Academic Hub mostra opções de recuperação em vez de deixar apenas uma tela vazia ou preta.",
+        "Cadeiras repetidas passam a preservar as tentativas anteriores no histórico e permitem iniciar uma nova frequência sem reutilizar classificações ou recursos antigos."
+      ]
+    },
     {
       "version": "1.5.8",
       "date": "2026-09-13",

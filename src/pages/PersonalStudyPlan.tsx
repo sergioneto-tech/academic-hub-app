@@ -180,14 +180,12 @@ export default function PersonalStudyPlan() {
       lines.push(`DESCRIPTION:${courseName}${b.notes ? "\\n" + b.notes : ""}`);
 
       if (b.startTime) {
-        // Timed event
         const dtStart = b.startDate.replace(/-/g, "") + "T" + (b.startTime.replace(":", "") + "00");
         const endTime = b.endTime || b.startTime;
         const dtEnd = b.endDate.replace(/-/g, "") + "T" + (endTime.replace(":", "") + "00");
         lines.push(`DTSTART:${dtStart}`);
         lines.push(`DTEND:${dtEnd}`);
       } else {
-        // All-day event
         const dtStart = b.startDate.replace(/-/g, "");
         const endDate = new Date(b.endDate);
         endDate.setDate(endDate.getDate() + 1);
@@ -215,24 +213,24 @@ export default function PersonalStudyPlan() {
   }, [blocks, courseNameMap, toast]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" asChild>
+        <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+          <Button variant="ghost" size="icon" className="shrink-0" asChild>
             <Link to="/plano"><ArrowLeft className="h-4 w-4" /></Link>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Plano de Estudo Pessoal</h1>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground">Plano de Estudo Pessoal</h1>
             <p className="text-sm text-muted-foreground mt-1">Organiza as tuas semanas de estudo — arrasta blocos entre colunas</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={handleExportIcs}>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={handleExportIcs}>
             <Download className="h-4 w-4 mr-2" /> Exportar .ics
           </Button>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="h-4 w-4 mr-2" /> Novo bloco</Button>
+              <Button size="sm" className="flex-1 sm:flex-none"><Plus className="h-4 w-4 mr-2" /> Novo bloco</Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
@@ -296,23 +294,22 @@ export default function PersonalStudyPlan() {
         </div>
       </div>
 
-      {/* Kanban columns with drag & drop */}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {COLUMNS.map((status) => {
             const config = STATUS_CONFIG[status];
             const columnBlocks = blocksByStatus[status];
             return (
-              <Card key={status} className="min-h-[200px]">
+              <Card key={status} className="min-h-[160px] lg:min-h-[200px] w-full">
                 <CardHeader className="pb-3">
                   <CardTitle className={`text-sm font-semibold flex items-center gap-2 ${config.color}`}>
-                    <span className={`w-3 h-3 rounded-full ${
+                    <span className={`w-3 h-3 shrink-0 rounded-full ${
                       status === "todo" ? "bg-muted-foreground" :
                       status === "in_progress" ? "bg-[hsl(var(--warning))]" :
                       "bg-[hsl(var(--success))]"
                     }`} />
-                    {config.label}
-                    <Badge variant="outline" className="ml-auto text-xs">{columnBlocks.length}</Badge>
+                    <span className="min-w-0">{config.label}</span>
+                    <Badge variant="outline" className="ml-auto shrink-0 text-xs">{columnBlocks.length}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <Droppable droppableId={status}>
@@ -323,7 +320,7 @@ export default function PersonalStudyPlan() {
                       className={`space-y-3 min-h-[100px] rounded-b-lg transition-colors ${snapshot.isDraggingOver ? config.dropBg + " ring-2 ring-inset ring-primary/20" : ""}`}
                     >
                       {columnBlocks.length === 0 && !snapshot.isDraggingOver ? (
-                        <p className="text-xs text-muted-foreground text-center py-8">Sem blocos</p>
+                        <p className="text-xs text-muted-foreground text-center py-6 lg:py-8">Sem blocos</p>
                       ) : (
                         columnBlocks.map((block, index) => (
                           <BlockCard

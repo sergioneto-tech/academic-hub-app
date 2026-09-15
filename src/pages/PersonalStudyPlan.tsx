@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { formatPtDate } from "@/lib/date";
 import { PtDateInput } from "@/components/ui/pt-date-input";
+import StudyTaskSaveStatus from "@/components/StudyTaskSaveStatus";
 
 const ACTIVITY_LABELS: Record<StudyBlock["activity"], { label: string; icon: typeof BookOpen }> = {
   reading: { label: "📖 Leitura", icon: BookOpen },
@@ -293,6 +294,8 @@ export default function PersonalStudyPlan() {
           </Dialog>
         </div>
       </div>
+
+      <StudyTaskSaveStatus />
 
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

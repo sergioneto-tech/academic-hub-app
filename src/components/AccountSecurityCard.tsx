@@ -15,6 +15,8 @@ type ActivityItem = {
   incident_status?: string | null;
 };
 
+const SECURITY_ACTIVITY_TIMEOUT_MS = 8000;
+
 function cloudConfig(): CloudConfig | null {
   const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
   const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
@@ -47,18 +49,20 @@ export default function AccountSecurityCard() {
 
   const load=useCallback(async()=>{
     const cfg=cloudConfig();
-    if(!cfg){setHasSession(false);return;}
+    if(!cfg){setHasSession(false);setLoading(false);return;}
     const session=getStoredSession(cfg);
-    if(!session?.access_token){setHasSession(false);setActivity([]);return;}
+    if(!session?.access_token){setHasSession(false);setActivity([]);setLoading(false);return;}
     setHasSession(true);setLoading(true);setError(false);
+    const controller=new AbortController();
+    const timer=window.setTimeout(()=>controller.abort(),SECURITY_ACTIVITY_TIMEOUT_MS);
     try{
       const response=await fetch(`${cfg.supabaseUrl.replace(/\/$/,"")}/functions/v1/security-activity`,{
-        method:"GET",cache:"no-store",headers:{apikey:cfg.supabaseAnonKey,Authorization:`Bearer ${session.access_token}`}
+        method:"GET",cache:"no-store",signal:controller.signal,headers:{apikey:cfg.supabaseAnonKey,Authorization:`Bearer ${session.access_token}`}
       });
       if(!response.ok)throw new Error(`HTTP ${response.status}`);
       const payload=await response.json() as {activity?:ActivityItem[]};
       setActivity(Array.isArray(payload.activity)?payload.activity:[]);
-    }catch{setError(true);}finally{setLoading(false);}
+    }catch{setError(true);}finally{window.clearTimeout(timer);setLoading(false);}
   },[]);
 
   useEffect(()=>{void load();const handler=()=>void load();window.addEventListener("academic-hub-auth-changed",handler);return()=>window.removeEventListener("academic-hub-auth-changed",handler)},[load]);
@@ -75,7 +79,7 @@ export default function AccountSecurityCard() {
           <div className="min-w-0 flex-1"><div className="text-sm font-semibold">{needsAttention?"Atividade que requer atenção":"Nenhuma atividade suspeita detetada"}</div><div className="mt-1 text-xs text-muted-foreground">O Academic Hub regista eventos técnicos de autenticação e segurança sem guardar palavras-passe ou tokens. O IP completo não é mostrado nesta área.</div></div>
           <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={()=>void load()} disabled={loading} aria-label="Atualizar atividade de segurança"><RefreshCw className={`h-4 w-4 ${loading?"animate-spin":""}`}/></Button>
         </div>
-        {error?<div className="text-xs text-amber-700 dark:text-amber-300">Não foi possível obter a atividade neste momento. Tenta novamente mais tarde.</div>:recent.length===0?<div className="text-xs text-muted-foreground">Ainda não existem eventos de segurança registados para esta conta.</div>:<div className="space-y-2">{recent.map((item,index)=><div key={`${item.occurred_at}-${item.event_type}-${index}`} className="flex items-start justify-between gap-3 rounded-xl border bg-card p-3"><div className="min-w-0"><div className="text-sm font-medium">{labelFor(item.event_type)}</div><div className="mt-0.5 text-xs text-muted-foreground">{[item.device_label,item.country_code,item.app_version?`v${item.app_version}`:null].filter(Boolean).join(" · ")||"Contexto técnico protegido"}</div>{item.incident_reference&&<div className="mt-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">Incidente {item.incident_reference}</div>}</div><div className="shrink-0 text-right text-[10px] text-muted-foreground">{formatDate(item.occurred_at)}</div></div>)}</div>}
+        {error?<div className="text-xs text-amber-700 dark:text-amber-300">Não foi possível obter a atividade neste momento. O cartão foi libertado para poderes tentar novamente.</div>:recent.length===0?<div className="text-xs text-muted-foreground">Ainda não existem eventos de segurança registados para esta conta.</div>:<div className="space-y-2">{recent.map((item,index)=><div key={`${item.occurred_at}-${item.event_type}-${index}`} className="flex items-start justify-between gap-3 rounded-xl border bg-card p-3"><div className="min-w-0"><div className="text-sm font-medium">{labelFor(item.event_type)}</div><div className="mt-0.5 text-xs text-muted-foreground">{[item.device_label,item.country_code,item.app_version?`v${item.app_version}`:null].filter(Boolean).join(" · ")||"Contexto técnico protegido"}</div>{item.incident_reference&&<div className="mt-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">Incidente {item.incident_reference}</div>}</div><div className="shrink-0 text-right text-[10px] text-muted-foreground">{formatDate(item.occurred_at)}</div></div>)}</div>}
       </>}
     </CardContent>
   </Card>;

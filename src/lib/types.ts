@@ -10,6 +10,22 @@ export type Degree = {
 export type EvaluationRegime = "legacy" | "regulation-2026";
 export type EvaluationModel = "type1" | "type2" | "type3" | "type4" | "exam-only" | "custom";
 export type LegacyEvaluationMode = "efolios-exam" | "exam-only" | "custom" | "final-grade-only";
+export type CourseAttemptOutcome = "in-progress" | "incomplete" | "passed" | "resit" | "failed";
+
+export type CourseAttempt = {
+  id: UUID;
+  number: number;
+  startedAt?: string;
+  archivedAt: string;
+  outcome: CourseAttemptOutcome;
+  finalGrade: number | null;
+  evaluationRegime?: EvaluationRegime;
+  evaluationModel?: EvaluationModel;
+  legacyEvaluationMode?: LegacyEvaluationMode;
+  manualFinalGrade?: number;
+  assessments: Assessment[];
+  rules?: Rules;
+};
 
 export type Course = {
   id: UUID;
@@ -34,6 +50,11 @@ export type Course = {
   legacyEvaluationMode?: LegacyEvaluationMode;
   /** Nota final conhecida quando já não existe detalhe fiável da composição histórica. */
   manualFinalGrade?: number;
+
+  /** Momento em que começou a tentativa/frequência atual. */
+  attemptStartedAt?: string;
+  /** Tentativas anteriores arquivadas. Nunca entram no cálculo da tentativa atual. */
+  attemptHistory?: CourseAttempt[];
 
   /** Sessões (ex.: abertura, antes de atividades ou antes de exame). */
   sessions?: CourseSession[];

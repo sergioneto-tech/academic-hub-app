@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, type ReactNode } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
+import AppErrorBoundary from "./components/AppErrorBoundary";
 import Layout from "./components/Layout";
 import MigrationNotice from "./components/MigrationNotice";
 import LegacyMigrationAssistant from "./components/LegacyMigrationAssistant";
@@ -78,27 +79,29 @@ function AcademicHubApp() {
       <AppSatisfactionSurvey />
       <AdminSurveyResults />
       <UpdateProgressModal />
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<ExplorePage><><SecurityStatusBadge /><Dashboard /></></ExplorePage>} />
-          <Route path="/cadeiras" element={<LazyPage><ExplorePage><CoursesPage /></ExplorePage></LazyPage>} />
-          <Route path="/cadeiras/:id" element={<LazyPage><ExplorePage><CourseDetailPremium /></ExplorePage></LazyPage>} />
-          <Route path="/calendario" element={<LazyPage><ExplorePage><CalendarPage /></ExplorePage></LazyPage>} />
-          <Route path="/historico" element={<LazyPage><ExplorePage><HistoryPage /></ExplorePage></LazyPage>} />
-          <Route path="/historico/relatorio" element={<LazyPage><ExplorePage><AcademicReportPage /></ExplorePage></LazyPage>} />
-          <Route path="/historico/relatorio-completo" element={<LazyPage><ExplorePage><AcademicProgressReport /></ExplorePage></LazyPage>} />
-          <Route path="/plano" element={<LazyPage><ExplorePage><StudyPlan /></ExplorePage></LazyPage>} />
-          <Route path="/plano/estudo" element={<LazyPage><ExplorePage><PersonalStudyPlan /></ExplorePage></LazyPage>} />
-          <Route path="/conta" element={<LazyPage><AccountProfilePage /></LazyPage>} />
-          <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
-          <Route path="/seguranca-privacidade" element={<SecurityPrivacyPage />} />
-          <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
-          <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
-          <Route path="/feedback" element={<LazyPage><FeedbackPage /></LazyPage>} />
-          <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Route>
-      </Routes>
+      <AppErrorBoundary>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route path="/" element={<ExplorePage><><SecurityStatusBadge /><Dashboard /></></ExplorePage>} />
+            <Route path="/cadeiras" element={<LazyPage><ExplorePage><CoursesPage /></ExplorePage></LazyPage>} />
+            <Route path="/cadeiras/:id" element={<LazyPage><ExplorePage><CourseDetailPremium /></ExplorePage></LazyPage>} />
+            <Route path="/calendario" element={<LazyPage><ExplorePage><CalendarPage /></ExplorePage></LazyPage>} />
+            <Route path="/historico" element={<LazyPage><ExplorePage><HistoryPage /></ExplorePage></LazyPage>} />
+            <Route path="/historico/relatorio" element={<LazyPage><ExplorePage><AcademicReportPage /></ExplorePage></LazyPage>} />
+            <Route path="/historico/relatorio-completo" element={<LazyPage><ExplorePage><AcademicProgressReport /></ExplorePage></LazyPage>} />
+            <Route path="/plano" element={<LazyPage><ExplorePage><StudyPlan /></ExplorePage></LazyPage>} />
+            <Route path="/plano/estudo" element={<LazyPage><ExplorePage><PersonalStudyPlan /></ExplorePage></LazyPage>} />
+            <Route path="/conta" element={<LazyPage><AccountProfilePage /></LazyPage>} />
+            <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
+            <Route path="/seguranca-privacidade" element={<SecurityPrivacyPage />} />
+            <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
+            <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
+            <Route path="/feedback" element={<LazyPage><FeedbackPage /></LazyPage>} />
+            <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Route>
+        </Routes>
+      </AppErrorBoundary>
     </>
   );
 }

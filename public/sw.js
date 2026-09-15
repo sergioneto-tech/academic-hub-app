@@ -1,5 +1,5 @@
-const APP_VERSION = "1.5.8";
-const SW_VERSION = "1.5.8-controlled-update-14-security-runtime";
+const APP_VERSION = "1.5.9";
+const SW_VERSION = "1.5.9-controlled-update-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -7,7 +7,7 @@ const NOTIFICATION_BADGE = "./academic-hub-notification-badge.png";
 const APP_SHELL_VERSION_MARKER = `<meta name="academic-hub-version" content="${APP_VERSION}"`;
 const APP_SHELL_FETCH_ATTEMPTS = 4;
 const APP_SHELL_RETRY_MS = 650;
-const AUTO_ACTIVATE = true;
+const AUTO_ACTIVATE = false;
 
 const PRECACHE_URLS = [
   "./manifest.webmanifest?v=11",
@@ -15,7 +15,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.5.8",
+  "./release-notes.json?v=1.5.9",
 ];
 
 function delay(ms) {
@@ -79,8 +79,9 @@ self.addEventListener("install", (event) => {
     const appShell = await fetchVerifiedAppShell();
     await cache.put(APP_SHELL_KEY, appShell.clone());
 
-    // Hotfix 1.5.8: força um app-shell coerente com os cartões/rotas e evita
-    // que instalações antigas mantenham chunks já substituídos no deploy atual.
+    // Mantém a nova release em espera até o utilizador confirmar Atualizar agora.
+    // Não devemos ativar automaticamente enquanto o bundle anterior ainda está em execução:
+    // isso pode remover chunks antigos e deixar uma rota lazy numa tela vazia/preta.
     if (AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });

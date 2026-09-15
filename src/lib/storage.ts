@@ -5,10 +5,13 @@ import type {
   AssessmentStatus,
   AssessmentType,
   Course,
+  CourseAttempt,
+  CourseAttemptOutcome,
   CourseSession,
   Degree,
   EvaluationModel,
   LegacyEvaluationMode,
+  Rules,
   StudyBlock,
   StudyBlockStatus,
   SyncSettings,
@@ -27,6 +30,7 @@ const EVALUATION_MODELS = ["type1", "type2", "type3", "type4", "exam-only", "cus
 const EVALUATION_REGIME_SOURCES = ["official", "manual"] as const;
 const LEGACY_EVALUATION_MODES = ["efolios-exam", "exam-only", "custom", "final-grade-only"] as const;
 const ASSESSMENT_DATE_SOURCES = ["official", "manual"] as const;
+const COURSE_ATTEMPT_OUTCOMES = ["in-progress", "incomplete", "passed", "resit", "failed"] as const;
 const STUDY_ACTIVITIES = ["reading", "exercises", "revision", "efolio", "other"] as const;
 const STUDY_STATUSES = ["todo", "in_progress", "done"] as const;
 const THEMES = ["light", "dark", "system"] as const;
@@ -125,6 +129,7 @@ function migrateCourse(value: UnknownRecord): Course {
   const sessions = records(first(value, "sessions", "sessoes"))
     .map(migrateSession)
     .filter((session): session is CourseSession => session !== null);
+  const attemptHistory = records(value.attemptHistory).map(migrateCourseAttempt);
 
   return {
     id: text(value.id, uuid()),
@@ -141,6 +146,8 @@ function migrateCourse(value: UnknownRecord): Course {
     evaluationModel: oneOf(value.evaluationModel, EVALUATION_MODELS) as EvaluationModel | undefined,
     legacyEvaluationMode: oneOf(value.legacyEvaluationMode, LEGACY_EVALUATION_MODES) as LegacyEvaluationMode | undefined,
     manualFinalGrade: optionalNumber(value.manualFinalGrade),
+    attemptStartedAt: optionalText(value.attemptStartedAt),
+    attemptHistory: attemptHistory.length > 0 ? attemptHistory : undefined,
     sessions: sessions.length > 0 ? sessions : undefined,
   };
 }
@@ -181,6 +188,36 @@ function migrateAssessment(value: UnknownRecord): Assessment {
     date: optionalText(first(value, "date", "dataExame")),
     dateSource: oneOf(value.dateSource, ASSESSMENT_DATE_SOURCES),
     officialCheckedAt: optionalText(value.officialCheckedAt),
+  };
+}
+
+function migrateRule(value: UnknownRecord): Rules {
+  return {
+    courseId: text(value.courseId),
+    minAptoExame: numberValue(value.minAptoExame, 3.5),
+    minExame: numberValue(value.minExame, 5.5),
+    minimumFinalGrade: numberValue(value.minimumFinalGrade, 10),
+    asyncMinimumPercent: numberValue(value.asyncMinimumPercent, 50),
+    syncMinimumPercent: numberValue(value.syncMinimumPercent, 50),
+    nMinusOneMinimumPercent: numberValue(value.nMinusOneMinimumPercent, 40),
+  };
+}
+
+function migrateCourseAttempt(value: UnknownRecord): CourseAttempt {
+  const ruleRecord = isRecord(value.rules) ? value.rules : null;
+  return {
+    id: text(value.id, uuid()),
+    number: Math.max(1, numberValue(value.number, 1)),
+    startedAt: optionalText(value.startedAt),
+    archivedAt: text(value.archivedAt),
+    outcome: (oneOf(value.outcome, COURSE_ATTEMPT_OUTCOMES) ?? "failed") as CourseAttemptOutcome,
+    finalGrade: optionalNumber(value.finalGrade) ?? null,
+    evaluationRegime: value.evaluationRegime === "regulation-2026" ? "regulation-2026" : "legacy",
+    evaluationModel: oneOf(value.evaluationModel, EVALUATION_MODELS) as EvaluationModel | undefined,
+    legacyEvaluationMode: oneOf(value.legacyEvaluationMode, LEGACY_EVALUATION_MODES) as LegacyEvaluationMode | undefined,
+    manualFinalGrade: optionalNumber(value.manualFinalGrade),
+    assessments: records(value.assessments).map(migrateAssessment),
+    rules: ruleRecord ? migrateRule(ruleRecord) : undefined,
   };
 }
 
@@ -231,15 +268,7 @@ export function migrate(input: unknown): AppState {
     degree,
     courses: records(state.courses).map(migrateCourse),
     assessments: records(state.assessments).map(migrateAssessment),
-    rules: records(state.rules).map((rule) => ({
-      courseId: text(rule.courseId),
-      minAptoExame: numberValue(rule.minAptoExame, 3.5),
-      minExame: numberValue(rule.minExame, 5.5),
-      minimumFinalGrade: numberValue(rule.minimumFinalGrade, 10),
-      asyncMinimumPercent: numberValue(rule.asyncMinimumPercent, 50),
-      syncMinimumPercent: numberValue(rule.syncMinimumPercent, 50),
-      nMinusOneMinimumPercent: numberValue(rule.nMinusOneMinimumPercent, 40),
-    })),
+    rules: records(state.rules).map(migrateRule),
     studyBlocks: records(state.studyBlocks).map(migrateStudyBlock),
     profile: {
       displayName: optionalText(profile.displayName),

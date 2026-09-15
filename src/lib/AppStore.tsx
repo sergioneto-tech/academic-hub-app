@@ -5,6 +5,7 @@ import type {
   Assessment,
   AssessmentType,
   Course,
+  CourseAttemptOutcome,
   Degree,
   NotificationSettings,
   ProfileSettings,
@@ -40,6 +41,7 @@ type Store = {
   ensureAssessment: (courseId: string, type: AssessmentType, name: string) => string;
 
   markCourseCompleted: (courseId: string) => void;
+  startNewCourseAttempt: (courseId: string, summary?: { outcome: CourseAttemptOutcome; finalGrade: number | null }) => void;
 
   addStudyBlock: (block: Omit<StudyBlock, "id">) => string;
   updateStudyBlock: (blockId: string, patch: Partial<StudyBlock>) => void;
@@ -66,6 +68,30 @@ function defaultMaxPoints(type: AssessmentType) {
   if (type === "exam") return 12;
   if (type === "resit") return 20;
   return 4;
+}
+
+function defaultAssessments(courseId: string): Assessment[] {
+  return [
+    { id: uuid(), courseId, type: "efolio", name: "e-fólio A", maxPoints: 4, grade: null, mode: "asynchronous", required: true, order: 1 },
+    { id: uuid(), courseId, type: "efolio", name: "e-fólio B", maxPoints: 4, grade: null, mode: "asynchronous", required: true, order: 2 },
+    { id: uuid(), courseId, type: "exam", name: "g-fólio", maxPoints: 12, grade: null, mode: "synchronous", required: true, order: 3 },
+    { id: uuid(), courseId, type: "resit", name: "recurso", maxPoints: 20, grade: null, mode: "synchronous", required: false, order: 4 },
+  ];
+}
+
+function resetAssessmentForNewAttempt(assessment: Assessment): Assessment {
+  return {
+    ...assessment,
+    id: uuid(),
+    grade: null,
+    status: "todo",
+    startDate: undefined,
+    endDate: undefined,
+    gradeReleaseDate: undefined,
+    date: undefined,
+    dateSource: undefined,
+    officialCheckedAt: undefined,
+  };
 }
 
 function nextEFolioName(assessments: Assessment[], courseId: string): string {
@@ -169,20 +195,17 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         const s = getState();
         const next: AppState = {
           ...s,
-          courses: s.courses.map((c) => (c.id === courseId ? { ...c, ...patch } : c)),
+          courses: s.courses.map((c) => {
+            if (c.id !== courseId) return c;
+            const updated: Course = { ...c, ...patch };
+            if (patch.isActive === true && !updated.attemptStartedAt) updated.attemptStartedAt = new Date().toISOString();
+            return updated;
+          }),
         };
 
         if (patch.isActive === true) {
           const hasAssessments = next.assessments.some((a) => a.courseId === courseId);
-          if (!hasAssessments) {
-            const newAssessments: Assessment[] = [
-              { id: uuid(), courseId, type: "efolio", name: "e-fólio A", maxPoints: 4, grade: null, mode: "asynchronous", required: true, order: 1 },
-              { id: uuid(), courseId, type: "efolio", name: "e-fólio B", maxPoints: 4, grade: null, mode: "asynchronous", required: true, order: 2 },
-              { id: uuid(), courseId, type: "exam", name: "g-fólio", maxPoints: 12, grade: null, mode: "synchronous", required: true, order: 3 },
-              { id: uuid(), courseId, type: "resit", name: "recurso", maxPoints: 20, grade: null, mode: "synchronous", required: false, order: 4 },
-            ];
-            next.assessments = [...next.assessments, ...newAssessments];
-          }
+          if (!hasAssessments) next.assessments = [...next.assessments, ...defaultAssessments(courseId)];
         }
         commit(next);
       },
@@ -353,6 +376,58 @@ export function AppStoreProvider({ children }: { children: React.ReactNode }) {
         commit({
           ...s,
           courses: s.courses.map((c) => c.id === courseId ? { ...c, isCompleted: true, isActive: false, completedAt: now } : c),
+        });
+      },
+
+      startNewCourseAttempt(courseId, summary) {
+        const s = getState();
+        const course = s.courses.find((item) => item.id === courseId);
+        if (!course) return;
+
+        const currentAssessments = s.assessments.filter((item) => item.courseId === courseId);
+        const hasRecordedResult = currentAssessments.some((item) => item.grade !== null || item.status === "not-completed")
+          || typeof course.manualFinalGrade === "number";
+        if (!hasRecordedResult) return;
+
+        const now = new Date().toISOString();
+        const attemptNumber = (course.attemptHistory?.length ?? 0) + 1;
+        const currentRule = s.rules.find((item) => item.courseId === courseId);
+        const archivedAttempt = {
+          id: uuid(),
+          number: attemptNumber,
+          startedAt: course.attemptStartedAt,
+          archivedAt: now,
+          outcome: summary?.outcome ?? "failed",
+          finalGrade: summary?.finalGrade ?? null,
+          evaluationRegime: course.evaluationRegime,
+          evaluationModel: course.evaluationModel,
+          legacyEvaluationMode: course.legacyEvaluationMode,
+          manualFinalGrade: course.manualFinalGrade,
+          assessments: currentAssessments.map((item) => ({ ...item })),
+          rules: currentRule ? { ...currentRule } : undefined,
+        };
+
+        const freshAssessments = currentAssessments.length > 0
+          ? currentAssessments.map(resetAssessmentForNewAttempt)
+          : defaultAssessments(courseId);
+
+        commit({
+          ...s,
+          courses: s.courses.map((item) => item.id === courseId ? {
+            ...item,
+            isActive: true,
+            isCompleted: false,
+            completedAt: undefined,
+            manualFinalGrade: undefined,
+            attemptStartedAt: now,
+            attemptHistory: [...(item.attemptHistory ?? []), archivedAttempt],
+            sessions: undefined,
+          } : item),
+          assessments: [
+            ...s.assessments.filter((item) => item.courseId !== courseId),
+            ...freshAssessments,
+          ],
+          studyBlocks: (s.studyBlocks ?? []).filter((item) => item.courseId !== courseId),
         });
       },
 

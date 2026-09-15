@@ -70,6 +70,7 @@ export default function FlexibleCourseDetail({ courseId }: { courseId: string })
     setAssessmentDate,
     setAssessmentGrade,
     setAssessmentMaxPoints,
+    startNewCourseAttempt,
     updateAssessment,
     updateCourse,
   } = useAppStore();
@@ -104,13 +105,34 @@ export default function FlexibleCourseDetail({ courseId }: { courseId: string })
   }
 
   const sessions = [...(course.sessions ?? [])].sort((a, b) => a.dateTime.localeCompare(b.dateTime));
+  const previousAttempts = course.attemptHistory ?? [];
+  const currentAttemptNumber = previousAttempts.length + 1;
   const sourceIsResit = outcome?.source === "resit";
   const canComplete = outcome?.kind === "passed";
+  const failedFinal = outcome?.kind === "failed";
   const showResitCard = Boolean(needsAnotherAttempt || resitOutcome || resit?.grade !== null);
+  const nextStep = canComplete
+    ? "Concluir cadeira"
+    : failedFinal
+      ? "Iniciar nova frequência"
+      : outcome?.kind === "resit"
+        ? "Preparar recurso"
+        : outcome?.kind === "incomplete"
+          ? "Corrigir configuração"
+          : "Registar avaliações";
 
   const completeCourse = () => {
     markCourseCompleted(course.id);
     navigate("/", { replace: true });
+  };
+
+  const startNewAttempt = () => {
+    if (!failedFinal) return;
+    const confirmed = window.confirm(
+      "Iniciar uma nova frequência desta cadeira? As notas e avaliações atuais serão guardadas no histórico e a nova tentativa começará sem classificações nem datas antigas.",
+    );
+    if (!confirmed) return;
+    startNewCourseAttempt(course.id, { outcome: "failed", finalGrade: outcome?.rounded ?? null });
   };
 
   const addSession = () => {
@@ -145,6 +167,7 @@ export default function FlexibleCourseDetail({ courseId }: { courseId: string })
               <span className="rounded-md border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold-soft))] px-2 py-1 font-semibold text-[hsl(var(--gold))]">
                 Regulamento 2026
               </span>
+              <span className="rounded-md border bg-background px-2 py-1 font-semibold">Tentativa {currentAttemptNumber}</span>
             </div>
             <h1 className="mt-3 text-2xl font-semibold leading-tight tracking-tight">{course.name}</h1>
             <div className="mt-4 flex flex-wrap gap-3 text-sm text-muted-foreground">
@@ -179,10 +202,48 @@ export default function FlexibleCourseDetail({ courseId }: { courseId: string })
         </CardContent></Card>
         <Card className="premium-card"><CardContent className="flex min-h-36 flex-col items-center justify-center p-4 text-center">
           <div className="text-xs font-medium text-muted-foreground">Próximo passo</div>
-          <div className="mt-1 text-lg font-semibold">{canComplete ? "Concluir cadeira" : needsAnotherAttempt ? "Preparar recurso" : outcome?.kind === "incomplete" ? "Corrigir configuração" : "Registar avaliações"}</div>
+          <div className="mt-1 text-lg font-semibold">{nextStep}</div>
           <p className="mt-1 text-[11px] text-muted-foreground">O estado atualiza automaticamente.</p>
         </CardContent></Card>
       </section>
+
+      {failedFinal && (
+        <section className="rounded-2xl border border-amber-400/45 bg-amber-500/10 p-4 md:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-background/70 p-2"><RotateCcw className="h-5 w-5" /></div>
+              <div>
+                <div className="font-semibold">Voltou a inscrever-se nesta cadeira?</div>
+                <p className="mt-1 text-sm text-muted-foreground">Inicia uma nova frequência sem apagar a anterior. As notas, o recurso e a configuração desta tentativa ficam guardados no histórico e deixam de interferir nos novos cálculos.</p>
+              </div>
+            </div>
+            <Button type="button" onClick={startNewAttempt}>Iniciar nova frequência</Button>
+          </div>
+        </section>
+      )}
+
+      {previousAttempts.length > 0 && (
+        <Card className="premium-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><RotateCcw className="h-5 w-5 text-primary" />Histórico de frequências</CardTitle>
+            <p className="text-xs text-muted-foreground">As tentativas anteriores são apenas históricas e não entram no cálculo da frequência atual.</p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {[...previousAttempts].reverse().map((attempt) => (
+              <div key={attempt.id} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="font-medium">Tentativa {attempt.number}</div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">Arquivada em {formatPtDateTime(attempt.archivedAt)} · {attempt.assessments.length} elemento(s) de avaliação preservado(s)</div>
+                </div>
+                <div className="text-left sm:text-right">
+                  <div className="text-sm font-semibold">{attempt.outcome === "passed" ? "Aprovado" : attempt.outcome === "failed" ? "Reprovado" : "Encerrada"}</div>
+                  <div className="text-xs text-muted-foreground">{attempt.finalGrade === null ? "Nota final —" : `Nota final ${attempt.finalGrade}/20`}</div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {canComplete && (
         <section className="rounded-2xl border border-emerald-300 bg-emerald-50/90 p-4 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-50 md:p-5">

@@ -62,15 +62,28 @@ export default function StudyTaskSaveStatus() {
   }, [state.sync?.lastSyncAt]);
 
   useEffect(() => {
-    if (phase === "local" && online && cloudEnabled) setPhase("pending-cloud");
+    if (phase === "local" && online && cloudEnabled && changeAtRef.current !== null) setPhase("pending-cloud");
   }, [phase, online, cloudEnabled]);
 
   const confirmSave = () => {
     saveState(state);
-    const now = new Date();
-    changeAtRef.current = now.getTime();
-    setSavedAt(now.toISOString());
-    setPhase(cloudEnabled && online ? "pending-cloud" : "local");
+    const now = new Date().toISOString();
+
+    if (phase === "pending-cloud") {
+      setSavedAt(now);
+      return;
+    }
+
+    if (cloudEnabled && online && state.sync?.lastSyncAt) {
+      changeAtRef.current = null;
+      setSavedAt(state.sync.lastSyncAt);
+      setPhase("synced");
+      return;
+    }
+
+    changeAtRef.current = cloudEnabled ? Date.now() : null;
+    setSavedAt(now);
+    setPhase("local");
   };
 
   const status = (() => {

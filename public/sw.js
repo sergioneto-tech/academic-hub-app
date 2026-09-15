@@ -1,5 +1,5 @@
 const APP_VERSION = "1.5.8";
-const SW_VERSION = "1.5.8-controlled-update-13-mobile-navigation";
+const SW_VERSION = "1.5.8-controlled-update-14-security-runtime";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -79,8 +79,8 @@ self.addEventListener("install", (event) => {
     const appShell = await fetchVerifiedAppShell();
     await cache.put(APP_SHELL_KEY, appShell.clone());
 
-    // Hotfix da própria 1.5.8: distribui o app-shell atual com a navegação
-    // e o layout móvel da Gestão de Tarefas, sem criar uma nova release funcional.
+    // Hotfix 1.5.8: força um app-shell coerente com os cartões/rotas e evita
+    // que instalações antigas mantenham chunks já substituídos no deploy atual.
     if (AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });

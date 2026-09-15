@@ -66,6 +66,14 @@ jobs:
           if (swMatch[1] !== appVersion) {
             throw new Error(`public/sw.js APP_VERSION=${swMatch[1]} mas APP_VERSION=${appVersion}`);
           }
+          const swVersionMatch = swSource.match(/const\s+SW_VERSION\s*=\s*["']([^"']+)["']/);
+          if (!swVersionMatch || !swVersionMatch[1].startsWith(`${appVersion}-`)) {
+            throw new Error(`public/sw.js SW_VERSION não está alinhado com a versão ${appVersion}`);
+          }
+          const autoActivateMatch = swSource.match(/const\s+AUTO_ACTIVATE\s*=\s*(true|false)/);
+          if (!autoActivateMatch || autoActivateMatch[1] !== 'false') {
+            throw new Error('public/sw.js tem de manter AUTO_ACTIVATE=false para não misturar bundles durante uma atualização');
+          }
           if (!swSource.includes('APP_SHELL_VERSION_MARKER') || !swSource.includes('fetchVerifiedAppShell')) {
             throw new Error('public/sw.js não contém a validação do app-shell antes da instalação');
           }
@@ -98,6 +106,7 @@ jobs:
         run: >-
           npx eslint
           src/App.tsx
+          src/components/AppErrorBoundary.tsx
           src/components/AccountSecurityCard.tsx
           src/components/AdminUserMonitor.tsx
           src/components/CloudAccountPanel.tsx

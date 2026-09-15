@@ -42,6 +42,24 @@ function CourseActivationProbe() {
   );
 }
 
+function RepeatAttemptProbe() {
+  const { state, startNewCourseAttempt } = useAppStore();
+  const course = state.courses.find((item) => item.id === "course-1");
+  const assessments = state.assessments.filter((item) => item.courseId === "course-1");
+  const studyBlocks = (state.studyBlocks ?? []).filter((item) => item.courseId === "course-1");
+
+  return (
+    <div>
+      <div data-testid="attempt-count">{course?.attemptHistory?.length ?? 0}</div>
+      <div data-testid="current-grades">{assessments.map((item) => item.grade ?? "—").join("|")}</div>
+      <div data-testid="study-block-count">{studyBlocks.length}</div>
+      <button type="button" onClick={() => startNewCourseAttempt("course-1", { outcome: "failed", finalGrade: 0 })}>
+        Nova frequência
+      </button>
+    </div>
+  );
+}
+
 describe("gestão dinâmica de e-fólios", () => {
   beforeEach(() => {
     localStorage.clear();
@@ -139,5 +157,124 @@ describe("ativação de cadeiras", () => {
     };
     expect(persisted.courses?.find((item) => item.id === "course-1")?.isActive).toBe(false);
     expect(persisted.assessments?.find((item) => item.id === "assessment-1")?.startDate).toBe("2026-08-20");
+  });
+});
+
+describe("nova frequência de uma cadeira reprovada", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem("academic_hub_state", JSON.stringify({
+      degree: null,
+      courses: [
+        {
+          id: "course-1",
+          code: "21002",
+          name: "Álgebra Linear I",
+          year: 1,
+          semester: 1,
+          isActive: true,
+          isCompleted: false,
+          evaluationRegime: "regulation-2026",
+          evaluationModel: "type4",
+          attemptStartedAt: "2025-09-01T09:00:00.000Z",
+          sessions: [{ id: "session-1", title: "Sessão antiga", dateTime: "2025-10-01T21:00" }],
+        },
+      ],
+      assessments: [
+        {
+          id: "assessment-1",
+          courseId: "course-1",
+          type: "efolio",
+          name: "Atividade assíncrona",
+          maxPoints: 8,
+          grade: 4,
+          mode: "asynchronous",
+          required: true,
+          date: "2025-11-01T10:00",
+          status: "graded",
+        },
+        {
+          id: "assessment-2",
+          courseId: "course-1",
+          type: "exam",
+          name: "Atividade síncrona",
+          maxPoints: 12,
+          grade: 4,
+          mode: "synchronous",
+          required: true,
+          date: "2026-01-10T10:00",
+          status: "graded",
+        },
+        {
+          id: "assessment-3",
+          courseId: "course-1",
+          type: "resit",
+          name: "recurso",
+          maxPoints: 20,
+          grade: 0,
+          mode: "synchronous",
+          required: false,
+          date: "2026-02-10T10:00",
+          status: "graded",
+        },
+      ],
+      rules: [{ courseId: "course-1", minAptoExame: 3.5, minExame: 5.5 }],
+      studyBlocks: [{
+        id: "block-1",
+        courseId: "course-1",
+        title: "Revisão antiga",
+        activity: "revision",
+        startDate: "2026-01-01",
+        endDate: "2026-01-02",
+        status: "done",
+      }],
+      sync: { enabled: false },
+    }));
+  });
+
+  it("arquiva a tentativa anterior, limpa notas/datas e preserva o histórico após reload", async () => {
+    const { unmount } = render(
+      <AppStoreProvider>
+        <RepeatAttemptProbe />
+      </AppStoreProvider>,
+    );
+
+    expect(screen.getByTestId("attempt-count")).toHaveTextContent("0");
+    expect(screen.getByTestId("current-grades")).toHaveTextContent("4|4|0");
+    expect(screen.getByTestId("study-block-count")).toHaveTextContent("1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Nova frequência" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("attempt-count")).toHaveTextContent("1");
+      expect(screen.getByTestId("current-grades")).toHaveTextContent("—|—|—");
+      expect(screen.getByTestId("study-block-count")).toHaveTextContent("0");
+    });
+
+    const persisted = JSON.parse(localStorage.getItem("academic_hub_state") ?? "{}") as {
+      courses?: Array<{
+        id: string;
+        sessions?: unknown[];
+        attemptHistory?: Array<{ finalGrade: number | null; assessments: Array<{ grade: number | null }> }>;
+      }>;
+      assessments?: Array<{ grade: number | null; date?: string }>;
+    };
+    const persistedCourse = persisted.courses?.find((item) => item.id === "course-1");
+    expect(persistedCourse?.attemptHistory?.[0]?.finalGrade).toBe(0);
+    expect(persistedCourse?.attemptHistory?.[0]?.assessments.map((item) => item.grade)).toEqual([4, 4, 0]);
+    expect(persistedCourse?.sessions).toBeUndefined();
+    expect(persisted.assessments?.every((item) => item.grade === null && item.date === undefined)).toBe(true);
+
+    unmount();
+    render(
+      <AppStoreProvider>
+        <RepeatAttemptProbe />
+      </AppStoreProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("attempt-count")).toHaveTextContent("1");
+      expect(screen.getByTestId("current-grades")).toHaveTextContent("—|—|—");
+    });
   });
 });

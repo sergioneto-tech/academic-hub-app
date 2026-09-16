@@ -91,7 +91,7 @@ export default function PucAdminReviewLab() {
         <div className="p-5 sm:p-7">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">Teste privado · administração</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Administração · PUC</div>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Validação de correções PUC</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Aprovar nunca edita uma versão existente: é criada uma nova versão do catálogo e a anterior fica preservada.</p>
             </div>

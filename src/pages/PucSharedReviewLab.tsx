@@ -6,6 +6,7 @@ import PucReviewDraft, { type PucCorrectionDeclaration, type PucDraftChange } fr
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
+import { submitPucCorrection } from "@/lib/pucCorrections";
 import type { PucImportDraft } from "@/lib/pucImportDraft";
 import {
   buildSharedPucImportDraft,
@@ -52,6 +53,8 @@ export default function PucSharedReviewLab() {
     changes: PucDraftChange[];
     declaration: PucCorrectionDeclaration;
   } | null>(null);
+  const [correctionStatus, setCorrectionStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [correctionMessage, setCorrectionMessage] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -67,6 +70,8 @@ export default function PucSharedReviewLab() {
     setEntry(null);
     setHasSaved(false);
     setCorrectionPreview(null);
+    setCorrectionStatus("idle");
+    setCorrectionMessage("");
 
     fetchSharedPucCatalogEntries(targetCourse.code)
       .then((entries) => {
@@ -99,6 +104,28 @@ export default function PucSharedReviewLab() {
   const draft = useMemo(() => entry ? buildSharedPucImportDraft(entry) : null, [entry]);
   const backPath = targetCourse ? `/cadeiras/${encodeURIComponent(targetCourse.id)}` : "/cadeiras";
   const backLabel = targetCourse ? `Voltar a ${targetCourse.name}` : "Voltar às cadeiras";
+
+  const sendCorrection = async () => {
+    if (!entry || !correctionPreview || correctionStatus === "sending" || correctionStatus === "sent") return;
+    setCorrectionStatus("sending");
+    setCorrectionMessage("");
+
+    const result = await submitPucCorrection({
+      entry,
+      draft: correctionPreview.draft,
+      changes: correctionPreview.changes,
+      declaration: correctionPreview.declaration,
+    });
+
+    if (result.ok) {
+      setCorrectionStatus("sent");
+      setCorrectionMessage("Correção comunicada com sucesso. Ficou pendente de validação e não alterou os dados dos outros alunos.");
+      return;
+    }
+
+    setCorrectionStatus("error");
+    setCorrectionMessage(result.message);
+  };
 
   return (
     <div className="space-y-5 pb-6">
@@ -151,23 +178,43 @@ export default function PucSharedReviewLab() {
             courseName={targetCourse.name}
             courseCode={targetCourse.code}
             onSaved={() => setHasSaved(true)}
-            onRequestCorrection={(nextDraft, changes, declaration) => setCorrectionPreview({ draft: nextDraft, changes, declaration })}
+            onRequestCorrection={(nextDraft, changes, declaration) => {
+              setCorrectionPreview({ draft: nextDraft, changes, declaration });
+              setCorrectionStatus("idle");
+              setCorrectionMessage("");
+            }}
           />
 
           {correctionPreview && (
             <Card className="premium-card border-amber-500/30">
               <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><MessageSquareWarning className="h-5 w-5 text-amber-500" />Proposta de correção preparada</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-xs leading-5 text-muted-foreground">Esta proposta é separada da tua gravação pessoal. No funcionamento público será enviada com a versão {entry.version} como base e ficará pendente de validação; não altera o catálogo nem os dados dos outros alunos automaticamente.</p>
+                <p className="text-xs leading-5 text-muted-foreground">Esta proposta é separada da tua gravação pessoal. Será enviada com a versão {entry.version} como base e ficará pendente de validação; não altera o catálogo nem os dados dos outros alunos automaticamente.</p>
                 <div className="space-y-2">
                   {correctionPreview.changes.map((change) => <div key={`${change.field}-${change.before}-${change.after}`} className="rounded-xl border bg-background/55 p-3 text-xs"><div className="font-semibold">{change.field}</div><div className="mt-1 text-muted-foreground">{change.before} → <span className="text-foreground">{change.after}</span></div></div>)}
                 </div>
                 <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
-                  <div className="font-semibold">Declaração registada na proposta de teste</div>
+                  <div className="font-semibold">Declaração associada à proposta</div>
                   <div className="mt-1">Fonte oficial confirmada · versão {correctionPreview.declaration.version} · {formatPtDateTime(correctionPreview.declaration.acceptedAt)}</div>
                 </div>
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100"><strong>Teste atual:</strong> a branch de desenvolvimento não tem utilizadores autenticados copiados da produção. Por segurança, nesta fase validamos a deteção, a declaração e a apresentação da proposta; o envio autenticado será testado depois de a infraestrutura isolada ser aprovada para o ambiente real.</div>
-                <div className="flex justify-end"><Button type="button" variant="outline" onClick={() => setCorrectionPreview(null)}>Fechar proposta</Button></div>
+
+                {correctionMessage && (
+                  <div className={`rounded-xl border p-3 text-xs leading-5 ${correctionStatus === "sent" ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200" : "border-destructive/30 bg-destructive/10 text-destructive"}`} role={correctionStatus === "sent" ? "status" : "alert"} aria-live="polite">
+                    {correctionMessage}
+                  </div>
+                )}
+
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="outline" disabled={correctionStatus === "sending"} onClick={() => {
+                    setCorrectionPreview(null);
+                    setCorrectionStatus("idle");
+                    setCorrectionMessage("");
+                  }}>Fechar proposta</Button>
+                  <Button type="button" disabled={correctionStatus === "sending" || correctionStatus === "sent"} onClick={sendCorrection}>
+                    {correctionStatus === "sending" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {correctionStatus === "sent" ? "Correção comunicada" : correctionStatus === "sending" ? "A comunicar…" : "Enviar correção para validação"}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}

@@ -18,6 +18,8 @@ export type PucImportApplyDraft = {
 export type PucImportApplyResult =
   | {
       ok: true;
+      reason: null;
+      errors: string[];
       nextState: AppState;
       summary: {
         importedEvents: number;
@@ -214,6 +216,8 @@ export function applyPucImportToState(
 
   return {
     ok: true,
+    reason: null,
+    errors: [],
     nextState,
     summary: {
       importedEvents: imported.length,

@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { PucImportDraft } from "@/lib/pucImportDraft";
 
@@ -16,6 +17,10 @@ export type PucInitialSubmissionInput = {
 type InitialSubmissionResult =
   | { ok: true; id: string; message: string }
   | { ok: false; reason: "not-authenticated" | "duplicate" | "rate-limited" | "invalid" | "catalog-exists" | "unknown"; message: string };
+
+function pucClient(): SupabaseClient {
+  return supabase as unknown as SupabaseClient;
+}
 
 function payloadFromDraft(draft: PucImportDraft) {
   return {
@@ -49,7 +54,7 @@ export async function submitInitialPucCatalogEntry(input: PucInitialSubmissionIn
     return { ok: false, reason: "not-authenticated", message: "A sessão terminou. Inicia sessão novamente antes de enviar a proposta." };
   }
 
-  const client = supabase as any;
+  const client = pucClient();
   const { data: existing, error: catalogError } = await client
     .from("puc_catalog_entries")
     .select("id")

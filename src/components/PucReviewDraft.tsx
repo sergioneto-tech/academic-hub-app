@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileCheck2, RotateCcw, Save, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileCheck2, MessageSquareWarning, RotateCcw, Save, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,12 @@ const MODEL_OPTIONS: Array<{ value: EvaluationModel; label: string }> = [
   { value: "exam-only", label: "Avaliação por exame" },
 ];
 
+export type PucDraftChange = {
+  field: string;
+  before: string;
+  after: string;
+};
+
 function toNullableNumber(rawValue: string): number | null {
   const raw = rawValue.trim();
   if (raw === "") return null;
@@ -34,6 +40,51 @@ const EMPTY_DRAFT: PucImportDraft = {
   warnings: [],
 };
 
+function formatComparable(value: string | number | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "—";
+  return String(value);
+}
+
+function draftChanges(base: PucImportDraft, current: PucImportDraft): PucDraftChange[] {
+  const changes: PucDraftChange[] = [];
+  if (base.model !== current.model) {
+    changes.push({ field: "Tipologia / modalidade", before: base.model, after: current.model });
+  }
+
+  const maxLength = Math.max(base.events.length, current.events.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const before = base.events[index];
+    const after = current.events[index];
+    const label = after?.name || before?.name || `Elemento ${index + 1}`;
+    const fields: Array<[string, string | number | null | undefined, string | number | null | undefined]> = [
+      ["Designação", before?.name, after?.name],
+      ["Valor máximo", before?.maxPoints, after?.maxPoints],
+      ["Início", before?.startDate, after?.startDate],
+      ["Fim / entrega", before?.endDate, after?.endDate],
+      ["Publicação da nota", before?.gradeReleaseDate, after?.gradeReleaseDate],
+    ];
+    for (const [field, oldValue, newValue] of fields) {
+      if (formatComparable(oldValue) !== formatComparable(newValue)) {
+        changes.push({
+          field: `${label} · ${field}`,
+          before: formatComparable(oldValue),
+          after: formatComparable(newValue),
+        });
+      }
+    }
+  }
+
+  if (formatComparable(base.finalAssessment?.maxPoints) !== formatComparable(current.finalAssessment?.maxPoints)) {
+    changes.push({
+      field: `${current.finalAssessment?.name || base.finalAssessment?.name || "Prova final"} · Valor máximo`,
+      before: formatComparable(base.finalAssessment?.maxPoints),
+      after: formatComparable(current.finalAssessment?.maxPoints),
+    });
+  }
+
+  return changes;
+}
+
 export default function PucReviewDraft({
   result,
   rawText = "",
@@ -44,6 +95,7 @@ export default function PucReviewDraft({
   courseName,
   courseCode,
   onSaved,
+  onRequestCorrection,
 }: {
   result?: PucParseResult;
   rawText?: string;
@@ -54,6 +106,7 @@ export default function PucReviewDraft({
   courseName: string;
   courseCode: string;
   onSaved?: () => void;
+  onRequestCorrection?: (draft: PucImportDraft, changes: PucDraftChange[]) => void;
 }) {
   const { state, replaceState } = useAppStore();
   const importDraft = useMemo(
@@ -67,6 +120,20 @@ export default function PucReviewDraft({
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [replaceConfirmation, setReplaceConfirmation] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
+
+  const currentDraft = useMemo<PucImportDraft>(() => ({
+    model: draftModel,
+    events: draftEvents.map((event) => ({ ...event })),
+    finalAssessment: importDraft.finalAssessment
+      ? { ...importDraft.finalAssessment, maxPoints: draftFinalPoints }
+      : null,
+    warnings: importDraft.warnings,
+  }), [draftModel, draftEvents, draftFinalPoints, importDraft]);
+
+  const sharedChanges = useMemo(
+    () => sourceKind === "shared" ? draftChanges(importDraft, currentDraft) : [],
+    [sourceKind, importDraft, currentDraft],
+  );
 
   const resetDraft = () => {
     setDraftModel(importDraft.model);
@@ -272,6 +339,28 @@ export default function PucReviewDraft({
       <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
         <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /><span>As datas e horas de exame e recurso não são importadas do PUC. Permanecem sempre associadas ao calendário oficial que o Academic Hub já utiliza; desta prova apenas será guardada a cotação confirmada pelo aluno.</span></div>
       </div>
+
+      {sourceKind === "shared" && sharedChanges.length > 0 && (
+        <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2 font-semibold"><MessageSquareWarning className="h-4 w-4" />Alteraste dados em relação ao catálogo partilhado</div>
+              <p className="mt-1 text-muted-foreground">Guardar na cadeira altera apenas a tua cópia. Se consideras que o catálogo comum está errado, comunica a correção separadamente.</p>
+              <div className="mt-2 space-y-1">
+                {sharedChanges.slice(0, 4).map((change) => (
+                  <div key={`${change.field}-${change.before}-${change.after}`}><strong>{change.field}:</strong> {change.before} → {change.after}</div>
+                ))}
+                {sharedChanges.length > 4 && <div>+ {sharedChanges.length - 4} alteração(ões)</div>}
+              </div>
+            </div>
+            {onRequestCorrection && (
+              <Button type="button" variant="outline" className="shrink-0" onClick={() => onRequestCorrection(currentDraft, sharedChanges)}>
+                <MessageSquareWarning className="mr-2 h-4 w-4" />Comunicar correção
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       {saveErrors.length > 0 && (
         <div className={`mt-4 rounded-xl border p-3 text-xs leading-5 ${replaceConfirmation ? "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200" : "border-destructive/30 bg-destructive/10 text-destructive"}`} role="alert">

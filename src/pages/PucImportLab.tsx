@@ -7,11 +7,13 @@ import {
   FileText,
   Loader2,
   LockKeyhole,
+  ShieldAlert,
   Upload,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppStore } from "@/lib/AppStore";
 import { extractPucPdfText, type PdfExtractionProgress } from "@/lib/pucPdf";
 import {
   parsePucText,
@@ -36,6 +38,8 @@ const KIND_LABELS: Record<string, string> = {
   "second-exam-date": "Segunda data de prova",
 };
 
+type CourseMatchState = "matched" | "mismatch" | "uncertain" | "standalone";
+
 function confidenceLabel(confidence: PucConfidence) {
   if (confidence === "high") return "Confirmado no PUC";
   if (confidence === "medium") return "Necessita confirmação";
@@ -57,6 +61,49 @@ function formatIsoDate(value?: string, time?: string) {
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   const date = match ? `${match[3]}/${match[2]}/${match[1]}` : value;
   return time ? `${date}, ${time}` : date;
+}
+
+function normalizeName(value: string | undefined): string {
+  return (value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-PT")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeCode(value: string | undefined): string {
+  return (value ?? "").replace(/\s+/g, "").trim().toLocaleLowerCase("pt-PT");
+}
+
+function isReliableNumericCode(value: string | undefined): boolean {
+  return /^\d{4,8}$/.test(normalizeCode(value));
+}
+
+function resolveCourseMatch(
+  targetCourse: { code?: string; name?: string } | undefined,
+  result: PucParseResult | null,
+): CourseMatchState {
+  if (!targetCourse) return "standalone";
+  if (!result) return "uncertain";
+
+  const targetCode = normalizeCode(targetCourse.code);
+  const parsedCode = normalizeCode(result.courseCode);
+  const targetName = normalizeName(targetCourse.name);
+  const parsedName = normalizeName(result.courseName);
+
+  if (targetCode && parsedCode && targetCode === parsedCode) return "matched";
+  if (targetName && parsedName && targetName === parsedName) return "matched";
+
+  if (
+    isReliableNumericCode(targetCourse.code) &&
+    isReliableNumericCode(result.courseCode) &&
+    targetCode !== parsedCode
+  ) {
+    return "mismatch";
+  }
+
+  return "uncertain";
 }
 
 function EventCard({ event }: { event: PucDetectedEvent }) {
@@ -99,6 +146,14 @@ function EventCard({ event }: { event: PucDetectedEvent }) {
 }
 
 export default function PucImportLab() {
+  const [searchParams] = useSearchParams();
+  const { state } = useAppStore();
+  const courseId = searchParams.get("courseId") ?? "";
+  const targetCourse = useMemo(
+    () => state.courses.find((course) => course.id === courseId),
+    [state.courses, courseId],
+  );
+
   const [result, setResult] = useState<PucParseResult | null>(null);
   const [rawText, setRawText] = useState("");
   const [fileName, setFileName] = useState("");
@@ -111,6 +166,7 @@ export default function PucImportLab() {
   const modelLabel = result?.evaluationModel
     ? MODEL_LABELS[result.evaluationModel] ?? result.evaluationModel
     : "Não identificada";
+  const courseMatch = useMemo(() => resolveCourseMatch(targetCourse, result), [targetCourse, result]);
 
   const fileSizeLabel = useMemo(() => {
     if (fileSize === null) return null;
@@ -146,11 +202,14 @@ export default function PucImportLab() {
     if (file) void analyseFile(file);
   };
 
+  const backPath = targetCourse ? `/cadeiras/${encodeURIComponent(targetCourse.id)}` : "/cadeiras";
+  const backLabel = targetCourse ? `Voltar a ${targetCourse.name}` : "Voltar às cadeiras";
+
   return (
     <div className="space-y-5 pb-6">
       <div>
         <Button asChild variant="ghost" size="sm">
-          <Link to="/cadeiras"><ArrowLeft className="mr-2 h-4 w-4" />Voltar às cadeiras</Link>
+          <Link to={backPath}><ArrowLeft className="mr-2 h-4 w-4" />{backLabel}</Link>
         </Button>
       </div>
 
@@ -168,6 +227,13 @@ export default function PucImportLab() {
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                   Seleciona um PUC em PDF para verificar o que o Academic Hub consegue reconhecer. Nesta fase nada é gravado na cadeira, na conta ou no Supabase.
                 </p>
+                {targetCourse && (
+                  <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+                    <span className="font-semibold">Cadeira selecionada:</span>
+                    <span>{targetCourse.name}</span>
+                    <span className="rounded-md bg-background/70 px-2 py-0.5 font-semibold text-muted-foreground">{targetCourse.code}</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
@@ -253,6 +319,29 @@ export default function PucImportLab() {
                   <div className="mt-1 text-sm font-semibold">{modelLabel}</div>
                 </div>
               </div>
+
+              {courseMatch === "matched" && targetCourse && (
+                <div className="flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div><strong>PUC correspondente.</strong> O documento foi identificado como pertencendo à cadeira selecionada ({targetCourse.name}, {targetCourse.code}).</div>
+                </div>
+              )}
+
+              {courseMatch === "mismatch" && targetCourse && (
+                <div className="flex items-start gap-3 rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-xs leading-5 text-destructive">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <strong>PUC de outra cadeira.</strong> Estás a configurar {targetCourse.name} ({targetCourse.code}), mas o PDF foi identificado como {result.courseName || "outra unidade curricular"}{result.courseCode ? ` (${result.courseCode})` : ""}. Este documento ficará bloqueado para futura importação nesta cadeira.
+                  </div>
+                </div>
+              )}
+
+              {courseMatch === "uncertain" && targetCourse && (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div><strong>Correspondência por confirmar.</strong> O leitor não conseguiu validar com segurança que este PUC pertence a {targetCourse.name} ({targetCourse.code}). Numa futura importação será obrigatória revisão antes de qualquer gravação.</div>
+                </div>
+              )}
 
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
                 <strong>Confirmação obrigatória:</strong> este leitor apenas propõe dados. Mesmo quando um campo aparece como confirmado no PUC, a futura importação só poderá ser guardada após revisão do aluno.

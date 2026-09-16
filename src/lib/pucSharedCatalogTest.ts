@@ -57,7 +57,6 @@ export async function fetchSharedPucCatalogEntries(courseCode: string): Promise<
     method: "GET",
     headers: {
       apikey: TEST_BRANCH_PUBLISHABLE_KEY,
-      Authorization: `Bearer ${TEST_BRANCH_PUBLISHABLE_KEY}`,
       Accept: "application/json",
     },
     cache: "no-store",

@@ -20,6 +20,12 @@ function formatDateTime(value: string | null) {
   }
 }
 
+function formatDate(value: string | undefined) {
+  if (!value) return "—";
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : value;
+}
+
 export default function PucAdminReviewLab() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [items, setItems] = useState<PucAdminSubmission[]>([]);
@@ -60,11 +66,15 @@ export default function PucAdminReviewLab() {
     try {
       const result = await reviewPucSubmission(item.id, decision, notes[item.id] ?? "");
       if (result.submission_status === "approved") {
-        setMessage(`Proposta aprovada. Foi criada a versão ${result.new_catalog_version} do catálogo; a versão anterior ficou preservada no histórico.`);
+        setMessage(
+          item.kind === "new_entry"
+            ? `Proposta aprovada. Foi criada a versão ${result.new_catalog_version} e passou a existir uma estrutura validada para esta UC/ano/edição.`
+            : `Proposta aprovada. Foi criada a versão ${result.new_catalog_version} do catálogo; a versão anterior ficou preservada no histórico.`,
+        );
       } else if (result.submission_status === "rejected") {
         setMessage("Proposta rejeitada e decisão registada.");
       } else {
-        setMessage("A proposta deixou de poder ser aplicada porque a versão-base já não é a versão ativa.");
+        setMessage("A proposta deixou de poder ser aplicada porque já existe uma versão ativa mais adequada.");
       }
       await load();
     } catch (err) {
@@ -92,8 +102,8 @@ export default function PucAdminReviewLab() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">Administração · PUC</div>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Validação de correções PUC</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Aprovar nunca edita uma versão existente: é criada uma nova versão do catálogo e a anterior fica preservada.</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Validação de propostas PUC</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Uma primeira proposta pode criar a versão inicial do catálogo. Uma correção aprovada nunca edita a versão existente: cria uma nova versão e preserva a anterior.</p>
             </div>
             <Button type="button" variant="outline" onClick={() => void load()} disabled={loading || Boolean(busyId)}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Atualizar</Button>
           </div>
@@ -115,6 +125,8 @@ export default function PucAdminReviewLab() {
       <div className="space-y-4">
         {items.map((item) => {
           const changes = Array.isArray(item.proposed_payload?.changes) ? item.proposed_payload.changes : [];
+          const events = Array.isArray(item.proposed_payload?.events) ? item.proposed_payload.events : [];
+          const finalAssessment = item.proposed_payload?.finalAssessment ?? null;
           return (
             <Card key={item.id} className="premium-card">
               <CardHeader className="pb-3">
@@ -122,13 +134,43 @@ export default function PucAdminReviewLab() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="rounded-xl border bg-background/55 p-3"><div className="font-semibold">Tipo de proposta</div><div className="mt-1 text-muted-foreground">{item.kind === "new_entry" ? "Primeira entrada no catálogo" : "Correção de versão existente"}</div></div>
                   <div className="rounded-xl border bg-background/55 p-3"><div className="font-semibold">Ano / edição</div><div className="mt-1 text-muted-foreground">{item.academic_year} · {item.edition}</div></div>
-                  <div className="rounded-xl border bg-background/55 p-3"><div className="font-semibold">Versão-base</div><div className="mt-1 text-muted-foreground">{item.base_version ?? "—"}</div></div>
+                  <div className="rounded-xl border bg-background/55 p-3"><div className="font-semibold">Versão-base</div><div className="mt-1 text-muted-foreground">{item.kind === "new_entry" ? "Nova" : item.base_version ?? "—"}</div></div>
                   <div className="rounded-xl border bg-background/55 p-3"><div className="font-semibold">Recebida</div><div className="mt-1 text-muted-foreground">{formatDateTime(item.created_at)}</div></div>
-                  <div className="rounded-xl border bg-background/55 p-3"><div className="font-semibold">Declaração</div><div className="mt-1 text-muted-foreground">{item.submitter_source_confirmed ? "Fonte oficial confirmada" : "Não confirmada"}</div></div>
                 </div>
 
-                {changes.length > 0 && (
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
+                  <div className="font-semibold">Declaração do aluno</div>
+                  <div className="mt-1">{item.submitter_source_confirmed ? "Fonte oficial confirmada" : "Fonte não confirmada"}{item.submitter_declaration_version ? ` · ${item.submitter_declaration_version}` : ""}</div>
+                </div>
+
+                {item.kind === "new_entry" && (
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Estrutura proposta</div>
+                    {events.map((event, index) => (
+                      <div key={`${item.id}-event-${index}`} className="rounded-xl border bg-background/55 p-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-semibold">{event.name || `Elemento ${index + 1}`}</div>
+                          <div className="font-semibold">{event.maxPoints ?? "—"} valores</div>
+                        </div>
+                        <div className="mt-2 grid gap-1 text-muted-foreground sm:grid-cols-3">
+                          <div>Início: <span className="text-foreground">{formatDate(event.startDate)}</span></div>
+                          <div>Entrega: <span className="text-foreground">{formatDate(event.endDate)}</span></div>
+                          <div>Nota: <span className="text-foreground">{formatDate(event.gradeReleaseDate)}</span></div>
+                        </div>
+                      </div>
+                    ))}
+                    {finalAssessment && (
+                      <div className="rounded-xl border bg-background/55 p-3 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2"><div className="font-semibold">{finalAssessment.name || "Prova final"}</div><div className="font-semibold">{finalAssessment.maxPoints ?? "—"} valores</div></div>
+                        <div className="mt-1 text-muted-foreground">Apenas cotação; datas de exame/recurso não fazem parte do catálogo PUC.</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {item.kind === "correction" && changes.length > 0 && (
                   <div className="space-y-2">
                     <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Alterações propostas</div>
                     {changes.map((change, index) => (
@@ -149,7 +191,7 @@ export default function PucAdminReviewLab() {
                   <Button type="button" variant="outline" disabled={Boolean(busyId)} onClick={() => void decide(item, "reject")}><XCircle className="mr-2 h-4 w-4" />Rejeitar</Button>
                   <Button type="button" disabled={Boolean(busyId)} onClick={() => void decide(item, "approve")}>
                     {busyId === item.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                    Aprovar e criar nova versão
+                    {item.kind === "new_entry" ? "Aprovar e criar catálogo" : "Aprovar e criar nova versão"}
                   </Button>
                 </div>
               </CardContent>

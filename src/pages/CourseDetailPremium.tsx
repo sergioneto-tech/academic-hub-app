@@ -1,9 +1,12 @@
 import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 
 import EvaluationFrameworkNotice from "@/components/EvaluationFrameworkNotice";
 import EvaluationModeSelector from "@/components/EvaluationModeSelector";
 import LegacyEvaluationSavePanel from "@/components/LegacyEvaluationSavePanel";
+import PucImportEntry from "@/components/PucImportEntry";
+import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/AppStore";
 import CourseDetail from "@/pages/CourseDetail";
 import FlexibleCourseDetail from "@/pages/FlexibleCourseDetail";
@@ -24,6 +27,15 @@ export default function CourseDetailPremium() {
 
   return (
     <>
+      <div className="mx-auto max-w-5xl px-4 pt-4 md:px-6 md:pt-6">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link to="/cadeiras">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar às cadeiras
+          </Link>
+        </Button>
+      </div>
+
       {course.isExtracurricular && (
         <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
           <strong>Cadeira extracurricular.</strong>{" "}
@@ -33,7 +45,12 @@ export default function CourseDetailPremium() {
       <EvaluationFrameworkNotice regime={regime} />
       <EvaluationModeSelector courseId={id} />
       {regime === "regulation-2026"
-        ? <FlexibleCourseDetail courseId={id} />
+        ? (
+          <>
+            <PucImportEntry courseId={id} />
+            <FlexibleCourseDetail courseId={id} />
+          </>
+        )
         : historicalMode === "efolios-exam"
           ? (
             <>

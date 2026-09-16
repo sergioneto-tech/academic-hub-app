@@ -41,6 +41,10 @@ const FeedbackPage = lazy(() => import("./pages/Feedback"));
 const LegalPage = lazy(() => import("./pages/Legal"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
+const PucImportPage = lazy(() => import("./pages/PucImportPage"));
+const PucSharedReviewPage = lazy(() => import("./pages/PucSharedReviewLab"));
+const PucAdminReviewPage = lazy(() => import("./pages/PucAdminReviewLab"));
+const PucUpdateAlertsPage = lazy(() => import("./pages/PucUpdateAlertsLab"));
 
 const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
@@ -56,10 +60,6 @@ function AcademicHubApp() {
   useUabOfficialAssessmentSync();
 
   useEffect(() => {
-    // Não pede permissões nem mostra diálogos. Se o utilizador já autorizou Push
-    // neste dispositivo, revalida silenciosamente a subscrição e garante que a
-    // conta também tem push_preferences no servidor. Assim uma instalação antiga
-    // ou recuperada deixa de ficar com "alertas ativos" apenas no estado local.
     void reconcilePushOnThisDevice().catch(() => {});
   }, []);
 
@@ -98,6 +98,10 @@ function AcademicHubApp() {
             <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
             <Route path="/feedback" element={<LazyPage><FeedbackPage /></LazyPage>} />
             <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
+            <Route path="/puc/importar" element={<LazyPage><PucImportPage /></LazyPage>} />
+            <Route path="/puc/rever" element={<LazyPage><PucSharedReviewPage /></LazyPage>} />
+            <Route path="/puc/atualizacoes" element={<LazyPage><PucUpdateAlertsPage /></LazyPage>} />
+            <Route path="/administracao/puc-correcoes" element={<LazyPage><PucAdminReviewPage /></LazyPage>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

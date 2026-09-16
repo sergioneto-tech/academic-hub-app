@@ -1,6 +1,23 @@
 {
-  "latest": "1.5.12",
+  "latest": "1.6.0",
   "versions": [
+    {
+      "version": "1.6.0",
+      "date": "2026-09-17",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "Novo importador assistido do PUC: o aluno pode selecionar o PDF da unidade curricular, rever os dados encontrados e só guardar depois de confirmação explícita.",
+        "As datas e horas de exame e recurso continuam exclusivamente ligadas ao calendário oficial do Academic Hub; do PUC apenas pode ser aproveitada a cotação da avaliação final.",
+        "PUCs de outra unidade curricular são bloqueados e cadeiras com dados já configurados exigem confirmação adicional antes de substituir datas; classificações ou submissões existentes impedem substituições automáticas.",
+        "Novo catálogo partilhado por UC, ano letivo e edição/turma: estruturas validadas podem ser revistas e aceites sem novo carregamento do PDF, sem escolher silenciosamente entre edições diferentes.",
+        "O primeiro PUC de uma UC pode ser proposto para validação sem guardar o PDF no servidor; correções posteriores criam propostas pendentes e nunca alteram diretamente os dados de outros alunos.",
+        "Uma correção aprovada cria uma nova versão e preserva a anterior. Alunos afetados recebem alerta na aplicação e, quando têm Push ativo, uma notificação para confirmar a alteração no seu próprio PUC antes de aceitar.",
+        "Reforçada a segurança do fluxo PUC com RLS, permissões mínimas, validações de integridade, deduplicação, limites de payload, revisão administrativa protegida e cálculo dos destinatários Push no servidor.",
+        "Interface do importador, revisão partilhada e administração ajustada para computador, iPad/tablet, Android e ecrãs pequenos, incluindo proteção contra nomes de cadeiras e ficheiros demasiado longos.",
+        "O gate de qualidade passa também a executar ESLint sobre todos os novos ficheiros PUC, além de TypeScript, build, testes e auditoria de dependências."
+      ]
+    },
     {
       "version": "1.5.12",
       "date": "2026-09-16",

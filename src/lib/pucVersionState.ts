@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 export type PucVersionStatus = {
@@ -13,13 +14,16 @@ export type PucVersionStatus = {
   update_available: boolean;
 };
 
+function pucClient(): SupabaseClient {
+  return supabase as unknown as SupabaseClient;
+}
+
 export async function acceptCurrentPucCatalogVersion(catalogId: string, expectedVersion: number) {
   if (!catalogId || !Number.isInteger(expectedVersion) || expectedVersion <= 0) {
     throw new Error("puc_acceptance_invalid_input");
   }
 
-  const client = supabase as any;
-  const { data, error } = await client.rpc("accept_puc_catalog_version", {
+  const { data, error } = await pucClient().rpc("accept_puc_catalog_version", {
     p_catalog_id: catalogId,
     p_expected_version: expectedVersion,
   });
@@ -29,8 +33,7 @@ export async function acceptCurrentPucCatalogVersion(catalogId: string, expected
 }
 
 export async function fetchMyPucVersionStatus(): Promise<PucVersionStatus[]> {
-  const client = supabase as any;
-  const { data, error } = await client.rpc("get_my_puc_catalog_version_status");
+  const { data, error } = await pucClient().rpc("get_my_puc_catalog_version_status");
   if (error) throw new Error(error.message || "puc_version_status_failed");
   return Array.isArray(data) ? data as PucVersionStatus[] : [];
 }

@@ -161,6 +161,7 @@ export default function PucImportLab() {
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [progress, setProgress] = useState<PdfExtractionProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mismatchMessage, setMismatchMessage] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
 
   const modelLabel = result?.evaluationModel
@@ -177,6 +178,7 @@ export default function PucImportLab() {
   const analyseFile = async (file: File) => {
     setIsReading(true);
     setError(null);
+    setMismatchMessage(null);
     setResult(null);
     setRawText("");
     setPageCount(null);
@@ -186,9 +188,22 @@ export default function PucImportLab() {
 
     try {
       const extracted = await extractPucPdfText(file, setProgress);
-      setRawText(extracted.text);
+      const parsed = parsePucText(extracted.text);
+      const match = resolveCourseMatch(targetCourse, parsed);
+
       setPageCount(extracted.pageCount);
-      setResult(parsePucText(extracted.text));
+
+      if (match === "mismatch" && targetCourse) {
+        setRawText("");
+        setResult(null);
+        setMismatchMessage(
+          `Este PDF pertence a ${parsed.courseName || "outra unidade curricular"}${parsed.courseCode ? ` (${parsed.courseCode})` : ""}, e não a ${targetCourse.name} (${targetCourse.code}). Seleciona o PUC correto para continuar.`,
+        );
+        return;
+      }
+
+      setRawText(extracted.text);
+      setResult(parsed);
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "Não foi possível analisar este PDF.";
       setError(message);
@@ -285,6 +300,16 @@ export default function PucImportLab() {
             </div>
           )}
 
+          {mismatchMessage && (
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+              <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <div className="font-semibold">PUC de outra cadeira</div>
+                <div className="mt-1 text-xs leading-5">{mismatchMessage}</div>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="mt-4 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -324,15 +349,6 @@ export default function PucImportLab() {
                 <div className="flex items-start gap-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                   <div><strong>PUC correspondente.</strong> O documento foi identificado como pertencendo à cadeira selecionada ({targetCourse.name}, {targetCourse.code}).</div>
-                </div>
-              )}
-
-              {courseMatch === "mismatch" && targetCourse && (
-                <div className="flex items-start gap-3 rounded-xl border border-destructive/35 bg-destructive/10 p-3 text-xs leading-5 text-destructive">
-                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
-                  <div>
-                    <strong>PUC de outra cadeira.</strong> Estás a configurar {targetCourse.name} ({targetCourse.code}), mas o PDF foi identificado como {result.courseName || "outra unidade curricular"}{result.courseCode ? ` (${result.courseCode})` : ""}. Este documento ficará bloqueado para futura importação nesta cadeira.
-                  </div>
                 </div>
               )}
 

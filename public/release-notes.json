@@ -1,6 +1,19 @@
 {
-  "latest": "1.5.10",
+  "latest": "1.5.11",
   "versions": [
+    {
+      "version": "1.5.11",
+      "date": "2026-09-16",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "Reforçado o processo de atualização para aguardar realmente que o novo Service Worker fique pronto, em vez de depender de uma espera fixa demasiado curta.",
+        "Adicionada uma segunda tentativa automática quando a publicação ainda está a propagar-se entre o app-shell, o Service Worker e os restantes ficheiros.",
+        "A ativação passa a aguardar mais tempo pela confirmação real do navegador e as falhas técnicas ficam registadas para diagnóstico.",
+        "A versão foi incrementada de forma consistente no app-shell, Service Worker e metadados de release para impedir misturas entre builds diferentes apresentados como a mesma versão.",
+        "Corrigido o estado observado após a vistoria de segurança em que uma instalação ainda aberta podia tentar carregar ficheiros de um build anterior já substituído no servidor."
+      ]
+    },
     {
       "version": "1.5.10",
       "date": "2026-09-16",

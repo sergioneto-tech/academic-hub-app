@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Database, FileUp, ShieldCheck, X } from "lucide-react";
+import { CheckCircle2, Database, FileCheck2, FileUp, ShieldCheck, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -116,8 +116,17 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
                 </div>
               )}
 
-              <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
-                <strong>Fase atual:</strong> esta vista serve apenas para validar o alerta e os dados partilhados. No próximo passo estes mesmos dados serão enviados para a revisão editável antes de qualquer gravação na cadeira.
+              <div className="flex flex-col gap-3 rounded-xl border border-emerald-500/25 bg-background/55 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-xs leading-5 text-muted-foreground">
+                  Revê estes dados na mesma grelha editável usada pelo PDF. Só depois da tua confirmação explícita poderão ser gravados na cadeira.
+                </div>
+                <div data-guest-allowed="true">
+                  <Button asChild className="shrink-0">
+                    <Link to={`/_teste/puc?courseId=${encodeURIComponent(courseId)}&source=shared&catalogId=${encodeURIComponent(sharedEntry.id)}`}>
+                      <FileCheck2 className="mr-2 h-4 w-4" />Rever e usar estes dados
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           )}

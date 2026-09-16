@@ -41,6 +41,7 @@ const FeedbackPage = lazy(() => import("./pages/Feedback"));
 const LegalPage = lazy(() => import("./pages/Legal"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
+const PucImportLab = lazy(() => import("./pages/PucImportLab"));
 
 const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
@@ -98,6 +99,7 @@ function AcademicHubApp() {
             <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
             <Route path="/feedback" element={<LazyPage><FeedbackPage /></LazyPage>} />
             <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
+            <Route path="/_teste/puc" element={<LazyPage><PucImportLab /></LazyPage>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

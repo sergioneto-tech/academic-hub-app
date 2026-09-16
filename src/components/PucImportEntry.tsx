@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/AppStore";
 import {
   fetchSharedPucCatalogEntries,
+  selectUnambiguousSharedPucEntry,
   type SharedPucCatalogEntry,
 } from "@/lib/pucCatalog";
 import {
@@ -72,7 +73,12 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
     return () => { cancelled = true; };
   }, [course?.code]);
 
-  const sharedEntry = catalogEntries[0] ?? null;
+  const sharedEntry = selectUnambiguousSharedPucEntry(catalogEntries);
+  const latestAcademicYear = catalogEntries[0]?.academic_year ?? null;
+  const latestEntries = latestAcademicYear
+    ? catalogEntries.filter((entry) => entry.academic_year === latestAcademicYear)
+    : [];
+  const hasAmbiguousEdition = latestEntries.length > 1 && new Set(latestEntries.map((entry) => entry.edition)).size > 1;
   const events = sharedEntry?.payload?.events ?? [];
   const finalAssessment = sharedEntry?.payload?.finalAssessment ?? null;
   const updateDifferences = updateAlert ? buildPucUpdateDifferences(updateAlert) : [];
@@ -107,6 +113,20 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
                 Rever atualização
               </Link>
             </Button>
+          </div>
+        </div>
+      )}
+
+      {hasAmbiguousEdition && !ignored && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 shadow-sm md:p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div>
+              <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">Existem várias edições desta UC no catálogo</div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                Foram encontradas várias edições para o ano letivo {latestAcademicYear}. Como a cadeira local ainda não guarda a edição/turma UAb, o Academic Hub não vai escolher uma automaticamente. Usa o PDF do teu PUC para evitar associar dados da edição errada.
+              </p>
+            </div>
           </div>
         </div>
       )}

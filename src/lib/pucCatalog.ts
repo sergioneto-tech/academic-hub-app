@@ -76,6 +76,24 @@ export function buildSharedPucImportDraft(entry: SharedPucCatalogEntry): PucImpo
   return { model, events, finalAssessment, warnings };
 }
 
+/**
+ * O estado local da cadeira não guarda atualmente a edição/turma UAb.
+ * Por isso nunca escolhemos silenciosamente entre duas edições ativas do mesmo
+ * ano letivo. Se o catálogo tiver mais do que uma edição para o ano mais recente,
+ * o chamador deve recorrer ao PDF até existir um seletor explícito de edição.
+ */
+export function selectUnambiguousSharedPucEntry(entries: SharedPucCatalogEntry[]): SharedPucCatalogEntry | null {
+  if (entries.length === 0) return null;
+  const latestAcademicYear = entries.reduce(
+    (latest, entry) => entry.academic_year > latest ? entry.academic_year : latest,
+    entries[0].academic_year,
+  );
+  const latest = entries.filter((entry) => entry.academic_year === latestAcademicYear);
+  const editions = new Set(latest.map((entry) => entry.edition));
+  if (editions.size !== 1) return null;
+  return latest[0] ?? null;
+}
+
 export async function fetchSharedPucCatalogEntries(courseCode: string): Promise<SharedPucCatalogEntry[]> {
   const code = courseCode.trim();
   if (!/^\d{4,8}$/.test(code)) return [];

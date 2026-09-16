@@ -11,6 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
+import PucReviewDraft from "@/components/PucReviewDraft";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
@@ -382,6 +383,14 @@ export default function PucImportLab() {
               <Card className="premium-card"><CardContent className="p-4 text-sm text-muted-foreground">Não foram encontradas datas suficientemente estruturadas para apresentar.</CardContent></Card>
             )}
           </section>
+
+          {courseMatch === "matched" && targetCourse && (
+            <PucReviewDraft
+              result={result}
+              courseName={targetCourse.name}
+              courseCode={targetCourse.code}
+            />
+          )}
 
           {result.warnings.length > 0 && (
             <Card className="premium-card border-amber-500/25">

@@ -387,6 +387,7 @@ export default function PucImportLab() {
           {courseMatch === "matched" && targetCourse && (
             <PucReviewDraft
               result={result}
+              rawText={rawText}
               courseName={targetCourse.name}
               courseCode={targetCourse.code}
             />

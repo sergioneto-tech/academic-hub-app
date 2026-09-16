@@ -4,7 +4,7 @@ import type { PucImportDraft } from "@/lib/pucImportDraft";
 import type { SharedPucCatalogEntry } from "@/lib/pucSharedCatalogTest";
 
 type SubmissionResult =
-  | { ok: true; id: string }
+  | { ok: true; id: string; message: string }
   | { ok: false; reason: "not-authenticated" | "duplicate" | "rate-limited" | "catalog-mismatch" | "invalid" | "unknown"; message: string };
 
 function proposalPayload(draft: PucImportDraft, changes: PucDraftChange[]) {
@@ -89,7 +89,13 @@ export async function submitPucCorrection({
     .select("id")
     .single();
 
-  if (!error && data?.id) return { ok: true, id: data.id };
+  if (!error && data?.id) {
+    return {
+      ok: true,
+      id: data.id,
+      message: "Correção comunicada com sucesso. Ficou pendente de validação e não alterou os dados dos outros alunos.",
+    };
+  }
 
   const text = `${error?.code ?? ""} ${error?.message ?? ""}`.toLowerCase();
   if (error?.code === "23505" || text.includes("pending_dedupe")) {

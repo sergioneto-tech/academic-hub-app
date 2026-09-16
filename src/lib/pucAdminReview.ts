@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
 export const PUC_ADMIN_MANAGER_USER_ID = "b305ceaf-d8a1-49bb-9cd2-ebfe8233b85c";
@@ -42,6 +43,10 @@ type ReviewResult = {
   new_catalog_version: number | null;
 };
 
+function pucClient(): SupabaseClient {
+  return supabase as unknown as SupabaseClient;
+}
+
 export async function isCurrentUserPucAdmin(): Promise<boolean> {
   const { data, error } = await supabase.auth.getUser();
   return !error && data.user?.id === PUC_ADMIN_MANAGER_USER_ID;
@@ -49,8 +54,7 @@ export async function isCurrentUserPucAdmin(): Promise<boolean> {
 
 export async function fetchPendingPucSubmissions(): Promise<PucAdminSubmission[]> {
   if (!(await isCurrentUserPucAdmin())) throw new Error("puc_admin_forbidden");
-  const client = supabase as any;
-  const { data, error } = await client
+  const { data, error } = await pucClient()
     .from("puc_catalog_submissions")
     .select("id,user_id,kind,course_code,course_name,academic_year,edition,evaluation_model,proposed_payload,base_catalog_id,base_version,status,reason,resolution_note,submitter_declaration_version,submitter_declared_at,submitter_source_confirmed,created_at,resolved_at,reviewed_by")
     .eq("status", "pending")
@@ -65,8 +69,7 @@ export async function reviewPucSubmission(
   note: string,
 ): Promise<ReviewResult> {
   if (!(await isCurrentUserPucAdmin())) throw new Error("puc_admin_forbidden");
-  const client = supabase as any;
-  const { data, error } = await client.rpc("review_puc_catalog_submission", {
+  const { data, error } = await pucClient().rpc("review_puc_catalog_submission", {
     p_submission_id: submissionId,
     p_decision: decision,
     p_note: note.trim() || null,

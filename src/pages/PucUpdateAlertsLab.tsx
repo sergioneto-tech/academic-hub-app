@@ -104,7 +104,7 @@ export default function PucUpdateAlertsLab() {
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">PUC · versões</div>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Atualizações do PUC</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Quando uma versão que já utilizaste for corrigida, podes comparar as diferenças e decidir se queres aplicar a nova versão à tua cadeira. Nada é alterado automaticamente.</p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Quando uma versão que já utilizaste for corrigida, podes comparar as diferenças. Antes de aceitar, confirma sempre os dados no PUC correspondente à tua própria edição/turma. Nada é alterado automaticamente.</p>
             </div>
             <Button type="button" variant="outline" onClick={() => void load()} disabled={loading || Boolean(busyId)}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Atualizar</Button>
           </div>
@@ -163,7 +163,7 @@ export default function PucUpdateAlertsLab() {
                 </div>
 
                 <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100">
-                  <strong>Nada muda automaticamente.</strong> A nova versão só é aplicada depois de abrires a revisão e usares “Guardar na cadeira”. Se mantiveres a versão anterior, os teus dados pessoais não são alterados.
+                  <strong>Confirma primeiro no teu PUC.</strong> Esta atualização pertence à UC {item.course_code}, ano letivo {item.academic_year}, edição/turma {item.edition}. Só a deves aceitar se os dados coincidirem com o PUC aplicável à tua turma. Nada muda automaticamente e podes manter a versão anterior.
                 </div>
 
                 {!isReviewing && (

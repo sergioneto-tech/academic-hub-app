@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { PtDateInput } from "@/components/ui/pt-date-input";
 import { useAppStore } from "@/lib/AppStore";
 import { applyPucImportToState } from "@/lib/pucImportApply";
-import { buildPucImportDraft, type PucImportDraftEvent } from "@/lib/pucImportDraft";
+import { buildPucImportDraft, type PucImportDraft, type PucImportDraftEvent } from "@/lib/pucImportDraft";
 import type { PucParseResult } from "@/lib/pucParser";
 import type { EvaluationModel } from "@/lib/types";
 
@@ -27,24 +27,40 @@ function toNullableNumber(rawValue: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+const EMPTY_DRAFT: PucImportDraft = {
+  model: "custom",
+  events: [],
+  finalAssessment: null,
+  warnings: [],
+};
+
 export default function PucReviewDraft({
   result,
-  rawText,
+  rawText = "",
+  initialDraft,
+  sourceKind = "pdf",
+  defaultOpen = false,
   courseId,
   courseName,
   courseCode,
   onSaved,
 }: {
-  result: PucParseResult;
-  rawText: string;
+  result?: PucParseResult;
+  rawText?: string;
+  initialDraft?: PucImportDraft;
+  sourceKind?: "pdf" | "shared";
+  defaultOpen?: boolean;
   courseId: string;
   courseName: string;
   courseCode: string;
   onSaved?: () => void;
 }) {
   const { state, replaceState } = useAppStore();
-  const importDraft = useMemo(() => buildPucImportDraft(result, rawText), [result, rawText]);
-  const [isOpen, setIsOpen] = useState(false);
+  const importDraft = useMemo(
+    () => initialDraft ?? (result ? buildPucImportDraft(result, rawText) : EMPTY_DRAFT),
+    [initialDraft, result, rawText],
+  );
+  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [draftModel, setDraftModel] = useState<EvaluationModel>(importDraft.model);
   const [draftEvents, setDraftEvents] = useState<PucImportDraftEvent[]>(importDraft.events);
   const [draftFinalPoints, setDraftFinalPoints] = useState<number | null>(importDraft.finalAssessment?.maxPoints ?? null);
@@ -116,7 +132,9 @@ export default function PucReviewDraft({
               Rever antes de importar
             </div>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-              O PUC corresponde a {courseName} ({courseCode}). Abre a revisão para confirmares tipologia, cotações e datas antes de qualquer gravação.
+              {sourceKind === "shared"
+                ? `Os dados partilhados correspondem a ${courseName} (${courseCode}). Abre a revisão para confirmares tipologia, cotações e datas antes de qualquer gravação.`
+                : `O PUC corresponde a ${courseName} (${courseCode}). Abre a revisão para confirmares tipologia, cotações e datas antes de qualquer gravação.`}
             </p>
           </div>
           <Button type="button" className="shrink-0" onClick={openReview}>
@@ -140,6 +158,13 @@ export default function PucReviewDraft({
           {courseName} · {courseCode}
         </div>
       </div>
+
+      {sourceKind === "shared" && (
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>Estes dados vêm do catálogo partilhado já validado para esta UC. Continua a ser necessária confirmação explícita antes de os gravares na tua cadeira.</span>
+        </div>
+      )}
 
       <div className="mt-4 rounded-xl border bg-muted/15 p-3 sm:p-4">
         <Label htmlFor="puc-review-model" className="text-xs text-muted-foreground">Tipologia / modalidade</Label>
@@ -272,7 +297,7 @@ export default function PucReviewDraft({
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" onClick={resetDraft}>
-            <RotateCcw className="mr-2 h-4 w-4" />Repor dados do PUC
+            <RotateCcw className="mr-2 h-4 w-4" />{sourceKind === "shared" ? "Repor dados partilhados" : "Repor dados do PUC"}
           </Button>
           <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Fechar revisão</Button>
         </div>

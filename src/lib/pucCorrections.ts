@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { PucCorrectionDeclaration, PucDraftChange } from "@/components/PucReviewDraft";
 import type { PucImportDraft } from "@/lib/pucImportDraft";
@@ -6,6 +7,10 @@ import type { SharedPucCatalogEntry } from "@/lib/pucCatalog";
 type SubmissionResult =
   | { ok: true; id: string; message: string }
   | { ok: false; reason: "not-authenticated" | "duplicate" | "rate-limited" | "catalog-mismatch" | "invalid" | "unknown"; message: string };
+
+function pucClient(): SupabaseClient {
+  return supabase as unknown as SupabaseClient;
+}
 
 function proposalPayload(draft: PucImportDraft, changes: PucDraftChange[]) {
   return {
@@ -44,8 +49,7 @@ export async function submitPucCorrection({
     return { ok: false, reason: "not-authenticated", message: "A sessão terminou. Inicia sessão novamente antes de comunicar a correção." };
   }
 
-  const client = supabase as any;
-
+  const client = pucClient();
   const { data: currentEntry, error: catalogError } = await client
     .from("puc_catalog_entries")
     .select("id,course_code,academic_year,edition,version,is_active")

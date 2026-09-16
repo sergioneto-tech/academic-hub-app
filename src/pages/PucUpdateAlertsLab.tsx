@@ -15,6 +15,20 @@ import {
 } from "@/lib/pucUpdateAlerts";
 
 function activeEntry(item: PucUpdateAlert): SharedPucCatalogEntry {
+  const events = (item.active_payload?.events ?? []).map((event) => ({
+    name: event.name ?? "",
+    maxPoints: event.maxPoints ?? null,
+    startDate: event.startDate ?? "",
+    endDate: event.endDate ?? "",
+    gradeReleaseDate: event.gradeReleaseDate ?? "",
+  }));
+  const finalAssessment = item.active_payload?.finalAssessment
+    ? {
+        name: item.active_payload.finalAssessment.name ?? "Prova / exame final",
+        maxPoints: item.active_payload.finalAssessment.maxPoints ?? null,
+      }
+    : null;
+
   return {
     id: item.active_catalog_id,
     course_code: item.course_code,
@@ -22,7 +36,7 @@ function activeEntry(item: PucUpdateAlert): SharedPucCatalogEntry {
     academic_year: item.academic_year,
     edition: item.edition,
     evaluation_model: item.active_evaluation_model,
-    payload: item.active_payload,
+    payload: { events, finalAssessment },
     version: item.active_version,
     validated_at: item.active_validated_at,
     updated_at: item.active_validated_at,

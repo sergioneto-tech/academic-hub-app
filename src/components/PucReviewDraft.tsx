@@ -1,20 +1,13 @@
 import { useMemo, useState } from "react";
-import { CheckCircle2, FileCheck2, RotateCcw, Save } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileCheck2, RotateCcw, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PtDateInput } from "@/components/ui/pt-date-input";
-import type { EvaluationModel } from "@/lib/types";
+import { buildPucImportDraft, type PucImportDraftEvent } from "@/lib/pucImportDraft";
 import type { PucParseResult } from "@/lib/pucParser";
-
-type DraftEvent = {
-  key: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  gradeReleaseDate: string;
-};
+import type { EvaluationModel } from "@/lib/types";
 
 const MODEL_OPTIONS: Array<{ value: EvaluationModel; label: string }> = [
   { value: "custom", label: "Por confirmar" },
@@ -25,35 +18,25 @@ const MODEL_OPTIONS: Array<{ value: EvaluationModel; label: string }> = [
   { value: "exam-only", label: "Avaliação por exame" },
 ];
 
-function buildDraftEvents(result: PucParseResult): DraftEvent[] {
-  return result.events
-    .filter((event) => event.kind === "assessment")
-    .map((event) => ({
-      key: event.key,
-      name: event.name,
-      startDate: event.startDate ?? "",
-      endDate: event.endDate ?? "",
-      gradeReleaseDate: event.gradeReleaseDate ?? "",
-    }));
-}
-
 export default function PucReviewDraft({
   result,
+  rawText,
   courseName,
   courseCode,
 }: {
   result: PucParseResult;
+  rawText: string;
   courseName: string;
   courseCode: string;
 }) {
-  const importableEvents = useMemo(() => buildDraftEvents(result), [result]);
+  const importDraft = useMemo(() => buildPucImportDraft(result, rawText), [result, rawText]);
   const [isOpen, setIsOpen] = useState(false);
-  const [draftModel, setDraftModel] = useState<EvaluationModel>(result.evaluationModel ?? "custom");
-  const [draftEvents, setDraftEvents] = useState<DraftEvent[]>(importableEvents);
+  const [draftModel, setDraftModel] = useState<EvaluationModel>(importDraft.model);
+  const [draftEvents, setDraftEvents] = useState<PucImportDraftEvent[]>(importDraft.events);
 
   const resetDraft = () => {
-    setDraftModel(result.evaluationModel ?? "custom");
-    setDraftEvents(buildDraftEvents(result));
+    setDraftModel(importDraft.model);
+    setDraftEvents(importDraft.events.map((event) => ({ ...event })));
   };
 
   const openReview = () => {
@@ -61,7 +44,7 @@ export default function PucReviewDraft({
     setIsOpen(true);
   };
 
-  const updateEvent = (key: string, patch: Partial<DraftEvent>) => {
+  const updateEvent = (key: string, patch: Partial<PucImportDraftEvent>) => {
     setDraftEvents((current) => current.map((event) => event.key === key ? { ...event, ...patch } : event));
   };
 
@@ -75,7 +58,7 @@ export default function PucReviewDraft({
               Rever antes de importar
             </div>
             <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-              O PUC corresponde a {courseName} ({courseCode}). Abre a revisão para veres como a tipologia e as atividades ficarão antes de qualquer gravação.
+              O PUC corresponde a {courseName} ({courseCode}). Abre a revisão para veres como a tipologia, as cotações e as atividades ficarão antes de qualquer gravação.
             </p>
           </div>
           <Button type="button" className="shrink-0" onClick={openReview}>
@@ -112,6 +95,17 @@ export default function PucReviewDraft({
         </select>
       </div>
 
+      {importDraft.warnings.length > 0 && (
+        <div className="mt-4 space-y-2">
+          {importDraft.warnings.map((warning) => (
+            <div key={warning} className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{warning}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="mt-4 space-y-3">
         {draftEvents.length === 0 ? (
           <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
@@ -119,10 +113,25 @@ export default function PucReviewDraft({
           </div>
         ) : draftEvents.map((event) => (
           <div key={event.key} className="rounded-2xl border bg-background/45 p-3 sm:p-4">
-            <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_1fr_1fr_1fr] lg:items-end">
-              <div className="grid gap-1">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(220px,1.3fr)_150px_1fr_1fr_1fr] xl:items-end">
+              <div className="grid gap-1 sm:col-span-2 xl:col-span-1">
                 <Label className="text-[11px] text-muted-foreground">Designação</Label>
                 <Input value={event.name} onChange={(change) => updateEvent(event.key, { name: change.target.value })} />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-[11px] text-muted-foreground">Valor máximo</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  inputMode="decimal"
+                  value={event.maxPoints ?? ""}
+                  placeholder="Confirmar"
+                  onChange={(change) => {
+                    const value = change.target.value.trim();
+                    updateEvent(event.key, { maxPoints: value === "" ? null : Number(value) });
+                  }}
+                />
               </div>
               <div>
                 <Label className="mb-1 block text-[11px] text-muted-foreground">Início</Label>
@@ -142,7 +151,7 @@ export default function PucReviewDraft({
       </div>
 
       <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
-        As datas de exame e recurso não fazem parte desta revisão e continuarão a ser mantidas pelo calendário oficial já usado pelo Academic Hub.
+        As datas de exame e recurso não fazem parte desta revisão e continuarão a ser mantidas pelo calendário oficial já usado pelo Academic Hub. A cotação da prova também não é alterada nesta fase.
       </div>
 
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -152,7 +161,7 @@ export default function PucReviewDraft({
           </Button>
           <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Fechar revisão</Button>
         </div>
-        <Button type="button" disabled title="A gravação só será ativada depois de validares esta fase visual.">
+        <Button type="button" disabled title="A gravação só será ativada depois de validares esta fase visual e as cotações detetadas.">
           <Save className="mr-2 h-4 w-4" />Guardar na cadeira · próximo passo
         </Button>
       </div>

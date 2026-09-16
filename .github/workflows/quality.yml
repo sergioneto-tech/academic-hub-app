@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
 
       - name: Setup Node
         uses: actions/setup-node@v5
@@ -92,6 +94,29 @@ jobs:
           }
           console.log(`Release metadata, app shell and service worker aligned with v${appVersion}.`);
           NODE
+
+      - name: Require version bump for production runtime changes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          parent="$(git rev-parse HEAD^)"
+          changed="$(git diff --name-only "$parent" HEAD)"
+          echo "Changed files:"
+          echo "$changed"
+
+          if ! printf '%s\n' "$changed" | grep -Eq '^(src/|public/|index\.html$|package\.json$|package-lock\.json$|vite\.config\.|tsconfig)'; then
+            echo "No production runtime files changed; version bump not required."
+            exit 0
+          fi
+
+          current_version="$(node -e "const s=require('fs').readFileSync('src/lib/version.ts','utf8'); const m=s.match(/APP_VERSION\\s*=\\s*['\"]([^'\"]+)['\"]/); if(!m) process.exit(2); process.stdout.write(m[1]);")"
+          previous_version="$(git show "$parent:src/lib/version.ts" | node -e "let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{const m=s.match(/APP_VERSION\\s*=\\s*['\"]([^'\"]+)['\"]/); if(!m) process.exit(2); process.stdout.write(m[1]);});")"
+
+          if [ "$current_version" = "$previous_version" ]; then
+            echo "::error::Ficheiros de produção mudaram sem incrementar APP_VERSION ($current_version). Publicar builds diferentes com a mesma versão pode misturar app-shell e chunks em instalações PWA."
+            exit 1
+          fi
+
+          echo "Runtime production change accompanied by version bump: $previous_version -> $current_version."
 
       - name: TypeScript project check
         run: npx tsc -b --pretty false

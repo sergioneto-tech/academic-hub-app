@@ -30,6 +30,9 @@ const PHASE_MIN_VISIBLE_MS: Partial<Record<UpdatePhase, number>> = {
 };
 const PHASE_COMPLETE_HOLD_MS = 260;
 const FINAL_STATE_VISIBLE_MS = 1050;
+const WORKER_READY_FIRST_TIMEOUT_MS = 12_000;
+const WORKER_READY_RETRY_TIMEOUT_MS = 30_000;
+const WORKER_READY_RETRY_DELAY_MS = 1_200;
 
 function delay(ms: number) {
   return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -104,27 +107,97 @@ function activateWaitingWorker(registration: ServiceWorkerRegistration | null) {
   }
 }
 
-function waitForWorkerInstall(worker: ServiceWorker, timeoutMs = 20_000) {
-  if (["installed", "activated", "redundant"].includes(worker.state)) return Promise.resolve();
+function waitForWaitingWorker(registration: ServiceWorkerRegistration, timeoutMs: number) {
+  if (registration.waiting) return Promise.resolve(registration.waiting);
 
-  return new Promise<void>((resolve) => {
+  return new Promise<ServiceWorker>((resolve, reject) => {
     let finished = false;
-    const finish = () => {
+    let observedWorker: ServiceWorker | null = null;
+
+    const cleanup = () => {
+      window.clearTimeout(timeout);
+      registration.removeEventListener("updatefound", onUpdateFound);
+      observedWorker?.removeEventListener("statechange", onStateChange);
+    };
+
+    const finish = (worker: ServiceWorker) => {
       if (finished) return;
       finished = true;
-      window.clearTimeout(timeout);
-      worker.removeEventListener("statechange", onStateChange);
-      resolve();
+      cleanup();
+      resolve(worker);
     };
-    const onStateChange = () => {
-      if (["installed", "activated", "redundant"].includes(worker.state)) finish();
+
+    const fail = (message: string) => {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      reject(new Error(message));
     };
-    const timeout = window.setTimeout(finish, timeoutMs);
-    worker.addEventListener("statechange", onStateChange);
+
+    const observeCurrentInstallingWorker = () => {
+      const current = registration.installing;
+      if (!current || current === observedWorker) return;
+      observedWorker?.removeEventListener("statechange", onStateChange);
+      observedWorker = current;
+      observedWorker.addEventListener("statechange", onStateChange);
+    };
+
+    const checkState = () => {
+      if (registration.waiting) {
+        finish(registration.waiting);
+        return;
+      }
+
+      observeCurrentInstallingWorker();
+      if (observedWorker?.state === "redundant") {
+        fail("Instalação rejeitada pelo navegador");
+      }
+    };
+
+    function onStateChange() {
+      checkState();
+    }
+
+    function onUpdateFound() {
+      checkState();
+    }
+
+    registration.addEventListener("updatefound", onUpdateFound);
+    observeCurrentInstallingWorker();
+
+    const timeout = window.setTimeout(() => {
+      if (registration.waiting) finish(registration.waiting);
+      else fail("Nova versão demorou demasiado a ficar pronta para ativação");
+    }, timeoutMs);
+
+    checkState();
   });
 }
 
-function waitForControllerChange(timeoutMs = 8_000) {
+async function ensureWaitingWorker(registration: ServiceWorkerRegistration) {
+  if (registration.waiting) return registration.waiting;
+
+  let firstError: unknown;
+  try {
+    return await waitForWaitingWorker(registration, WORKER_READY_FIRST_TIMEOUT_MS);
+  } catch (error) {
+    firstError = error;
+  }
+
+  // Uma publicação pode estar a propagar-se entre o HTML, o Service Worker e os
+  // restantes ficheiros. Faz uma segunda verificação real antes de declarar falha.
+  await delay(WORKER_READY_RETRY_DELAY_MS);
+  try {
+    await registration.update();
+    return await waitForWaitingWorker(registration, WORKER_READY_RETRY_TIMEOUT_MS);
+  } catch (retryError) {
+    const firstMessage = firstError instanceof Error ? firstError.message : "falha inicial desconhecida";
+    const retryMessage = retryError instanceof Error ? retryError.message : "falha final desconhecida";
+    throw new Error(`${retryMessage} (primeira tentativa: ${firstMessage})`);
+  }
+}
+
+function waitForControllerChange(timeoutMs = 15_000) {
   return new Promise<boolean>((resolve) => {
     let finished = false;
     const finish = (changed: boolean) => {
@@ -284,14 +357,7 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         });
 
         await runVisiblePhase("installing", async () => {
-          if (reg.installing) {
-            const installingWorker = reg.installing;
-            await waitForWorkerInstall(installingWorker);
-            if (installingWorker.state === "redundant") throw new Error("Instalação rejeitada pelo navegador");
-          }
-
-          if (!reg.waiting) await delay(120);
-          if (!reg.waiting) throw new Error("Nova versão não ficou pronta para ativação");
+          await ensureWaitingWorker(reg);
         });
 
         await runVisiblePhase("activating", async () => {
@@ -309,7 +375,8 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       await runVisiblePhase("restarting", async () => undefined);
       await delay(FINAL_STATE_VISIBLE_MS);
       hardReload();
-    } catch {
+    } catch (error) {
+      console.error("[Academic Hub] Falha ao aplicar atualização", error);
       clearUpdateTarget(resolvedTargetVersion || targetVersion);
       applyingRef.current = false;
       setUpdatePhase("error");

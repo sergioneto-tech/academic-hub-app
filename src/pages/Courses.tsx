@@ -4,7 +4,7 @@ import { PowerOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/AppStore";
-import { courseStatusLabel, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
+import { courseStatusLabel, getAssessments, totalEFolios, totalEFoliosMax } from "@/lib/calculations";
 import { Badge } from "@/components/ui/badge";
 import { getPlanCoursesForDegree, getCourseArea } from "@/lib/uabPlan";
 
@@ -35,8 +35,20 @@ export default function CoursesPage() {
           ) : (
             courses.map(c => {
               const st = courseStatusLabel(state, c.id);
-              const ef = totalEFolios(state, c.id);
-              const efMax = totalEFoliosMax(state, c.id);
+              const regulationAssessments = c.evaluationRegime === "regulation-2026"
+                ? getAssessments(state, c.id).filter((assessment) => (
+                    assessment.required !== false
+                    && assessment.type !== "resit"
+                    && assessment.type !== "special"
+                  ))
+                : [];
+              const evaluationGrade = c.evaluationRegime === "regulation-2026"
+                ? regulationAssessments.reduce((sum, assessment) => sum + (assessment.grade ?? 0), 0)
+                : totalEFolios(state, c.id);
+              const evaluationMax = c.evaluationRegime === "regulation-2026"
+                ? regulationAssessments.reduce((sum, assessment) => sum + Math.max(0, Number(assessment.maxPoints) || 0), 0)
+                : totalEFoliosMax(state, c.id);
+              const evaluationLabel = c.evaluationRegime === "regulation-2026" ? "avaliação" : "e-fólios";
 
               const badgeVariant =
                 st.badge === "success"
@@ -59,7 +71,7 @@ export default function CoursesPage() {
                         {c.isExtracurricular && <Badge variant="outline">Extracurricular</Badge>}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        {c.code} • e-fólios: {ef.toFixed(1)} / {efMax.toFixed(1)}
+                        {c.code} • {evaluationLabel}: {evaluationGrade.toFixed(1)} / {evaluationMax.toFixed(1)}
                         {c.isExtracurricular
                           ? <span className="italic"> • não conta para média/ECTS oficiais</span>
                           : getCourseArea(planCourses, c.code) && <span className="italic"> • {getCourseArea(planCourses, c.code)}</span>}

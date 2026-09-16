@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { PucImportDraft } from "./pucImportDraft";
 import type { EvaluationModel } from "./types";
@@ -34,6 +35,10 @@ export type SharedPucCatalogEntry = {
 };
 
 const ALLOWED_MODELS = new Set<EvaluationModel>(["type1", "type2", "type3", "type4", "exam-only", "custom"]);
+
+function pucClient(): SupabaseClient {
+  return supabase as unknown as SupabaseClient;
+}
 
 export function buildSharedPucImportDraft(entry: SharedPucCatalogEntry): PucImportDraft {
   const model = ALLOWED_MODELS.has(entry.evaluation_model as EvaluationModel)
@@ -101,8 +106,7 @@ export async function fetchSharedPucCatalogEntries(courseCode: string): Promise<
   const { data: sessionData } = await supabase.auth.getSession();
   if (!sessionData.session?.user) return [];
 
-  const client = supabase as any;
-  const { data, error } = await client
+  const { data, error } = await pucClient()
     .from("puc_catalog_entries")
     .select("id,course_code,course_name,academic_year,edition,evaluation_model,payload,version,validated_at,updated_at")
     .eq("course_code", code)

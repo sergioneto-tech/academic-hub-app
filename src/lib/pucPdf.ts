@@ -84,8 +84,8 @@ export function normalizeExtractedPucText(value: string): string {
     )
     .replace(/Atividade\s+Sumativa\s+(\d+)/giu, "Atividade Sumativa $1")
     .replace(
-      /(^|\n)(\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)[ \t]*\n[ \t]*(\d{1,2}:\d{2})(?=\n|$)/g,
-      "$1$2 às $3",
+      /(^|\n)(\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)[ \t]*\n[ \t]*(\d{1,2}:\d{2})([ \t]+N\/A)?(?=\n|$)/g,
+      "$1$2 às $3$4",
     );
 }
 

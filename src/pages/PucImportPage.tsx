@@ -2,10 +2,12 @@ import { useMemo, useState, type ChangeEvent } from "react";
 import { AlertTriangle, ArrowLeft, CheckCircle2, FileSearch2, FileText, Loader2, LockKeyhole, ShieldAlert } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
+import PucInitialCatalogProposal from "@/components/PucInitialCatalogProposal";
 import PucReviewDraft from "@/components/PucReviewDraft";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
+import { buildPucImportDraft, type PucImportDraft } from "@/lib/pucImportDraft";
 import { extractPucPdfText, type PdfExtractionProgress } from "@/lib/pucPdf";
 import { parsePucText, type PucParseResult } from "@/lib/pucParser";
 
@@ -51,6 +53,7 @@ export default function PucImportPage() {
   const [rawText, setRawText] = useState("");
   const [fileName, setFileName] = useState("");
   const [pageCount, setPageCount] = useState<number | null>(null);
+  const [sourceHash, setSourceHash] = useState("");
   const [progress, setProgress] = useState<PdfExtractionProgress | null>(null);
   const [error, setError] = useState("");
   const [mismatch, setMismatch] = useState("");
@@ -60,6 +63,35 @@ export default function PucImportPage() {
   const backPath = targetCourse ? `/cadeiras/${encodeURIComponent(targetCourse.id)}` : "/cadeiras";
   const backLabel = targetCourse ? `Voltar a ${targetCourse.name}` : "Voltar às cadeiras";
 
+  const savedDraft = useMemo<PucImportDraft | null>(() => {
+    if (!saved || !result || !targetCourse) return null;
+    const parsedDraft = buildPucImportDraft(result, rawText);
+    const assessments = state.assessments.filter((item) => item.courseId === targetCourse.id);
+    const imported = assessments
+      .filter((item) => item.type !== "exam" && item.type !== "resit" && item.type !== "special")
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const exam = assessments.find((item) => item.type === "exam");
+
+    return {
+      model: targetCourse.evaluationModel ?? parsedDraft.model,
+      events: imported.map((item, index) => ({
+        key: `saved-${item.id || index}`,
+        name: item.name,
+        maxPoints: item.maxPoints,
+        startDate: item.startDate ?? "",
+        endDate: item.endDate ?? "",
+        gradeReleaseDate: item.gradeReleaseDate ?? "",
+      })),
+      finalAssessment: parsedDraft.finalAssessment
+        ? {
+            name: parsedDraft.finalAssessment.name,
+            maxPoints: exam?.maxPoints ?? parsedDraft.finalAssessment.maxPoints,
+          }
+        : null,
+      warnings: [],
+    };
+  }, [saved, result, targetCourse, rawText, state.assessments]);
+
   const analyseFile = async (file: File) => {
     setIsReading(true);
     setError("");
@@ -67,6 +99,7 @@ export default function PucImportPage() {
     setResult(null);
     setRawText("");
     setPageCount(null);
+    setSourceHash("");
     setProgress(null);
     setSaved(false);
     setFileName(file.name);
@@ -77,6 +110,7 @@ export default function PucImportPage() {
       const parsed = parsePucText(extracted.text);
       const match = matchesCourse(targetCourse, parsed);
       setPageCount(extracted.pageCount);
+      setSourceHash(extracted.sourceHash);
 
       if (match === "mismatch") {
         setMismatch(`Este PDF pertence a ${parsed.courseName || "outra unidade curricular"}${parsed.courseCode ? ` (${parsed.courseCode})` : ""}, e não a ${targetCourse.name} (${targetCourse.code}). Seleciona o PUC correto para continuar.`);
@@ -209,6 +243,18 @@ export default function PucImportPage() {
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
               Dados revistos e guardados na cadeira. O método manual continua disponível para alterações posteriores.
             </div>
+          )}
+
+          {saved && savedDraft && pageCount && sourceHash && (
+            <PucInitialCatalogProposal
+              courseCode={targetCourse.code}
+              courseName={targetCourse.name}
+              academicYear={result.academicYear}
+              edition={result.edition}
+              draft={savedDraft}
+              sourceHash={sourceHash}
+              sourcePageCount={pageCount}
+            />
           )}
         </>
       )}

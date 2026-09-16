@@ -58,10 +58,10 @@ function normalizeLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-async function sha256Hex(bytes: Uint8Array): Promise<string> {
+async function sha256Hex(buffer: ArrayBuffer): Promise<string> {
   const subtle = globalThis.crypto?.subtle;
   if (!subtle) throw new Error("O navegador não disponibiliza o mecanismo seguro necessário para identificar este PDF.");
-  const digest = await subtle.digest("SHA-256", bytes);
+  const digest = await subtle.digest("SHA-256", buffer);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -186,7 +186,7 @@ export async function extractPucPdfText(
   if (!hasPdfSignature(bytes)) {
     throw new Error("O conteúdo selecionado não tem uma assinatura PDF válida.");
   }
-  const sourceHash = await sha256Hex(bytes);
+  const sourceHash = await sha256Hex(buffer);
 
   const pdfjs = await loadPdfJs();
   const loadingTask = pdfjs.getDocument({

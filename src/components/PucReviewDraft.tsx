@@ -91,7 +91,7 @@ export default function PucReviewDraft({
       finalAssessmentMaxPoints: draftFinalPoints,
     }, { allowReplaceExisting });
 
-    if (!applied.ok) {
+    if (applied.ok === false) {
       if (applied.reason === "replace-confirmation") setReplaceConfirmation(true);
       setSaveErrors(applied.errors);
       return;

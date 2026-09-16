@@ -350,13 +350,15 @@ function findLabelIndex(text: string, label: "A" | "B"): number {
 
 function inferMonthNearEfolio(text: string, label: "A" | "B"): number | null {
   const normalized = normalizeSearch(text);
+  const planMarker = normalized.indexOf("7. plano de trabalho");
+  const workPlan = planMarker >= 0 ? normalized.slice(planMarker) : normalized;
   const labelPattern = `e-?folio\\s+${label.toLocaleLowerCase("pt-PT")}`;
-  const after = normalized.match(
+  const after = workPlan.match(
     new RegExp(`${labelPattern}[\\s\\S]{0,180}?(?:dia\\s+)?\\d{1,2}\\s+de\\s+(${MONTH_PATTERN})`, "i"),
   );
   if (after?.[1]) return MONTHS[after[1]] ?? null;
 
-  const before = normalized.match(
+  const before = workPlan.match(
     new RegExp(`\\d{1,2}\\s+de\\s+(${MONTH_PATTERN})[\\s\\S]{0,180}?${labelPattern}`, "i"),
   );
   return before?.[1] ? MONTHS[before[1]] ?? null : null;

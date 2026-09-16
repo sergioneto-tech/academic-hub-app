@@ -153,6 +153,20 @@ function findFinalAssessment(
   return null;
 }
 
+function hasIgnoredOfficialExamDate(result: PucParseResult): boolean {
+  return result.events.some((event) => (
+    event.kind === "exam"
+    || event.kind === "resit"
+    || event.kind === "second-exam-date"
+  ) && Boolean(
+    event.startDate
+    || event.endDate
+    || event.startTime
+    || event.endTime
+    || event.gradeReleaseDate,
+  ));
+}
+
 export function buildPucImportDraft(result: PucParseResult, rawText: string): PucImportDraft {
   const events = result.events
     .filter((event) => event.kind === "assessment")
@@ -167,6 +181,10 @@ export function buildPucImportDraft(result: PucParseResult, rawText: string): Pu
 
   const finalAssessment = findFinalAssessment(result, rawText, events.length);
   const warnings: string[] = [];
+
+  if (hasIgnoredOfficialExamDate(result)) {
+    warnings.push("Foram detetadas datas ou horas de exame/recurso no PUC, mas foram ignoradas. O Academic Hub continua a usar exclusivamente o calendário oficial para essas provas; do PUC entra apenas a cotação confirmada.");
+  }
 
   if (events.some((event) => event.maxPoints === null)) {
     warnings.push("Há atividades cuja cotação não foi identificada com segurança; confirma o valor máximo antes de guardar.");

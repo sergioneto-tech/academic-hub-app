@@ -15,6 +15,7 @@ import PucReviewDraft from "@/components/PucReviewDraft";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
+import { buildPucImportDraft } from "@/lib/pucImportDraft";
 import { extractPucPdfText, type PdfExtractionProgress } from "@/lib/pucPdf";
 import {
   parsePucText,
@@ -64,6 +65,10 @@ function formatIsoDate(value?: string, time?: string) {
   return time ? `${date}, ${time}` : date;
 }
 
+function formatPoints(value: number) {
+  return Number.isInteger(value) ? String(value) : String(value).replace(".", ",");
+}
+
 function normalizeName(value: string | undefined): string {
   return (value ?? "")
     .normalize("NFD")
@@ -107,13 +112,18 @@ function resolveCourseMatch(
   return "uncertain";
 }
 
-function EventCard({ event }: { event: PucDetectedEvent }) {
+function EventCard({ event, maxPoints }: { event: PucDetectedEvent; maxPoints?: number | null }) {
   return (
     <div className="rounded-2xl border border-border/80 bg-card/55 p-4 shadow-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-sm font-semibold">{event.name}</div>
-          <div className="mt-1 text-xs text-muted-foreground">{KIND_LABELS[event.kind] ?? event.kind}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span>{KIND_LABELS[event.kind] ?? event.kind}</span>
+            {maxPoints !== null && maxPoints !== undefined && (
+              <span className="font-semibold text-foreground">Cotação: {formatPoints(maxPoints)} valores</span>
+            )}
+          </div>
         </div>
         <span className={`w-fit rounded-full border px-2.5 py-1 text-[11px] font-semibold ${confidenceClass(event.confidence)}`}>
           {confidenceLabel(event.confidence)}
@@ -169,6 +179,14 @@ export default function PucImportLab() {
     ? MODEL_LABELS[result.evaluationModel] ?? result.evaluationModel
     : "Não identificada";
   const courseMatch = useMemo(() => resolveCourseMatch(targetCourse, result), [targetCourse, result]);
+  const importDraft = useMemo(
+    () => (result ? buildPucImportDraft(result, rawText) : null),
+    [result, rawText],
+  );
+  const eventPoints = useMemo(
+    () => new Map((importDraft?.events ?? []).map((event) => [event.key, event.maxPoints] as const)),
+    [importDraft],
+  );
 
   const fileSizeLabel = useMemo(() => {
     if (fileSize === null) return null;
@@ -369,7 +387,7 @@ export default function PucImportLab() {
           <section>
             <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Datas encontradas</h2>
+                <h2 className="text-lg font-semibold">Datas e cotações encontradas</h2>
                 <p className="mt-1 text-xs text-muted-foreground">{result.events.length} elemento(s) identificado(s) pelo parser determinístico.</p>
               </div>
               <div className="text-xs font-medium text-muted-foreground">Nenhum dado foi guardado</div>
@@ -377,7 +395,13 @@ export default function PucImportLab() {
 
             {result.events.length > 0 ? (
               <div className="space-y-3">
-                {result.events.map((event) => <EventCard key={`${event.key}-${event.startDate ?? "sem-data"}`} event={event} />)}
+                {result.events.map((event) => (
+                  <EventCard
+                    key={`${event.key}-${event.startDate ?? "sem-data"}`}
+                    event={event}
+                    maxPoints={eventPoints.get(event.key)}
+                  />
+                ))}
               </div>
             ) : (
               <Card className="premium-card"><CardContent className="p-4 text-sm text-muted-foreground">Não foram encontradas datas suficientemente estruturadas para apresentar.</CardContent></Card>

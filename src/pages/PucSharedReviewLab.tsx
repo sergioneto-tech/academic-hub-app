@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CheckCircle2, Database, Loader2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Database, Loader2, MessageSquareWarning, ShieldAlert } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import PucReviewDraft from "@/components/PucReviewDraft";
+import PucReviewDraft, { type PucDraftChange } from "@/components/PucReviewDraft";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
+import type { PucImportDraft } from "@/lib/pucImportDraft";
 import {
   buildSharedPucImportDraft,
   fetchSharedPucCatalogEntries,
@@ -38,6 +39,10 @@ export default function PucSharedReviewLab() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [hasSaved, setHasSaved] = useState(false);
+  const [correctionPreview, setCorrectionPreview] = useState<{
+    draft: PucImportDraft;
+    changes: PucDraftChange[];
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +57,7 @@ export default function PucSharedReviewLab() {
     setError("");
     setEntry(null);
     setHasSaved(false);
+    setCorrectionPreview(null);
 
     fetchSharedPucCatalogEntries(targetCourse.code)
       .then((entries) => {
@@ -165,7 +171,35 @@ export default function PucSharedReviewLab() {
             courseName={targetCourse.name}
             courseCode={targetCourse.code}
             onSaved={() => setHasSaved(true)}
+            onRequestCorrection={(nextDraft, changes) => setCorrectionPreview({ draft: nextDraft, changes })}
           />
+
+          {correctionPreview && (
+            <Card className="premium-card border-amber-500/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base"><MessageSquareWarning className="h-5 w-5 text-amber-500" />Proposta de correção preparada</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Esta proposta é separada da tua gravação pessoal. No funcionamento público será enviada com a versão {entry.version} como base e ficará pendente de validação; não altera o catálogo nem os dados dos outros alunos automaticamente.
+                </p>
+                <div className="space-y-2">
+                  {correctionPreview.changes.map((change) => (
+                    <div key={`${change.field}-${change.before}-${change.after}`} className="rounded-xl border bg-background/55 p-3 text-xs">
+                      <div className="font-semibold">{change.field}</div>
+                      <div className="mt-1 text-muted-foreground">{change.before} → <span className="text-foreground">{change.after}</span></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100">
+                  <strong>Teste atual:</strong> a branch de desenvolvimento não tem utilizadores autenticados copiados da produção. Por segurança, nesta fase validamos a deteção e a apresentação da proposta; o envio autenticado para a tabela de submissões será ligado no próximo passo, sem criar utilizadores artificiais na branch.
+                </div>
+                <div className="flex justify-end">
+                  <Button type="button" variant="outline" onClick={() => setCorrectionPreview(null)}>Fechar proposta</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {hasSaved && (
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">

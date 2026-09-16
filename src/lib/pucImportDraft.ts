@@ -10,9 +10,15 @@ export type PucImportDraftEvent = {
   gradeReleaseDate: string;
 };
 
+export type PucImportDraftFinalAssessment = {
+  name: string;
+  maxPoints: number | null;
+};
+
 export type PucImportDraft = {
   model: EvaluationModel;
   events: PucImportDraftEvent[];
+  finalAssessment: PucImportDraftFinalAssessment | null;
   warnings: string[];
 };
 
@@ -88,6 +94,65 @@ function pointsForEvent(text: string, eventKey: string, eventName: string): numb
   return null;
 }
 
+function directFinalAssessment(text: string): PucImportDraftFinalAssessment | null {
+  const patterns: Array<{ name: string; regex: RegExp }> = [
+    {
+      name: "E-fólio Global",
+      regex: /e-?f[oó]lio\s+global[^\n]{0,100}?(\d+(?:[.,]\d+)?)\s*valores?\b/i,
+    },
+    {
+      name: "G-fólio",
+      regex: /g-?f[oó]lio[^\n]{0,100}?(\d+(?:[.,]\d+)?)\s*valores?\b/i,
+    },
+    {
+      name: "Prova final / exame",
+      regex: /(?:prova\s+final|exame\s+final)[^\n]{0,100}?(\d+(?:[.,]\d+)?)\s*valores?\b/i,
+    },
+  ];
+
+  for (const candidate of patterns) {
+    const match = text.match(candidate.regex);
+    if (match) return { name: candidate.name, maxPoints: parsePoints(match[1]) };
+  }
+
+  return null;
+}
+
+function findFinalAssessment(
+  result: PucParseResult,
+  rawText: string,
+  assessmentCount: number,
+): PucImportDraftFinalAssessment | null {
+  const direct = directFinalAssessment(rawText);
+  if (direct) return direct;
+
+  const examEvent = result.events.find((event) => event.kind === "exam");
+  if (examEvent) {
+    return {
+      name: examEvent.name,
+      maxPoints: pointsForEvent(rawText, examEvent.key, examEvent.name),
+    };
+  }
+
+  const rowPoints = getSumativePoints(rawText);
+  if (rowPoints.length > assessmentCount) {
+    return {
+      name: "Prova / exame final",
+      maxPoints: rowPoints[assessmentCount] ?? null,
+    };
+  }
+
+  if (result.evaluationModel === "exam-only") {
+    const match = rawText.match(/\bexame\b[^\n]{0,100}?(\d+(?:[.,]\d+)?)\s*valores?\b/i);
+    return {
+      name: "Exame",
+      maxPoints: parsePoints(match?.[1]),
+    };
+  }
+
+  return null;
+}
+
 export function buildPucImportDraft(result: PucParseResult, rawText: string): PucImportDraft {
   const events = result.events
     .filter((event) => event.kind === "assessment")
@@ -100,14 +165,32 @@ export function buildPucImportDraft(result: PucParseResult, rawText: string): Pu
       gradeReleaseDate: event.gradeReleaseDate ?? "",
     }));
 
+  const finalAssessment = findFinalAssessment(result, rawText, events.length);
   const warnings: string[] = [];
+
   if (events.some((event) => event.maxPoints === null)) {
     warnings.push("Há atividades cuja cotação não foi identificada com segurança; confirma o valor máximo antes de guardar.");
+  }
+
+  if (finalAssessment && finalAssessment.maxPoints === null) {
+    warnings.push("A prova final foi identificada, mas a respetiva cotação não foi encontrada com segurança; confirma o valor máximo antes de guardar.");
+  }
+
+  const allPoints = [
+    ...events.map((event) => event.maxPoints),
+    finalAssessment?.maxPoints ?? null,
+  ];
+  if (finalAssessment && allPoints.every((value): value is number => value !== null)) {
+    const total = allPoints.reduce((sum, value) => sum + value, 0);
+    if (Math.abs(total - 20) > 0.001) {
+      warnings.push(`As cotações detetadas totalizam ${total} valores em vez de 20; confirma a estrutura do PUC antes de guardar.`);
+    }
   }
 
   return {
     model: result.evaluationModel ?? "custom",
     events,
+    finalAssessment,
     warnings,
   };
 }

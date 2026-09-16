@@ -143,16 +143,19 @@ export default function PucSharedReviewLab() {
 
   return (
     <div className="space-y-5 pb-6">
-      <div>
-        <Button asChild variant="ghost" size="sm">
-          <Link to={backPath}><ArrowLeft className="mr-2 h-4 w-4" />{backLabel}</Link>
+      <div className="min-w-0">
+        <Button asChild variant="ghost" size="sm" className="max-w-full justify-start">
+          <Link to={backPath} className="min-w-0 max-w-full">
+            <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">{backLabel}</span>
+          </Link>
         </Button>
       </div>
 
       <section className="premium-surface overflow-hidden">
         <div className="p-5 sm:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
+            <div className="min-w-0">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">PUC · catálogo partilhado</div>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Rever dados disponíveis para esta UC</h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Estes dados já foram validados para esta UC. Antes de serem gravados na tua cadeira, tens de os rever e confirmar explicitamente.</p>
@@ -175,7 +178,7 @@ export default function PucSharedReviewLab() {
             <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CheckCircle2 className="h-5 w-5 text-emerald-500" />Estrutura encontrada</CardTitle></CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Unidade curricular</div><div className="mt-1 text-sm font-semibold">{entry.course_name}</div></div>
+                <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Unidade curricular</div><div className="mt-1 break-words text-sm font-semibold">{entry.course_name}</div></div>
                 <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Código</div><div className="mt-1 text-sm font-semibold">{entry.course_code}</div></div>
                 <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ano letivo / edição</div><div className="mt-1 text-sm font-semibold">{entry.academic_year} · {entry.edition}</div></div>
                 <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tipologia</div><div className="mt-1 text-sm font-semibold">{modelLabel(entry.evaluation_model)}</div></div>
@@ -205,7 +208,7 @@ export default function PucSharedReviewLab() {
               <CardContent className="space-y-3">
                 <p className="text-xs leading-5 text-muted-foreground">Esta proposta é separada da tua gravação pessoal. Será enviada com a versão {entry.version} como base e ficará pendente de validação; não altera o catálogo nem os dados dos outros alunos automaticamente.</p>
                 <div className="space-y-2">
-                  {correctionPreview.changes.map((change) => <div key={`${change.field}-${change.before}-${change.after}`} className="rounded-xl border bg-background/55 p-3 text-xs"><div className="font-semibold">{change.field}</div><div className="mt-1 text-muted-foreground">{change.before} → <span className="text-foreground">{change.after}</span></div></div>)}
+                  {correctionPreview.changes.map((change) => <div key={`${change.field}-${change.before}-${change.after}`} className="rounded-xl border bg-background/55 p-3 text-xs"><div className="font-semibold">{change.field}</div><div className="mt-1 break-words text-muted-foreground">{change.before} → <span className="text-foreground">{change.after}</span></div></div>)}
                 </div>
                 <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
                   <div className="font-semibold">Declaração associada à proposta</div>

@@ -3,10 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/lib/AppStore";
+import { getAssessmentCalendarEvents } from "@/lib/assessmentCalendar";
 import { buildIcsForActiveCourses, downloadIcs, suggestIcsFilename } from "@/lib/ics";
 import { formatPtDate } from "@/lib/date";
 
-type EventItem = { when: string; title: string; subtitle: string; tag: string };
+type EventItem = { id: string; when: string; title: string; subtitle: string; tag: string };
 
 function EventRow({ event, muted = false }: { event: EventItem; muted?: boolean }) {
   return (
@@ -30,6 +31,14 @@ function EventRow({ event, muted = false }: { event: EventItem; muted?: boolean 
   );
 }
 
+function localTodayYmd(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function CalendarPage() {
   const { state } = useAppStore();
 
@@ -46,39 +55,37 @@ export default function CalendarPage() {
 
   const events: EventItem[] = [];
 
-  for (const a of state.assessments) {
-    const course = state.courses.find(c => c.id === a.courseId);
+  for (const assessment of state.assessments) {
+    const course = state.courses.find((item) => item.id === assessment.courseId);
     const courseLine = course ? `${course.code} - ${course.name}` : "Cadeira";
 
-    if (a.type === "efolio") {
-      if (a.startDate) events.push({ when: a.startDate, title: `${a.name} - Início`, subtitle: courseLine, tag: "Início" });
-      if (a.endDate) events.push({ when: a.endDate, title: `${a.name} - Fim`, subtitle: courseLine, tag: "Entrega" });
-      if (a.gradeReleaseDate) events.push({ when: a.gradeReleaseDate, title: `${a.name} - Nota`, subtitle: courseLine, tag: "Nota" });
-    } else if (a.date) {
+    for (const event of getAssessmentCalendarEvents(assessment)) {
       events.push({
-        when: a.date,
-        title: a.type === "exam" ? `${a.name} (Exame)` : "Recurso",
+        id: event.id,
+        when: event.when,
+        title: event.title,
         subtitle: courseLine,
-        tag: a.type === "exam" ? "Exame" : "Recurso",
+        tag: event.tag,
       });
     }
   }
 
-  // Sessões por cadeira (ex.: abertura, antes de e‑fólios, antes de exame)
-  for (const c of state.courses) {
-    if (!c.isActive) continue;
-    const courseLine = `${c.code} - ${c.name}`;
-    const sessions = (c as any).sessions;
+  // Sessões por cadeira (ex.: abertura, antes de atividades ou antes de exame)
+  for (const course of state.courses) {
+    if (!course.isActive) continue;
+    const courseLine = `${course.code} - ${course.name}`;
+    const sessions = course.sessions;
     if (!Array.isArray(sessions)) continue;
 
-    for (const s of sessions) {
-      const when = String((s as any).dateTime ?? "");
+    for (const session of sessions) {
+      const when = String(session.dateTime ?? "");
       if (!when) continue;
 
       const time = when.includes("T") ? when.slice(11, 16) : "";
-      const title = String((s as any).title ?? "Sessão").trim() || "Sessão";
+      const title = String(session.title ?? "Sessão").trim() || "Sessão";
 
       events.push({
+        id: `${course.id}-session-${session.id || when}`,
         when,
         title: `Sessão — ${title}`,
         subtitle: courseLine,
@@ -87,16 +94,16 @@ export default function CalendarPage() {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10);
-  const future = events.filter(e => e.when >= today).sort((a, b) => a.when.localeCompare(b.when));
-  const past = events.filter(e => e.when < today).sort((a, b) => b.when.localeCompare(a.when));
+  const today = localTodayYmd();
+  const future = events.filter((event) => event.when.slice(0, 10) >= today).sort((a, b) => a.when.localeCompare(b.when));
+  const past = events.filter((event) => event.when.slice(0, 10) < today).sort((a, b) => b.when.localeCompare(a.when));
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-2xl font-semibold">Calendário</div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Select value={exportMode} onValueChange={(v) => setExportMode(v as any)}>
+          <Select value={exportMode} onValueChange={(value) => setExportMode(value as typeof exportMode)}>
             <SelectTrigger className="w-full sm:w-[260px]">
               <SelectValue placeholder="Exportar…" />
             </SelectTrigger>
@@ -124,7 +131,7 @@ export default function CalendarPage() {
               Sem eventos futuros agendados.
             </div>
           ) : (
-            future.map((event, idx) => <EventRow key={idx} event={event} />)
+            future.map((event) => <EventRow key={event.id} event={event} />)
           )}
         </CardContent>
       </Card>
@@ -134,8 +141,8 @@ export default function CalendarPage() {
           <CardTitle>Eventos Passados</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {past.slice(0, 20).map((event, idx) => (
-            <EventRow key={idx} event={event} muted />
+          {past.slice(0, 20).map((event) => (
+            <EventRow key={event.id} event={event} muted />
           ))}
         </CardContent>
       </Card>

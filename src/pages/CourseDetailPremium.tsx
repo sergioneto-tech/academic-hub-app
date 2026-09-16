@@ -1,11 +1,10 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
-import { FileSearch2 } from "lucide-react";
+import { useParams } from "react-router-dom";
 
 import EvaluationFrameworkNotice from "@/components/EvaluationFrameworkNotice";
 import EvaluationModeSelector from "@/components/EvaluationModeSelector";
 import LegacyEvaluationSavePanel from "@/components/LegacyEvaluationSavePanel";
-import { Button } from "@/components/ui/button";
+import PucImportEntry from "@/components/PucImportEntry";
 import { useAppStore } from "@/lib/AppStore";
 import CourseDetail from "@/pages/CourseDetail";
 import FlexibleCourseDetail from "@/pages/FlexibleCourseDetail";
@@ -26,16 +25,6 @@ export default function CourseDetailPremium() {
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">Teste privado do importador PUC</div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">Abre o leitor experimental. Nesta fase não grava nem altera dados da cadeira.</p>
-        </div>
-        <Button asChild size="sm" variant="outline" className="shrink-0">
-          <Link to="/_teste/puc"><FileSearch2 className="mr-2 h-4 w-4" />Abrir leitor PUC</Link>
-        </Button>
-      </div>
-
       {course.isExtracurricular && (
         <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
           <strong>Cadeira extracurricular.</strong>{" "}
@@ -45,7 +34,12 @@ export default function CourseDetailPremium() {
       <EvaluationFrameworkNotice regime={regime} />
       <EvaluationModeSelector courseId={id} />
       {regime === "regulation-2026"
-        ? <FlexibleCourseDetail courseId={id} />
+        ? (
+          <>
+            <PucImportEntry courseId={id} />
+            <FlexibleCourseDetail courseId={id} />
+          </>
+        )
         : historicalMode === "efolios-exam"
           ? (
             <>

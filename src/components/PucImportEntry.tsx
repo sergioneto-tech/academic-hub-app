@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Database, FileCheck2, FileUp, ShieldCheck, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Database, FileCheck2, FileUp, ShieldCheck, X } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,12 @@ import { useAppStore } from "@/lib/AppStore";
 import {
   fetchSharedPucCatalogEntries,
   type SharedPucCatalogEntry,
-} from "@/lib/pucSharedCatalogTest";
+} from "@/lib/pucCatalog";
+import {
+  buildPucUpdateDifferences,
+  fetchMyPucUpdateAlerts,
+  type PucUpdateAlert,
+} from "@/lib/pucUpdateAlerts";
 
 function modelLabel(value: string) {
   const labels: Record<string, string> = {
@@ -33,12 +38,16 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
   const [catalogStatus, setCatalogStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [ignored, setIgnored] = useState(false);
   const [showSharedDetails, setShowSharedDetails] = useState(false);
+  const [updateAlert, setUpdateAlert] = useState<PucUpdateAlert | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     if (!course?.code) return;
 
     setCatalogStatus("loading");
+    setIgnored(false);
+    setShowSharedDetails(false);
+
     fetchSharedPucCatalogEntries(course.code)
       .then((entries) => {
         if (cancelled) return;
@@ -51,15 +60,57 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
         setCatalogStatus("error");
       });
 
+    fetchMyPucUpdateAlerts()
+      .then((alerts) => {
+        if (cancelled) return;
+        setUpdateAlert(alerts.find((alert) => alert.course_code === course.code) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setUpdateAlert(null);
+      });
+
     return () => { cancelled = true; };
   }, [course?.code]);
 
   const sharedEntry = catalogEntries[0] ?? null;
   const events = sharedEntry?.payload?.events ?? [];
   const finalAssessment = sharedEntry?.payload?.finalAssessment ?? null;
+  const updateDifferences = updateAlert ? buildPucUpdateDifferences(updateAlert) : [];
+  const showPdfAlternative = ignored || !sharedEntry;
 
   return (
     <section className="mx-auto mb-4 max-w-5xl space-y-3 px-4 md:px-6">
+      {updateAlert && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 shadow-sm md:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                Foram atualizados dados desta UC
+              </div>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+                Utilizaste a versão <strong>{updateAlert.accepted_version}</strong> e está disponível a versão <strong>{updateAlert.active_version}</strong>. Nada será alterado automaticamente na tua cadeira.
+              </p>
+              {updateDifferences.length > 0 && (
+                <div className="mt-2 text-xs text-muted-foreground">
+                  {updateDifferences.slice(0, 2).map((difference) => (
+                    <div key={`${difference.label}-${difference.before}-${difference.after}`}>
+                      <strong>{difference.label}:</strong> {difference.before} → {difference.after}
+                    </div>
+                  ))}
+                  {updateDifferences.length > 2 && <div>+ {updateDifferences.length - 2} alteração(ões)</div>}
+                </div>
+              )}
+            </div>
+            <Button asChild className="shrink-0">
+              <Link to={`/puc/atualizacoes?courseId=${encodeURIComponent(courseId)}`}>
+                Rever atualização
+              </Link>
+            </Button>
+          </div>
+        </div>
+      )}
+
       {sharedEntry && !ignored && (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 shadow-sm md:p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -80,7 +131,7 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
 
             <div className="flex shrink-0 flex-wrap gap-2" data-guest-allowed="true">
               <Button type="button" variant="outline" onClick={() => setIgnored(true)}>
-                <X className="mr-2 h-4 w-4" />Ignorar
+                <X className="mr-2 h-4 w-4" />Usar PDF
               </Button>
               <Button type="button" onClick={() => setShowSharedDetails((current) => !current)}>
                 <CheckCircle2 className="mr-2 h-4 w-4" />{showSharedDetails ? "Ocultar dados" : "Ver dados"}
@@ -122,7 +173,7 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
                 </div>
                 <div data-guest-allowed="true">
                   <Button asChild className="shrink-0">
-                    <Link to={`/_teste/puc-partilhado?courseId=${encodeURIComponent(courseId)}&catalogId=${encodeURIComponent(sharedEntry.id)}`}>
+                    <Link to={`/puc/rever?courseId=${encodeURIComponent(courseId)}&catalogId=${encodeURIComponent(sharedEntry.id)}`}>
                       <FileCheck2 className="mr-2 h-4 w-4" />Rever e usar estes dados
                     </Link>
                   </Button>
@@ -135,41 +186,38 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
 
       {catalogStatus === "error" && (
         <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-          O catálogo partilhado de teste não respondeu. O preenchimento por PDF continua disponível normalmente.
+          Não foi possível consultar o catálogo partilhado. O preenchimento por PDF e o método manual continuam disponíveis normalmente.
         </div>
       )}
 
-      <div className="rounded-2xl border border-[hsl(var(--gold)/0.35)] bg-card p-4 shadow-sm md:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--gold-soft))] text-[hsl(var(--gold))]">
-                <FileUp className="h-4 w-4" />
-              </div>
-              <div>
-                <div className="font-semibold">Preencher a partir do PUC</div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                  Fase de teste
+      {showPdfAlternative && (
+        <div className="rounded-2xl border border-[hsl(var(--gold)/0.35)] bg-card p-4 shadow-sm md:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[hsl(var(--gold-soft))] text-[hsl(var(--gold))]">
+                  <FileUp className="h-4 w-4" />
                 </div>
+                <div className="font-semibold">Preencher a partir do PUC</div>
+              </div>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                Se não existir uma estrutura partilhada adequada, importa o PDF do PUC para pré-preencher a tipologia, cotações e atividades. Antes de guardar, poderás rever e corrigir tudo. O preenchimento manual continua disponível.
+              </p>
+              <div className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                <span>As datas de exame e recurso mantêm-se as do calendário oficial já usado pelo Academic Hub e não serão substituídas pelo PUC.</span>
               </div>
             </div>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Se ainda não existir uma estrutura partilhada adequada, importa o PDF do PUC para pré-preencher a tipologia, cotações e atividades. Antes de guardar, poderás rever e corrigir tudo. O preenchimento manual continua disponível.
-            </p>
-            <div className="mt-3 flex items-start gap-2 text-xs leading-5 text-muted-foreground">
-              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-              <span>As datas de exame e recurso mantêm-se as do calendário oficial já usado pelo Academic Hub e não serão substituídas pelo PUC.</span>
-            </div>
-          </div>
 
-          <Button asChild className="min-h-11 shrink-0 sm:min-w-40">
-            <Link to={`/_teste/puc?courseId=${encodeURIComponent(courseId)}`}>
-              <FileUp className="mr-2 h-4 w-4" />
-              Importar PUC
-            </Link>
-          </Button>
+            <Button asChild className="min-h-11 shrink-0 sm:min-w-40">
+              <Link to={`/puc/importar?courseId=${encodeURIComponent(courseId)}`}>
+                <FileUp className="mr-2 h-4 w-4" />
+                Importar PUC
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

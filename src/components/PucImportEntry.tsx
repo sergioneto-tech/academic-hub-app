@@ -122,7 +122,7 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
                 </div>
                 <div data-guest-allowed="true">
                   <Button asChild className="shrink-0">
-                    <Link to={`/_teste/puc?courseId=${encodeURIComponent(courseId)}&source=shared&catalogId=${encodeURIComponent(sharedEntry.id)}`}>
+                    <Link to={`/_teste/puc-partilhado?courseId=${encodeURIComponent(courseId)}&catalogId=${encodeURIComponent(sharedEntry.id)}`}>
                       <FileCheck2 className="mr-2 h-4 w-4" />Rever e usar estes dados
                     </Link>
                   </Button>

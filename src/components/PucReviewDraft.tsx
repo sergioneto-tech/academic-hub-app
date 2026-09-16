@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileCheck2, RotateCcw, Save } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileCheck2, RotateCcw, Save, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PtDateInput } from "@/components/ui/pt-date-input";
+import { useAppStore } from "@/lib/AppStore";
+import { applyPucImportToState } from "@/lib/pucImportApply";
 import { buildPucImportDraft, type PucImportDraftEvent } from "@/lib/pucImportDraft";
 import type { PucParseResult } from "@/lib/pucParser";
 import type { EvaluationModel } from "@/lib/types";
@@ -28,24 +30,35 @@ function toNullableNumber(rawValue: string): number | null {
 export default function PucReviewDraft({
   result,
   rawText,
+  courseId,
   courseName,
   courseCode,
+  onSaved,
 }: {
   result: PucParseResult;
   rawText: string;
+  courseId: string;
   courseName: string;
   courseCode: string;
+  onSaved?: () => void;
 }) {
+  const { state, replaceState } = useAppStore();
   const importDraft = useMemo(() => buildPucImportDraft(result, rawText), [result, rawText]);
   const [isOpen, setIsOpen] = useState(false);
   const [draftModel, setDraftModel] = useState<EvaluationModel>(importDraft.model);
   const [draftEvents, setDraftEvents] = useState<PucImportDraftEvent[]>(importDraft.events);
   const [draftFinalPoints, setDraftFinalPoints] = useState<number | null>(importDraft.finalAssessment?.maxPoints ?? null);
+  const [saveErrors, setSaveErrors] = useState<string[]>([]);
+  const [replaceConfirmation, setReplaceConfirmation] = useState(false);
+  const [savedMessage, setSavedMessage] = useState("");
 
   const resetDraft = () => {
     setDraftModel(importDraft.model);
     setDraftEvents(importDraft.events.map((event) => ({ ...event })));
     setDraftFinalPoints(importDraft.finalAssessment?.maxPoints ?? null);
+    setSaveErrors([]);
+    setReplaceConfirmation(false);
+    setSavedMessage("");
   };
 
   const openReview = () => {
@@ -54,7 +67,43 @@ export default function PucReviewDraft({
   };
 
   const updateEvent = (key: string, patch: Partial<PucImportDraftEvent>) => {
+    setSavedMessage("");
+    setSaveErrors([]);
+    setReplaceConfirmation(false);
     setDraftEvents((current) => current.map((event) => event.key === key ? { ...event, ...patch } : event));
+  };
+
+  const saveDraft = (allowReplaceExisting = false) => {
+    setSaveErrors([]);
+    setReplaceConfirmation(false);
+    setSavedMessage("");
+
+    const applied = applyPucImportToState(state, courseId, {
+      model: draftModel,
+      events: draftEvents.map((event) => ({
+        name: event.name,
+        maxPoints: event.maxPoints,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        gradeReleaseDate: event.gradeReleaseDate,
+      })),
+      finalAssessmentName: importDraft.finalAssessment?.name,
+      finalAssessmentMaxPoints: draftFinalPoints,
+    }, { allowReplaceExisting });
+
+    if (!applied.ok) {
+      if (applied.reason === "replace-confirmation") setReplaceConfirmation(true);
+      setSaveErrors(applied.errors);
+      return;
+    }
+
+    replaceState(applied.nextState);
+    setSavedMessage(
+      applied.summary.finalAssessmentUpdated
+        ? `Dados guardados na cadeira: ${applied.summary.importedEvents} elemento(s) importado(s) e cotação da prova final atualizada. As datas oficiais de exame e recurso não foram alteradas.`
+        : `Dados guardados na cadeira: ${applied.summary.importedEvents} elemento(s) importado(s).`,
+    );
+    onSaved?.();
   };
 
   if (!isOpen) {
@@ -84,7 +133,7 @@ export default function PucReviewDraft({
         <div>
           <div className="text-base font-semibold">Pré-visualização da importação</div>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Confirma ou corrige os dados abaixo. Nesta fase de teste, as alterações ficam apenas nesta pré-visualização e ainda não são gravadas na cadeira.
+            Confirma ou corrige os dados abaixo. O botão de gravação permanece sempre dentro desta revisão e só aplica os valores que estiverem visíveis aqui.
           </p>
         </div>
         <div className="rounded-full border bg-muted/35 px-3 py-1 text-[11px] font-medium text-muted-foreground">
@@ -97,7 +146,12 @@ export default function PucReviewDraft({
         <select
           id="puc-review-model"
           value={draftModel}
-          onChange={(event) => setDraftModel(event.target.value as EvaluationModel)}
+          onChange={(event) => {
+            setDraftModel(event.target.value as EvaluationModel);
+            setSavedMessage("");
+            setSaveErrors([]);
+            setReplaceConfirmation(false);
+          }}
           className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm sm:max-w-sm"
         >
           {MODEL_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -132,6 +186,7 @@ export default function PucReviewDraft({
                 <Input
                   type="number"
                   min="0"
+                  max="20"
                   step="0.5"
                   inputMode="decimal"
                   value={event.maxPoints ?? ""}
@@ -172,11 +227,17 @@ export default function PucReviewDraft({
                 id="puc-final-points"
                 type="number"
                 min="0"
+                max="20"
                 step="0.5"
                 inputMode="decimal"
                 value={draftFinalPoints ?? ""}
                 placeholder="Confirmar"
-                onChange={(change) => setDraftFinalPoints(toNullableNumber(change.target.value))}
+                onChange={(change) => {
+                  setDraftFinalPoints(toNullableNumber(change.target.value));
+                  setSavedMessage("");
+                  setSaveErrors([]);
+                  setReplaceConfirmation(false);
+                }}
               />
             </div>
           </div>
@@ -184,8 +245,29 @@ export default function PucReviewDraft({
       )}
 
       <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
-        As datas e horas de exame e recurso não são importadas do PUC. Permanecem sempre associadas ao calendário oficial que o Academic Hub já utiliza; desta prova apenas será guardada a cotação confirmada pelo aluno.
+        <div className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /><span>As datas e horas de exame e recurso não são importadas do PUC. Permanecem sempre associadas ao calendário oficial que o Academic Hub já utiliza; desta prova apenas será guardada a cotação confirmada pelo aluno.</span></div>
       </div>
+
+      {saveErrors.length > 0 && (
+        <div className={`mt-4 rounded-xl border p-3 text-xs leading-5 ${replaceConfirmation ? "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200" : "border-destructive/30 bg-destructive/10 text-destructive"}`} role="alert">
+          <div className="font-semibold">{replaceConfirmation ? "Confirmação adicional necessária" : "Não foi possível guardar"}</div>
+          <div className="mt-1 space-y-1">
+            {saveErrors.map((error) => <div key={error}>• {error}</div>)}
+          </div>
+          {replaceConfirmation && (
+            <Button type="button" variant="outline" className="mt-3" onClick={() => saveDraft(true)}>
+              Confirmar substituição e guardar
+            </Button>
+          )}
+        </div>
+      )}
+
+      {savedMessage && (
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200" role="status" aria-live="polite">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{savedMessage}</span>
+        </div>
+      )}
 
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
@@ -194,8 +276,9 @@ export default function PucReviewDraft({
           </Button>
           <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Fechar revisão</Button>
         </div>
-        <Button type="button" disabled title="O botão de gravação ficará sempre aqui, dentro da revisão, e só será ativado depois de validares esta fase.">
-          <Save className="mr-2 h-4 w-4" />Guardar na cadeira · próximo passo
+        <Button type="button" disabled={Boolean(savedMessage)} onClick={() => saveDraft(false)}>
+          {savedMessage ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+          {savedMessage ? "Guardado na cadeira" : "Guardar na cadeira"}
         </Button>
       </div>
     </section>

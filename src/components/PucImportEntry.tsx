@@ -78,7 +78,7 @@ export default function PucImportEntry({ courseId }: { courseId: string }) {
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2" data-guest-allowed="true">
               <Button type="button" variant="outline" onClick={() => setIgnored(true)}>
                 <X className="mr-2 h-4 w-4" />Ignorar
               </Button>

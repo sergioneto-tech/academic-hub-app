@@ -13,7 +13,13 @@ import { AppStoreProvider } from "./lib/AppStore";
 import { Toaster } from "@/components/ui/toaster";
 import LocalTimeIndicator from "@/components/LocalTimeIndicator";
 import { parseImplicitAuthCallback } from "@/lib/authCallback";
-import { storeSession, type AuthSession, type CloudConfig } from "@/lib/cloudSync";
+import {
+  getStoredSession,
+  isUabStudentEmail,
+  storeSession,
+  type AuthSession,
+  type CloudConfig,
+} from "@/lib/cloudSync";
 import App from "./App";
 
 const initialTheme = getStoredTheme() ?? getSystemTheme();
@@ -43,6 +49,48 @@ function getCloudConfig(): CloudConfig | null {
   return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
 }
 
+function toAppSession(session: {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  expires_at?: number;
+  user: { id: string; email?: string };
+}): AuthSession {
+  return {
+    access_token: session.access_token,
+    refresh_token: session.refresh_token,
+    token_type: session.token_type,
+    expires_in: session.expires_in,
+    expires_at: session.expires_at,
+    user: {
+      id: session.user.id,
+      email: session.user.email,
+    },
+  };
+}
+
+async function recoverSupabaseSession(): Promise<void> {
+  const cloudConfig = getCloudConfig();
+  if (!cloudConfig || getStoredSession(cloudConfig)) return;
+
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const candidate = sessionData.session;
+    if (!candidate || !isUabStudentEmail(candidate.user.email)) return;
+
+    // Confirma a identidade no servidor antes de promover a sessão persistida pelo
+    // supabase-js para a sessão interna usada pelo Academic Hub.
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (userError || !userData.user || userData.user.id !== candidate.user.id) return;
+
+    storeSession(cloudConfig, toAppSession(candidate));
+  } catch (error) {
+    console.warn("[AuthBridge][recoverSupabaseSession]", error);
+  }
+}
+
 async function prepareAuthFlow(): Promise<void> {
   const rawHash = window.location.hash || "";
   const rawSearch = window.location.search || "";
@@ -57,9 +105,11 @@ async function prepareAuthFlow(): Promise<void> {
 
     if (error) {
       console.warn("[AuthCallback][setSession]", error);
-      if (implicitCallback.kind === "account-confirmation") {
+      window.history.replaceState({}, "", window.location.pathname);
+      if (implicitCallback.kind === "recovery") {
+        window.location.hash = "#/definicoes?recovery=1";
+      } else {
         sessionStorage.setItem("academic_hub_account_confirmation_error", "1");
-        window.history.replaceState({}, "", window.location.pathname);
         window.location.hash = "#/definicoes?conta=entrar";
       }
       return;
@@ -73,20 +123,7 @@ async function prepareAuthFlow(): Promise<void> {
 
     if (data.session) {
       const cloudConfig = getCloudConfig();
-      if (cloudConfig) {
-        const appSession: AuthSession = {
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          token_type: data.session.token_type,
-          expires_in: data.session.expires_in,
-          expires_at: data.session.expires_at,
-          user: {
-            id: data.session.user.id,
-            email: data.session.user.email,
-          },
-        };
-        storeSession(cloudConfig, appSession);
-      }
+      if (cloudConfig) storeSession(cloudConfig, toAppSession(data.session));
       sessionStorage.setItem("academic_hub_account_confirmed_notice", "1");
     } else {
       sessionStorage.setItem("academic_hub_account_confirmation_error", "1");
@@ -115,7 +152,12 @@ async function prepareAuthFlow(): Promise<void> {
   if (window.location.pathname.includes("/definicoes") && rawSearch.includes("recovery")) {
     window.history.replaceState({}, "", window.location.pathname.replace(/\/definicoes.*/, "/"));
     window.location.hash = "#/definicoes?recovery=1";
+    return;
   }
+
+  // Recupera também quem já confirmou o email antes deste hotfix e ainda tenha
+  // uma sessão Supabase válida neste dispositivo. Não cria contas nem dados novos.
+  await recoverSupabaseSession();
 }
 
 function renderApp() {

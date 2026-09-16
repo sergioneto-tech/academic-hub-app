@@ -12,7 +12,8 @@ import {
   buildSharedPucImportDraft,
   fetchSharedPucCatalogEntries,
   type SharedPucCatalogEntry,
-} from "@/lib/pucSharedCatalogTest";
+} from "@/lib/pucCatalog";
+import { acceptCurrentPucCatalogVersion } from "@/lib/pucVersionState";
 
 function modelLabel(value: string) {
   const labels: Record<string, string> = {
@@ -48,6 +49,7 @@ export default function PucSharedReviewLab() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [error, setError] = useState("");
   const [hasSaved, setHasSaved] = useState(false);
+  const [acceptanceError, setAcceptanceError] = useState("");
   const [correctionPreview, setCorrectionPreview] = useState<{
     draft: PucImportDraft;
     changes: PucDraftChange[];
@@ -69,6 +71,7 @@ export default function PucSharedReviewLab() {
     setError("");
     setEntry(null);
     setHasSaved(false);
+    setAcceptanceError("");
     setCorrectionPreview(null);
     setCorrectionStatus("idle");
     setCorrectionMessage("");
@@ -105,6 +108,17 @@ export default function PucSharedReviewLab() {
   const backPath = targetCourse ? `/cadeiras/${encodeURIComponent(targetCourse.id)}` : "/cadeiras";
   const backLabel = targetCourse ? `Voltar a ${targetCourse.name}` : "Voltar às cadeiras";
 
+  const registerUse = async () => {
+    if (!entry) return;
+    setHasSaved(true);
+    setAcceptanceError("");
+    try {
+      await acceptCurrentPucCatalogVersion(entry.id, entry.version);
+    } catch {
+      setAcceptanceError("Os dados foram guardados na tua cadeira, mas não foi possível registar a versão partilhada utilizada. Volta à cadeira e atualiza antes de reutilizares estes dados.");
+    }
+  };
+
   const sendCorrection = async () => {
     if (!entry || !correctionPreview || correctionStatus === "sending" || correctionStatus === "sent") return;
     setCorrectionStatus("sending");
@@ -119,7 +133,7 @@ export default function PucSharedReviewLab() {
 
     if (result.ok) {
       setCorrectionStatus("sent");
-      setCorrectionMessage("Correção comunicada com sucesso. Ficou pendente de validação e não alterou os dados dos outros alunos.");
+      setCorrectionMessage(result.message);
       return;
     }
 
@@ -139,9 +153,9 @@ export default function PucSharedReviewLab() {
         <div className="p-5 sm:p-7">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">Teste privado · não publicar</div>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Rever dados partilhados do PUC</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Estes dados já foram extraídos e validados para esta UC. Antes de serem gravados na tua cadeira, tens de os rever e confirmar explicitamente.</p>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">PUC · catálogo partilhado</div>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Rever dados disponíveis para esta UC</h1>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Estes dados já foram validados para esta UC. Antes de serem gravados na tua cadeira, tens de os rever e confirmar explicitamente.</p>
             </div>
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
               <div className="flex items-center gap-2 font-semibold"><Database className="h-4 w-4" />Catálogo partilhado</div>
@@ -177,7 +191,7 @@ export default function PucSharedReviewLab() {
             courseId={targetCourse.id}
             courseName={targetCourse.name}
             courseCode={targetCourse.code}
-            onSaved={() => setHasSaved(true)}
+            onSaved={() => { void registerUse(); }}
             onRequestCorrection={(nextDraft, changes, declaration) => {
               setCorrectionPreview({ draft: nextDraft, changes, declaration });
               setCorrectionStatus("idle");
@@ -219,7 +233,8 @@ export default function PucSharedReviewLab() {
             </Card>
           )}
 
-          {hasSaved && <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">Dados confirmados e gravados na cadeira neste teste. As datas oficiais de exame e recurso mantiveram-se inalteradas.</div>}
+          {hasSaved && !acceptanceError && <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">Dados confirmados e gravados na cadeira. A versão {entry.version} ficou associada à tua utilização. As datas oficiais de exame e recurso mantiveram-se inalteradas.</div>}
+          {acceptanceError && <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100" role="alert">{acceptanceError}</div>}
         </>
       )}
     </div>

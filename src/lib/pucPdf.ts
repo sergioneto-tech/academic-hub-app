@@ -58,6 +58,38 @@ function normalizeLine(value: string): string {
 }
 
 /**
+ * Os PUC reais exportados da PlataformAbERTA quebram frequentemente os rótulos
+ * das tabelas em várias linhas (por exemplo "Disponibilização do\nenunciado...").
+ * O parser trabalha com esses rótulos como marcadores semânticos; por isso,
+ * juntamos apenas frases conhecidas e pares data/hora que aparecem empilhados.
+ * Não achatamos o documento inteiro, para preservar a estrutura útil do PDF.
+ */
+export function normalizeExtractedPucText(value: string): string {
+  return value
+    .replace(
+      /Calendário\s+da\s+Avaliação\s+Sumativa\s+Contínua/giu,
+      "Calendário da Avaliação Sumativa Contínua",
+    )
+    .replace(
+      /Disponibilização\s+do\s+enunciado\s+e\s+critérios\s+de\s+avaliação/giu,
+      "Disponibilização do enunciado e critérios de avaliação",
+    )
+    .replace(
+      /Data\s+e\s+hora\s+limites\s+de\s+entrega/giu,
+      "Data e hora limites de entrega",
+    )
+    .replace(
+      /Disponibilização\s+da\s+classificação\s+e\s+feedback/giu,
+      "Disponibilização da classificação e feedback",
+    )
+    .replace(/Atividade\s+Sumativa\s+(\d+)/giu, "Atividade Sumativa $1")
+    .replace(
+      /(^|\n)(\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?)[ \t]*\n[ \t]*(\d{1,2}:\d{2})(?=\n|$)/g,
+      "$1$2 às $3",
+    );
+}
+
+/**
  * Reconstrói texto legível a partir dos itens devolvidos pelo PDF.js.
  * Mantém quebras por coordenada vertical e por hasEOL para dar ao parser
  * uma estrutura suficientemente próxima do documento sem tentar recriar layout visual.
@@ -173,7 +205,7 @@ export async function extractPucPdfText(
       pages.push(`[PÁGINA ${pageNumber}]\n${pageText}`);
     }
 
-    const text = pages.join("\n\n").trim();
+    const text = normalizeExtractedPucText(pages.join("\n\n").trim());
     if (text.length < 80) {
       throw new Error(
         "Foi extraído muito pouco texto. O PDF pode ser uma digitalização/imagem e necessitar de outro método de leitura.",

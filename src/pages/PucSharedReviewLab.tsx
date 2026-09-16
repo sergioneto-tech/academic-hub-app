@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, CheckCircle2, Database, Loader2, MessageSquareWarning, ShieldAlert } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import PucReviewDraft, { type PucDraftChange } from "@/components/PucReviewDraft";
+import PucReviewDraft, { type PucCorrectionDeclaration, type PucDraftChange } from "@/components/PucReviewDraft";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/lib/AppStore";
@@ -25,6 +25,14 @@ function modelLabel(value: string) {
   return labels[value] ?? value;
 }
 
+function formatPtDateTime(value: string) {
+  try {
+    return new Intl.DateTimeFormat("pt-PT", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
 export default function PucSharedReviewLab() {
   const [searchParams] = useSearchParams();
   const { state } = useAppStore();
@@ -42,6 +50,7 @@ export default function PucSharedReviewLab() {
   const [correctionPreview, setCorrectionPreview] = useState<{
     draft: PucImportDraft;
     changes: PucDraftChange[];
+    declaration: PucCorrectionDeclaration;
   } | null>(null);
 
   useEffect(() => {
@@ -105,9 +114,7 @@ export default function PucSharedReviewLab() {
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">Teste privado · não publicar</div>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Rever dados partilhados do PUC</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                Estes dados já foram extraídos e validados para esta UC. Antes de serem gravados na tua cadeira, tens de os rever e confirmar explicitamente.
-              </p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Estes dados já foram extraídos e validados para esta UC. Antes de serem gravados na tua cadeira, tens de os rever e confirmar explicitamente.</p>
             </div>
             <div className="rounded-2xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
               <div className="flex items-center gap-2 font-semibold"><Database className="h-4 w-4" />Catálogo partilhado</div>
@@ -117,47 +124,20 @@ export default function PucSharedReviewLab() {
         </div>
       </section>
 
-      {status === "loading" && (
-        <Card className="premium-card">
-          <CardContent className="flex items-center gap-3 p-5 text-sm text-muted-foreground" role="status" aria-live="polite">
-            <Loader2 className="h-5 w-5 animate-spin" />A carregar os dados partilhados desta UC…
-          </CardContent>
-        </Card>
-      )}
+      {status === "loading" && <Card className="premium-card"><CardContent className="flex items-center gap-3 p-5 text-sm text-muted-foreground" role="status" aria-live="polite"><Loader2 className="h-5 w-5 animate-spin" />A carregar os dados partilhados desta UC…</CardContent></Card>}
 
-      {status === "error" && (
-        <Card className="premium-card border-destructive/30">
-          <CardContent className="flex items-start gap-3 p-5 text-sm text-destructive" role="alert">
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
-            <div><div className="font-semibold">Não foi possível abrir a revisão</div><div className="mt-1 text-xs leading-5">{error}</div></div>
-          </CardContent>
-        </Card>
-      )}
+      {status === "error" && <Card className="premium-card border-destructive/30"><CardContent className="flex items-start gap-3 p-5 text-sm text-destructive" role="alert"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" /><div><div className="font-semibold">Não foi possível abrir a revisão</div><div className="mt-1 text-xs leading-5">{error}</div></div></CardContent></Card>}
 
       {status === "ready" && entry && targetCourse && draft && (
         <>
           <Card className="premium-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base"><CheckCircle2 className="h-5 w-5 text-emerald-500" />Estrutura encontrada</CardTitle>
-            </CardHeader>
+            <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><CheckCircle2 className="h-5 w-5 text-emerald-500" />Estrutura encontrada</CardTitle></CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl border bg-background/55 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Unidade curricular</div>
-                  <div className="mt-1 text-sm font-semibold">{entry.course_name}</div>
-                </div>
-                <div className="rounded-xl border bg-background/55 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Código</div>
-                  <div className="mt-1 text-sm font-semibold">{entry.course_code}</div>
-                </div>
-                <div className="rounded-xl border bg-background/55 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ano letivo / edição</div>
-                  <div className="mt-1 text-sm font-semibold">{entry.academic_year} · {entry.edition}</div>
-                </div>
-                <div className="rounded-xl border bg-background/55 p-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tipologia</div>
-                  <div className="mt-1 text-sm font-semibold">{modelLabel(entry.evaluation_model)}</div>
-                </div>
+                <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Unidade curricular</div><div className="mt-1 text-sm font-semibold">{entry.course_name}</div></div>
+                <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Código</div><div className="mt-1 text-sm font-semibold">{entry.course_code}</div></div>
+                <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Ano letivo / edição</div><div className="mt-1 text-sm font-semibold">{entry.academic_year} · {entry.edition}</div></div>
+                <div className="rounded-xl border bg-background/55 p-3"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Tipologia</div><div className="mt-1 text-sm font-semibold">{modelLabel(entry.evaluation_model)}</div></div>
               </div>
               <div className="mt-4 text-xs text-muted-foreground">Versão {entry.version} · nenhuma alteração é aplicada antes da confirmação na revisão abaixo.</div>
             </CardContent>
@@ -171,41 +151,28 @@ export default function PucSharedReviewLab() {
             courseName={targetCourse.name}
             courseCode={targetCourse.code}
             onSaved={() => setHasSaved(true)}
-            onRequestCorrection={(nextDraft, changes) => setCorrectionPreview({ draft: nextDraft, changes })}
+            onRequestCorrection={(nextDraft, changes, declaration) => setCorrectionPreview({ draft: nextDraft, changes, declaration })}
           />
 
           {correctionPreview && (
             <Card className="premium-card border-amber-500/30">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base"><MessageSquareWarning className="h-5 w-5 text-amber-500" />Proposta de correção preparada</CardTitle>
-              </CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-base"><MessageSquareWarning className="h-5 w-5 text-amber-500" />Proposta de correção preparada</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-xs leading-5 text-muted-foreground">
-                  Esta proposta é separada da tua gravação pessoal. No funcionamento público será enviada com a versão {entry.version} como base e ficará pendente de validação; não altera o catálogo nem os dados dos outros alunos automaticamente.
-                </p>
+                <p className="text-xs leading-5 text-muted-foreground">Esta proposta é separada da tua gravação pessoal. No funcionamento público será enviada com a versão {entry.version} como base e ficará pendente de validação; não altera o catálogo nem os dados dos outros alunos automaticamente.</p>
                 <div className="space-y-2">
-                  {correctionPreview.changes.map((change) => (
-                    <div key={`${change.field}-${change.before}-${change.after}`} className="rounded-xl border bg-background/55 p-3 text-xs">
-                      <div className="font-semibold">{change.field}</div>
-                      <div className="mt-1 text-muted-foreground">{change.before} → <span className="text-foreground">{change.after}</span></div>
-                    </div>
-                  ))}
+                  {correctionPreview.changes.map((change) => <div key={`${change.field}-${change.before}-${change.after}`} className="rounded-xl border bg-background/55 p-3 text-xs"><div className="font-semibold">{change.field}</div><div className="mt-1 text-muted-foreground">{change.before} → <span className="text-foreground">{change.after}</span></div></div>)}
                 </div>
-                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100">
-                  <strong>Teste atual:</strong> a branch de desenvolvimento não tem utilizadores autenticados copiados da produção. Por segurança, nesta fase validamos a deteção e a apresentação da proposta; o envio autenticado para a tabela de submissões será ligado no próximo passo, sem criar utilizadores artificiais na branch.
+                <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
+                  <div className="font-semibold">Declaração registada na proposta de teste</div>
+                  <div className="mt-1">Fonte oficial confirmada · versão {correctionPreview.declaration.version} · {formatPtDateTime(correctionPreview.declaration.acceptedAt)}</div>
                 </div>
-                <div className="flex justify-end">
-                  <Button type="button" variant="outline" onClick={() => setCorrectionPreview(null)}>Fechar proposta</Button>
-                </div>
+                <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-900 dark:text-amber-100"><strong>Teste atual:</strong> a branch de desenvolvimento não tem utilizadores autenticados copiados da produção. Por segurança, nesta fase validamos a deteção, a declaração e a apresentação da proposta; o envio autenticado será testado depois de a infraestrutura isolada ser aprovada para o ambiente real.</div>
+                <div className="flex justify-end"><Button type="button" variant="outline" onClick={() => setCorrectionPreview(null)}>Fechar proposta</Button></div>
               </CardContent>
             </Card>
           )}
 
-          {hasSaved && (
-            <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
-              Dados confirmados e gravados na cadeira neste teste. As datas oficiais de exame e recurso mantiveram-se inalteradas.
-            </div>
-          )}
+          {hasSaved && <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">Dados confirmados e gravados na cadeira neste teste. As datas oficiais de exame e recurso mantiveram-se inalteradas.</div>}
         </>
       )}
     </div>

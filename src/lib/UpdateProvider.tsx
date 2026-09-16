@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { APP_VERSION } from "@/lib/version";
+import { reportClientError } from "@/lib/clientErrorReporting";
 import {
   clearUpdateTarget,
   getUpdateTargetVersion,
@@ -377,6 +378,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
       hardReload();
     } catch (error) {
       console.error("[Academic Hub] Falha ao aplicar atualização", error);
+      void reportClientError({
+        errorCode: "update_failed",
+        summary: error instanceof Error ? error.message : "Falha ao aplicar a atualização.",
+      });
       clearUpdateTarget(resolvedTargetVersion || targetVersion);
       applyingRef.current = false;
       setUpdatePhase("error");

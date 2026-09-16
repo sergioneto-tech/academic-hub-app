@@ -1,5 +1,5 @@
-const APP_VERSION = "1.5.11";
-const SW_VERSION = "1.5.11-update-lifecycle-1";
+const APP_VERSION = "1.5.12";
+const SW_VERSION = "1.5.12-error-monitoring-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -15,7 +15,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.5.11",
+  "./release-notes.json?v=1.5.12",
 ];
 
 function delay(ms) {

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportClientError } from "@/lib/clientErrorReporting";
 
 type Props = { children: ReactNode };
 type State = { error: Error | null };
@@ -22,6 +23,13 @@ export default class AppErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("[Academic Hub] Erro de interface recuperado", error, info);
+    const chunkError = isChunkLikeError(error);
+    void reportClientError({
+      errorCode: chunkError ? "interface_chunk" : "unexpected_ui",
+      summary: chunkError
+        ? "A interface tentou carregar ficheiros de versões diferentes."
+        : (error.message || "Erro inesperado da interface."),
+    });
   }
 
   private reload = () => {

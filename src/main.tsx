@@ -13,6 +13,7 @@ import { AppStoreProvider } from "./lib/AppStore";
 import { Toaster } from "@/components/ui/toaster";
 import LocalTimeIndicator from "@/components/LocalTimeIndicator";
 import { parseImplicitAuthCallback } from "@/lib/authCallback";
+import { reportClientError } from "@/lib/clientErrorReporting";
 import {
   getStoredSession,
   isUabStudentEmail,
@@ -73,12 +74,14 @@ function toAppSession(session: {
 async function recoverSupabaseSession(): Promise<void> {
   const cloudConfig = getCloudConfig();
   if (!cloudConfig || getStoredSession(cloudConfig)) return;
+  let candidateAccessToken = "";
 
   try {
     const { supabase } = await import("@/integrations/supabase/client");
     const { data: sessionData } = await supabase.auth.getSession();
     const candidate = sessionData.session;
     if (!candidate || !isUabStudentEmail(candidate.user.email)) return;
+    candidateAccessToken = candidate.access_token;
 
     // Confirma a identidade no servidor antes de promover a sessão persistida pelo
     // supabase-js para a sessão interna usada pelo Academic Hub.
@@ -88,6 +91,11 @@ async function recoverSupabaseSession(): Promise<void> {
     storeSession(cloudConfig, toAppSession(candidate));
   } catch (error) {
     console.warn("[AuthBridge][recoverSupabaseSession]", error);
+    void reportClientError({
+      errorCode: "auth_confirmation",
+      summary: "Falha ao recuperar uma sessão Supabase já confirmada.",
+      accessToken: candidateAccessToken || undefined,
+    });
   }
 }
 
@@ -105,6 +113,11 @@ async function prepareAuthFlow(): Promise<void> {
 
     if (error) {
       console.warn("[AuthCallback][setSession]", error);
+      void reportClientError({
+        errorCode: "auth_confirmation",
+        summary: "Falha ao concluir a sessão devolvida pela confirmação da conta.",
+        accessToken: implicitCallback.accessToken,
+      });
       window.history.replaceState({}, "", window.location.pathname);
       if (implicitCallback.kind === "recovery") {
         window.location.hash = "#/definicoes?recovery=1";
@@ -123,8 +136,18 @@ async function prepareAuthFlow(): Promise<void> {
 
     if (data.session) {
       const cloudConfig = getCloudConfig();
-      if (cloudConfig) storeSession(cloudConfig, toAppSession(data.session));
-      sessionStorage.setItem("academic_hub_account_confirmed_notice", "1");
+      try {
+        if (cloudConfig) storeSession(cloudConfig, toAppSession(data.session));
+        sessionStorage.setItem("academic_hub_account_confirmed_notice", "1");
+      } catch (storeError) {
+        console.warn("[AuthCallback][storeSession]", storeError);
+        void reportClientError({
+          errorCode: "auth_confirmation",
+          summary: "A conta foi confirmada, mas a sessão interna do Academic Hub não pôde ser guardada.",
+          accessToken: data.session.access_token,
+        });
+        sessionStorage.setItem("academic_hub_account_confirmation_error", "1");
+      }
     } else {
       sessionStorage.setItem("academic_hub_account_confirmation_error", "1");
     }

@@ -1,6 +1,19 @@
 {
-  "latest": "1.5.11",
+  "latest": "1.5.12",
   "versions": [
+    {
+      "version": "1.5.12",
+      "date": "2026-09-16",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "Adicionada monitorização automática de erros técnicos para detetar problemas reais nos dispositivos dos alunos sem depender apenas de mensagens enviadas manualmente.",
+        "Falhas de interface, mistura de ficheiros entre versões e erros no processo de atualização passam a gerar um relatório técnico privado e um alerta Push para o responsável do Academic Hub.",
+        "O fluxo de confirmação de conta passa também a comunicar falhas recuperáveis quando existe uma sessão autenticada válida, ajudando a identificar rapidamente casos semelhantes ao observado num novo registo.",
+        "Alertas repetidos do mesmo erro no mesmo aluno são agrupados durante uma janela de tempo para evitar notificações em excesso e manter a investigação legível.",
+        "Os relatórios guardam apenas informação técnica limitada e sanitizada; passwords, tokens e parâmetros sensíveis não são incluídos nas notificações nem nos registos de erro."
+      ]
+    },
     {
       "version": "1.5.11",
       "date": "2026-09-16",

@@ -33,7 +33,8 @@ Disponibilização da classificação e feedback Até 18/12/2026 Até 12/02/2027
       name: "Atividade de Avaliação por Exame",
       maxPoints: 14,
     });
-    expect(draft.warnings).toEqual([]);
+    expect(draft.warnings.some((warning) => warning.includes("foram ignoradas"))).toBe(true);
+    expect(draft.warnings.some((warning) => warning.includes("calendário oficial"))).toBe(true);
   });
 
   it("reads the final cotation from a sumative table even when its date is delegated to the official calendar", () => {
@@ -113,6 +114,36 @@ Exame 20 valores
       name: "E-fólio Global",
       maxPoints: 12,
     });
-    expect(draft.warnings).toEqual([]);
+    expect(draft.warnings.some((warning) => warning.includes("foram ignoradas"))).toBe(true);
+  });
+
+  it("never exposes exam or resit dates as importable activity dates", () => {
+    const text = `
+Unidade curricular: Unidade de Teste 2026 01
+Código da Unidade Curricular (UC): 29999
+Ano letivo: 2026/2027
+A avaliação contínua nesta UC segue a tipologia 4.
+9.2 Calendarização
+Atividades Sumativas Atividade Sumativa 1 Atividade de Avaliação por Exame
+Cotação 6 valores 14 valores
+Disponibilização do enunciado e critérios de avaliação 13/11/2026 13/01/2027 às 10h
+Data e hora limites de entrega 23/11/2026 13/01/2027 às 12h
+Disponibilização da classificação e feedback 18/12/2026 12/02/2027
+Época Normal: 13/01/2027 às 10h
+Época de Recurso: 16/02/2027 às 15h
+`;
+
+    const parsed = parsePucText(text);
+    const draft = buildPucImportDraft(parsed, text);
+
+    expect(parsed.events.some((item) => item.kind === "exam" && item.startDate === "2027-01-13")).toBe(true);
+    expect(parsed.events.some((item) => item.kind === "resit" && item.startDate === "2027-02-16")).toBe(true);
+    expect(draft.events).toHaveLength(1);
+    expect(draft.events.some((item) => item.startDate === "2027-01-13" || item.startDate === "2027-02-16")).toBe(false);
+    expect(draft.finalAssessment).toEqual({
+      name: "Atividade de Avaliação por Exame",
+      maxPoints: 14,
+    });
+    expect(draft.warnings.some((warning) => warning.includes("exclusivamente o calendário oficial"))).toBe(true);
   });
 });

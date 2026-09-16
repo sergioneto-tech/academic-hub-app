@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { PucCorrectionDeclaration, PucDraftChange } from "@/components/PucReviewDraft";
 import type { PucImportDraft } from "@/lib/pucImportDraft";
-import type { SharedPucCatalogEntry } from "@/lib/pucSharedCatalogTest";
+import type { SharedPucCatalogEntry } from "@/lib/pucCatalog";
 
 type SubmissionResult =
   | { ok: true; id: string; message: string }
@@ -44,8 +44,6 @@ export async function submitPucCorrection({
     return { ok: false, reason: "not-authenticated", message: "A sessão terminou. Inicia sessão novamente antes de comunicar a correção." };
   }
 
-  // The generated Supabase type file is intentionally minimal in this project. Cast only this
-  // new table access until types are regenerated in the release-preparation step.
   const client = supabase as any;
 
   const { data: currentEntry, error: catalogError } = await client

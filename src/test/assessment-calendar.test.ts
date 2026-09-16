@@ -90,9 +90,9 @@ describe("assessment calendar events", () => {
 
     const ics = buildIcsForActiveCourses(state, { includePast: true });
 
-    expect(ics).toContain("AS1 (Início)");
-    expect(ics).toContain("AS1 (Fim)");
-    expect(ics).toContain("AS1 (Nota)");
+    expect(ics).toContain("AS1 - Início");
+    expect(ics).toContain("AS1 - Fim");
+    expect(ics).toContain("AS1 - Nota");
     expect(ics).toContain("DTSTART;VALUE=DATE:20261005");
     expect(ics).toContain("DTSTART;VALUE=DATE:20261018");
     expect(ics).toContain("DTSTART;VALUE=DATE:20261025");

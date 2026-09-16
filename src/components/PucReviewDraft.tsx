@@ -20,10 +20,18 @@ const MODEL_OPTIONS: Array<{ value: EvaluationModel; label: string }> = [
   { value: "exam-only", label: "Avaliação por exame" },
 ];
 
+export const PUC_CORRECTION_DECLARATION_VERSION = "puc-correction-v1";
+
 export type PucDraftChange = {
   field: string;
   before: string;
   after: string;
+};
+
+export type PucCorrectionDeclaration = {
+  version: typeof PUC_CORRECTION_DECLARATION_VERSION;
+  acceptedAt: string;
+  sourceConfirmed: true;
 };
 
 function toNullableNumber(rawValue: string): number | null {
@@ -40,9 +48,11 @@ const EMPTY_DRAFT: PucImportDraft = {
   warnings: [],
 };
 
-function formatComparable(value: string | number | null | undefined): string {
+function displayComparable(value: string | number | null | undefined): string {
   if (value === null || value === undefined || value === "") return "—";
-  return String(value);
+  const text = String(value);
+  const isoDate = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return isoDate ? `${isoDate[3]}/${isoDate[2]}/${isoDate[1]}` : text;
 }
 
 function draftChanges(base: PucImportDraft, current: PucImportDraft): PucDraftChange[] {
@@ -64,21 +74,21 @@ function draftChanges(base: PucImportDraft, current: PucImportDraft): PucDraftCh
       ["Publicação da nota", before?.gradeReleaseDate, after?.gradeReleaseDate],
     ];
     for (const [field, oldValue, newValue] of fields) {
-      if (formatComparable(oldValue) !== formatComparable(newValue)) {
+      if (String(oldValue ?? "") !== String(newValue ?? "")) {
         changes.push({
           field: `${label} · ${field}`,
-          before: formatComparable(oldValue),
-          after: formatComparable(newValue),
+          before: displayComparable(oldValue),
+          after: displayComparable(newValue),
         });
       }
     }
   }
 
-  if (formatComparable(base.finalAssessment?.maxPoints) !== formatComparable(current.finalAssessment?.maxPoints)) {
+  if (String(base.finalAssessment?.maxPoints ?? "") !== String(current.finalAssessment?.maxPoints ?? "")) {
     changes.push({
       field: `${current.finalAssessment?.name || base.finalAssessment?.name || "Prova final"} · Valor máximo`,
-      before: formatComparable(base.finalAssessment?.maxPoints),
-      after: formatComparable(current.finalAssessment?.maxPoints),
+      before: displayComparable(base.finalAssessment?.maxPoints),
+      after: displayComparable(current.finalAssessment?.maxPoints),
     });
   }
 
@@ -106,7 +116,7 @@ export default function PucReviewDraft({
   courseName: string;
   courseCode: string;
   onSaved?: () => void;
-  onRequestCorrection?: (draft: PucImportDraft, changes: PucDraftChange[]) => void;
+  onRequestCorrection?: (draft: PucImportDraft, changes: PucDraftChange[], declaration: PucCorrectionDeclaration) => void;
 }) {
   const { state, replaceState } = useAppStore();
   const importDraft = useMemo(
@@ -120,6 +130,9 @@ export default function PucReviewDraft({
   const [saveErrors, setSaveErrors] = useState<string[]>([]);
   const [replaceConfirmation, setReplaceConfirmation] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
+  const [correctionDeclarationOpen, setCorrectionDeclarationOpen] = useState(false);
+  const [sourceConfirmed, setSourceConfirmed] = useState(false);
+  const [responsibilityAccepted, setResponsibilityAccepted] = useState(false);
 
   const currentDraft = useMemo<PucImportDraft>(() => ({
     model: draftModel,
@@ -135,6 +148,12 @@ export default function PucReviewDraft({
     [sourceKind, importDraft, currentDraft],
   );
 
+  const resetCorrectionDeclaration = () => {
+    setCorrectionDeclarationOpen(false);
+    setSourceConfirmed(false);
+    setResponsibilityAccepted(false);
+  };
+
   const resetDraft = () => {
     setDraftModel(importDraft.model);
     setDraftEvents(importDraft.events.map((event) => ({ ...event })));
@@ -142,6 +161,7 @@ export default function PucReviewDraft({
     setSaveErrors([]);
     setReplaceConfirmation(false);
     setSavedMessage("");
+    resetCorrectionDeclaration();
   };
 
   const openReview = () => {
@@ -153,6 +173,7 @@ export default function PucReviewDraft({
     setSavedMessage("");
     setSaveErrors([]);
     setReplaceConfirmation(false);
+    resetCorrectionDeclaration();
     setDraftEvents((current) => current.map((event) => event.key === key ? { ...event, ...patch } : event));
   };
 
@@ -187,6 +208,16 @@ export default function PucReviewDraft({
         : `Dados guardados na cadeira: ${applied.summary.importedEvents} elemento(s) importado(s).`,
     );
     onSaved?.();
+  };
+
+  const confirmCorrectionProposal = () => {
+    if (!onRequestCorrection || !sourceConfirmed || !responsibilityAccepted) return;
+    onRequestCorrection(currentDraft, sharedChanges, {
+      version: PUC_CORRECTION_DECLARATION_VERSION,
+      acceptedAt: new Date().toISOString(),
+      sourceConfirmed: true,
+    });
+    resetCorrectionDeclaration();
   };
 
   if (!isOpen) {
@@ -243,6 +274,7 @@ export default function PucReviewDraft({
             setSavedMessage("");
             setSaveErrors([]);
             setReplaceConfirmation(false);
+            resetCorrectionDeclaration();
           }}
           className="mt-1 h-10 w-full rounded-lg border bg-background px-3 text-sm sm:max-w-sm"
         >
@@ -275,29 +307,11 @@ export default function PucReviewDraft({
               </div>
               <div className="grid gap-1">
                 <Label className="text-[11px] text-muted-foreground">Valor máximo</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="20"
-                  step="0.5"
-                  inputMode="decimal"
-                  value={event.maxPoints ?? ""}
-                  placeholder="Confirmar"
-                  onChange={(change) => updateEvent(event.key, { maxPoints: toNullableNumber(change.target.value) })}
-                />
+                <Input type="number" min="0" max="20" step="0.5" inputMode="decimal" value={event.maxPoints ?? ""} placeholder="Confirmar" onChange={(change) => updateEvent(event.key, { maxPoints: toNullableNumber(change.target.value) })} />
               </div>
-              <div>
-                <Label className="mb-1 block text-[11px] text-muted-foreground">Início</Label>
-                <PtDateInput value={event.startDate} onChange={(value) => updateEvent(event.key, { startDate: value })} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-[11px] text-muted-foreground">Fim / entrega</Label>
-                <PtDateInput value={event.endDate} onChange={(value) => updateEvent(event.key, { endDate: value })} />
-              </div>
-              <div>
-                <Label className="mb-1 block text-[11px] text-muted-foreground">Publicação da nota</Label>
-                <PtDateInput value={event.gradeReleaseDate} onChange={(value) => updateEvent(event.key, { gradeReleaseDate: value })} />
-              </div>
+              <div><Label className="mb-1 block text-[11px] text-muted-foreground">Início</Label><PtDateInput value={event.startDate} onChange={(value) => updateEvent(event.key, { startDate: value })} /></div>
+              <div><Label className="mb-1 block text-[11px] text-muted-foreground">Fim / entrega</Label><PtDateInput value={event.endDate} onChange={(value) => updateEvent(event.key, { endDate: value })} /></div>
+              <div><Label className="mb-1 block text-[11px] text-muted-foreground">Publicação da nota</Label><PtDateInput value={event.gradeReleaseDate} onChange={(value) => updateEvent(event.key, { gradeReleaseDate: value })} /></div>
             </div>
           </div>
         ))}
@@ -309,28 +323,11 @@ export default function PucReviewDraft({
             <div className="min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Cotação da prova final</div>
               <div className="mt-1 text-sm font-semibold">{importDraft.finalAssessment.name}</div>
-              <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
-                Apenas esta cotação vem do PUC. A data e a hora do exame, bem como o recurso, continuam ligadas ao calendário oficial já usado pelo Academic Hub.
-              </p>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">Apenas esta cotação vem do PUC. A data e a hora do exame, bem como o recurso, continuam ligadas ao calendário oficial já usado pelo Academic Hub.</p>
             </div>
             <div className="grid w-full gap-1 sm:w-44 sm:shrink-0">
               <Label htmlFor="puc-final-points" className="text-[11px] text-muted-foreground">Valor máximo</Label>
-              <Input
-                id="puc-final-points"
-                type="number"
-                min="0"
-                max="20"
-                step="0.5"
-                inputMode="decimal"
-                value={draftFinalPoints ?? ""}
-                placeholder="Confirmar"
-                onChange={(change) => {
-                  setDraftFinalPoints(toNullableNumber(change.target.value));
-                  setSavedMessage("");
-                  setSaveErrors([]);
-                  setReplaceConfirmation(false);
-                }}
-              />
+              <Input id="puc-final-points" type="number" min="0" max="20" step="0.5" inputMode="decimal" value={draftFinalPoints ?? ""} placeholder="Confirmar" onChange={(change) => { setDraftFinalPoints(toNullableNumber(change.target.value)); setSavedMessage(""); setSaveErrors([]); setReplaceConfirmation(false); resetCorrectionDeclaration(); }} />
             </div>
           </div>
         </div>
@@ -347,47 +344,55 @@ export default function PucReviewDraft({
               <div className="flex items-center gap-2 font-semibold"><MessageSquareWarning className="h-4 w-4" />Alteraste dados em relação ao catálogo partilhado</div>
               <p className="mt-1 text-muted-foreground">Guardar na cadeira altera apenas a tua cópia. Se consideras que o catálogo comum está errado, comunica a correção separadamente.</p>
               <div className="mt-2 space-y-1">
-                {sharedChanges.slice(0, 4).map((change) => (
-                  <div key={`${change.field}-${change.before}-${change.after}`}><strong>{change.field}:</strong> {change.before} → {change.after}</div>
-                ))}
+                {sharedChanges.slice(0, 4).map((change) => <div key={`${change.field}-${change.before}-${change.after}`}><strong>{change.field}:</strong> {change.before} → {change.after}</div>)}
                 {sharedChanges.length > 4 && <div>+ {sharedChanges.length - 4} alteração(ões)</div>}
               </div>
             </div>
             {onRequestCorrection && (
-              <Button type="button" variant="outline" className="shrink-0" onClick={() => onRequestCorrection(currentDraft, sharedChanges)}>
+              <Button type="button" variant="outline" className="shrink-0" onClick={() => setCorrectionDeclarationOpen(true)}>
                 <MessageSquareWarning className="mr-2 h-4 w-4" />Comunicar correção
               </Button>
             )}
           </div>
+
+          {correctionDeclarationOpen && (
+            <div className="mt-4 rounded-xl border border-amber-500/35 bg-background/70 p-4 text-foreground">
+              <div className="font-semibold">Confirmação de responsabilidade antes de enviar</div>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">Uma correção validada pode vir a ser apresentada a outros estudantes. Por isso, a proposta só deve ser enviada depois de confirmares a informação numa fonte oficial da UAb ou da unidade curricular. O Academic Hub continuará a validar a proposta antes de publicar qualquer alteração no catálogo comum.</p>
+              <div className="mt-3 space-y-3 text-xs leading-5">
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+                  <input type="checkbox" className="mt-1 h-4 w-4" checked={sourceConfirmed} onChange={(event) => setSourceConfirmed(event.target.checked)} />
+                  <span><strong>Confirmei a fonte.</strong> Verifiquei esta correção no PUC ou noutra fonte oficial da UAb/UC e não a estou a submeter apenas por memória, estimativa ou opinião.</span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3">
+                  <input type="checkbox" className="mt-1 h-4 w-4" checked={responsibilityAccepted} onChange={(event) => setResponsibilityAccepted(event.target.checked)} />
+                  <span><strong>Assumo a responsabilidade pela proposta.</strong> Declaro que a envio de boa-fé e com os dados que considero corretos após verificação. Sei que a proposta ficará pendente de validação e que não altera automaticamente os dados de outros alunos.</span>
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={resetCorrectionDeclaration}>Cancelar</Button>
+                <Button type="button" disabled={!sourceConfirmed || !responsibilityAccepted} onClick={confirmCorrectionProposal}>Confirmar e comunicar correção</Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {saveErrors.length > 0 && (
         <div className={`mt-4 rounded-xl border p-3 text-xs leading-5 ${replaceConfirmation ? "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200" : "border-destructive/30 bg-destructive/10 text-destructive"}`} role="alert">
           <div className="font-semibold">{replaceConfirmation ? "Confirmação adicional necessária" : "Não foi possível guardar"}</div>
-          <div className="mt-1 space-y-1">
-            {saveErrors.map((error) => <div key={error}>• {error}</div>)}
-          </div>
-          {replaceConfirmation && (
-            <Button type="button" variant="outline" className="mt-3" onClick={() => saveDraft(true)}>
-              Confirmar substituição e guardar
-            </Button>
-          )}
+          <div className="mt-1 space-y-1">{saveErrors.map((error) => <div key={error}>• {error}</div>)}</div>
+          {replaceConfirmation && <Button type="button" variant="outline" className="mt-3" onClick={() => saveDraft(true)}>Confirmar substituição e guardar</Button>}
         </div>
       )}
 
       {savedMessage && (
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200" role="status" aria-live="polite">
-          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{savedMessage}</span>
-        </div>
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200" role="status" aria-live="polite"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /><span>{savedMessage}</span></div>
       )}
 
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={resetDraft}>
-            <RotateCcw className="mr-2 h-4 w-4" />{sourceKind === "shared" ? "Repor dados partilhados" : "Repor dados do PUC"}
-          </Button>
+          <Button type="button" variant="outline" onClick={resetDraft}><RotateCcw className="mr-2 h-4 w-4" />{sourceKind === "shared" ? "Repor dados partilhados" : "Repor dados do PUC"}</Button>
           <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Fechar revisão</Button>
         </div>
         <Button type="button" disabled={Boolean(savedMessage)} onClick={() => saveDraft(false)}>

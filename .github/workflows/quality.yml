@@ -145,6 +145,9 @@ jobs:
           src/components/Layout.tsx
           src/components/LegacyEvaluationSavePanel.tsx
           src/components/ProfileAvatarEditor.tsx
+          src/components/PucImportEntry.tsx
+          src/components/PucInitialCatalogProposal.tsx
+          src/components/PucReviewDraft.tsx
           src/components/PushDeepLinkNotice.tsx
           src/components/ReleaseUpdateNotice.tsx
           src/components/SecurityStatusBadge.tsx
@@ -162,6 +165,16 @@ jobs:
           src/lib/cloudSync.ts
           src/lib/cloudSyncState.ts
           src/lib/degreeTheme.ts
+          src/lib/pucAdminReview.ts
+          src/lib/pucCatalog.ts
+          src/lib/pucCorrections.ts
+          src/lib/pucImportApply.ts
+          src/lib/pucImportDraft.ts
+          src/lib/pucInitialSubmission.ts
+          src/lib/pucParser.ts
+          src/lib/pucPdf.ts
+          src/lib/pucUpdateAlerts.ts
+          src/lib/pucVersionState.ts
           src/lib/realtimeSync.ts
           src/lib/securitySelfCheck.ts
           src/lib/securityTelemetry.ts
@@ -177,9 +190,18 @@ jobs:
           src/pages/Help.tsx
           src/pages/History.tsx
           src/pages/Legal.tsx
+          src/pages/PucAdminReviewLab.tsx
+          src/pages/PucImportPage.tsx
+          src/pages/PucSharedReviewLab.tsx
+          src/pages/PucUpdateAlertsLab.tsx
           src/pages/SecurityPrivacy.tsx
           src/pages/SettingsPremium.tsx
           src/test/cloud-sync-reliability.test.ts
+          src/test/puc-catalog-selection.test.ts
+          src/test/puc-import-apply.test.ts
+          src/test/puc-import-draft.test.ts
+          src/test/puc-parser.test.ts
+          src/test/puc-pdf.test.ts
           src/test/regulation-2026.test.ts
           src/test/security-self-check.test.ts
           src/test/update-lifecycle.test.ts

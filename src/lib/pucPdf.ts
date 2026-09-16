@@ -6,6 +6,7 @@ export type PdfExtractionProgress = {
 export type PdfExtractionResult = {
   text: string;
   pageCount: number;
+  sourceHash: string;
 };
 
 type PdfTextItem = {
@@ -55,6 +56,13 @@ function itemY(item: PdfTextItem): number | null {
 
 function normalizeLine(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new Error("O navegador não disponibiliza o mecanismo seguro necessário para identificar este PDF.");
+  const digest = await subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -178,6 +186,7 @@ export async function extractPucPdfText(
   if (!hasPdfSignature(bytes)) {
     throw new Error("O conteúdo selecionado não tem uma assinatura PDF válida.");
   }
+  const sourceHash = await sha256Hex(bytes);
 
   const pdfjs = await loadPdfJs();
   const loadingTask = pdfjs.getDocument({
@@ -212,7 +221,7 @@ export async function extractPucPdfText(
       );
     }
 
-    return { text, pageCount: document.numPages };
+    return { text, pageCount: document.numPages, sourceHash };
   } finally {
     try {
       await document?.destroy?.();

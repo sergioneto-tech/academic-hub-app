@@ -97,7 +97,7 @@ function normalizeSearch(input: string): string {
 
 function parseAcademicYear(value: string | null): AcademicYearParts | null {
   if (!value) return null;
-  const match = value.match(/(20\d{2})\s*[\/-]\s*(\d{2,4})/);
+  const match = value.match(/(20\d{2})\s*[/-]\s*(\d{2,4})/);
   if (!match) return null;
 
   const startYear = Number(match[1]);
@@ -136,7 +136,7 @@ function parseDateExpression(rawValue: string, academicYear: AcademicYearParts |
   const raw = rawValue.trim();
   const normalized = normalizeSearch(raw);
 
-  const numeric = normalized.match(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/);
+  const numeric = normalized.match(/\b(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b/);
   if (numeric) {
     const day = Number(numeric[1]);
     const month = Number(numeric[2]);
@@ -172,7 +172,7 @@ function parseDateExpression(rawValue: string, academicYear: AcademicYearParts |
 
 function collectDateCandidates(text: string, academicYear: AcademicYearParts | null): DateCandidate[] {
   const dateRegex = new RegExp(
-    `\\b(?:\\d{1,2}[\\/-]\\d{1,2}(?:[\\/-]\\d{2,4})?|\\d{1,2}\\s+de\\s+(?:${MONTH_PATTERN})(?:\\s+de\\s+20\\d{2})?)(?:\\s*(?:às|as|a)\\s*\\d{1,2}(?:(?::|\\.|h)\\d{2})?\\s*(?:h|horas?)?)?`,
+    `\\b(?:\\d{1,2}[/\\-]\\d{1,2}(?:[/\\-]\\d{2,4})?|\\d{1,2}\\s+de\\s+(?:${MONTH_PATTERN})(?:\\s+de\\s+20\\d{2})?)(?:\\s*(?:às|as|a)\\s*\\d{1,2}(?:(?::|\\.|h)\\d{2})?\\s*(?:h|horas?)?)?`,
     "giu",
   );
 
@@ -231,7 +231,7 @@ function extractCourseName(text: string, courseCode: string | null): string | nu
 }
 
 function extractAcademicYear(text: string): string | null {
-  const match = text.match(/Ano\s+(?:letivo|lectivo)\s*:\s*(20\d{2})\s*[\/-]\s*(\d{2,4})/i);
+  const match = text.match(/Ano\s+(?:letivo|lectivo)\s*:\s*(20\d{2})\s*[/-]\s*(\d{2,4})/i);
   if (!match) return null;
 
   const startYear = Number(match[1]);

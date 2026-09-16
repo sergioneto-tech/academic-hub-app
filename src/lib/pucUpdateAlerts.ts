@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { acceptCurrentPucCatalogVersion } from "@/lib/pucVersionState";
 
@@ -34,6 +35,10 @@ export type PucUpdateDifference = {
   before: string;
   after: string;
 };
+
+function pucClient(): SupabaseClient {
+  return supabase as unknown as SupabaseClient;
+}
 
 function show(value: unknown) {
   if (value === null || value === undefined || value === "") return "—";
@@ -106,8 +111,7 @@ export function buildPucUpdateDifferences(alert: PucUpdateAlert): PucUpdateDiffe
 }
 
 export async function fetchMyPucUpdateAlerts(): Promise<PucUpdateAlert[]> {
-  const client = supabase as any;
-  const { data, error } = await client.rpc("get_my_puc_update_alerts");
+  const { data, error } = await pucClient().rpc("get_my_puc_update_alerts");
   if (error) throw new Error(error.message || "puc_update_alerts_failed");
   return Array.isArray(data) ? data as PucUpdateAlert[] : [];
 }

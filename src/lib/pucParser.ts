@@ -367,6 +367,31 @@ function parseBareDay(day: number, month: number, academicYear: AcademicYearPart
   return year ? toIsoDate(year, month, day) : undefined;
 }
 
+function findEfolioBlockEnd(section: string, start: number, label: "A" | "B"): number {
+  if (label === "A") {
+    const nextLabel = findLabelIndex(section.slice(start + 1), "B");
+    if (nextLabel >= 0) return start + 1 + nextLabel;
+  }
+
+  const tail = section.slice(start + 1);
+  const normalizedTail = normalizeSearch(tail);
+  const stopMarkers = [
+    "e-folio global",
+    "6.3. exame",
+    "7. plano de trabalho",
+    "cartao de aprendizagem",
+  ];
+  const offsets = stopMarkers
+    .map((marker) => normalizedTail.indexOf(marker))
+    .filter((offset) => offset >= 0);
+
+  if (offsets.length > 0) {
+    return start + 1 + Math.min(...offsets);
+  }
+
+  return Math.min(section.length, start + 1400);
+}
+
 function parseEfolioBlock(
   text: string,
   section: string,
@@ -376,8 +401,7 @@ function parseEfolioBlock(
   const start = findLabelIndex(section, label);
   if (start < 0) return null;
 
-  const nextLabel = label === "A" ? findLabelIndex(section.slice(start + 1), "B") : -1;
-  const end = nextLabel >= 0 ? start + 1 + nextLabel : Math.min(section.length, start + 1800);
+  const end = findEfolioBlockEnd(section, start, label);
   const block = section.slice(start, end);
   const candidates = collectDateCandidates(block, academicYear);
 

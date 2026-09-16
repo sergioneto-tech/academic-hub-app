@@ -174,6 +174,7 @@ export default function PucImportLab() {
   const [error, setError] = useState<string | null>(null);
   const [mismatchMessage, setMismatchMessage] = useState<string | null>(null);
   const [isReading, setIsReading] = useState(false);
+  const [hasSaved, setHasSaved] = useState(false);
 
   const modelLabel = result?.evaluationModel
     ? MODEL_LABELS[result.evaluationModel] ?? result.evaluationModel
@@ -183,10 +184,15 @@ export default function PucImportLab() {
     () => (result ? buildPucImportDraft(result, rawText) : null),
     [result, rawText],
   );
-  const eventPoints = useMemo(
-    () => new Map((importDraft?.events ?? []).map((event) => [event.key, event.maxPoints] as const)),
-    [importDraft],
-  );
+  const eventPoints = useMemo(() => {
+    const points = new Map((importDraft?.events ?? []).map((event) => [event.key, event.maxPoints] as const));
+    if (importDraft?.finalAssessment?.maxPoints !== null && importDraft?.finalAssessment?.maxPoints !== undefined && result) {
+      const examEvent = result.events.find((event) => event.kind === "exam");
+      if (examEvent) points.set(examEvent.key, importDraft.finalAssessment.maxPoints);
+    }
+    return points;
+  }, [importDraft, result]);
+  const hasExamEvent = result?.events.some((event) => event.kind === "exam") ?? false;
 
   const fileSizeLabel = useMemo(() => {
     if (fileSize === null) return null;
@@ -202,6 +208,7 @@ export default function PucImportLab() {
     setRawText("");
     setPageCount(null);
     setProgress(null);
+    setHasSaved(false);
     setFileName(file.name);
     setFileSize(file.size);
 
@@ -259,7 +266,7 @@ export default function PucImportLab() {
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">Teste privado · não publicar</div>
                 <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Leitor experimental de PUC</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-                  Seleciona um PUC em PDF para verificar o que o Academic Hub consegue reconhecer. Nesta fase nada é gravado na cadeira, na conta ou no Supabase.
+                  Seleciona um PUC em PDF para verificar o que o Academic Hub consegue reconhecer. O PDF é processado localmente e qualquer gravação só acontece depois da revisão e confirmação explícita abaixo.
                 </p>
                 {targetCourse && (
                   <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
@@ -379,7 +386,7 @@ export default function PucImportLab() {
               )}
 
               <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-800 dark:text-amber-200">
-                <strong>Confirmação obrigatória:</strong> este leitor apenas propõe dados. Mesmo quando um campo aparece como confirmado no PUC, a futura importação só poderá ser guardada após revisão do aluno.
+                <strong>Confirmação obrigatória:</strong> este leitor apenas propõe dados. Mesmo quando um campo aparece como confirmado no PUC, a importação só pode ser guardada depois da revisão do aluno.
               </div>
             </CardContent>
           </Card>
@@ -390,7 +397,7 @@ export default function PucImportLab() {
                 <h2 className="text-lg font-semibold">Datas e cotações encontradas</h2>
                 <p className="mt-1 text-xs text-muted-foreground">{result.events.length} elemento(s) identificado(s) pelo parser determinístico.</p>
               </div>
-              <div className="text-xs font-medium text-muted-foreground">Nenhum dado foi guardado</div>
+              <div className="text-xs font-medium text-muted-foreground">{hasSaved ? "Dados guardados na cadeira · teste local" : "Nenhum dado foi guardado"}</div>
             </div>
 
             {result.events.length > 0 ? (
@@ -406,14 +413,29 @@ export default function PucImportLab() {
             ) : (
               <Card className="premium-card"><CardContent className="p-4 text-sm text-muted-foreground">Não foram encontradas datas suficientemente estruturadas para apresentar.</CardContent></Card>
             )}
+
+            {importDraft?.finalAssessment && !hasExamEvent && (
+              <div className="mt-3 rounded-2xl border border-primary/30 bg-primary/[0.045] p-4 shadow-sm">
+                <div className="text-sm font-semibold">{importDraft.finalAssessment.name}</div>
+                <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                  <span>Prova / exame</span>
+                  {importDraft.finalAssessment.maxPoints !== null && (
+                    <span className="font-semibold text-foreground">Cotação: {formatPoints(importDraft.finalAssessment.maxPoints)} valores</span>
+                  )}
+                </div>
+                <p className="mt-3 text-xs leading-5 text-muted-foreground">A cotação foi encontrada no PUC. A data e a hora continuam a vir exclusivamente do calendário oficial do Academic Hub.</p>
+              </div>
+            )}
           </section>
 
           {courseMatch === "matched" && targetCourse && (
             <PucReviewDraft
               result={result}
               rawText={rawText}
+              courseId={targetCourse.id}
               courseName={targetCourse.name}
               courseCode={targetCourse.code}
+              onSaved={() => setHasSaved(true)}
             />
           )}
 

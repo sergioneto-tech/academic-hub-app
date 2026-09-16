@@ -136,29 +136,32 @@ export default function PucImportPage() {
 
   return (
     <div className="space-y-5 pb-6">
-      <div>
-        <Button asChild variant="ghost" size="sm">
-          <Link to={backPath}><ArrowLeft className="mr-2 h-4 w-4" />{backLabel}</Link>
+      <div className="min-w-0">
+        <Button asChild variant="ghost" size="sm" className="max-w-full justify-start">
+          <Link to={backPath} className="min-w-0 max-w-full">
+            <ArrowLeft className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">{backLabel}</span>
+          </Link>
         </Button>
       </div>
 
       <section className="premium-surface overflow-hidden">
         <div className="relative p-5 sm:p-7">
           <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-start gap-4">
+            <div className="flex min-w-0 items-start gap-4">
               <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-sm">
                 <FileSearch2 className="h-7 w-7" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">PUC · importação assistida</div>
                 <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">Importar dados do PUC</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
                   Seleciona o PDF do PUC desta UC. O Academic Hub lê o documento localmente, propõe os dados encontrados e só grava depois da tua revisão e confirmação explícita.
                 </p>
                 {targetCourse && (
-                  <div className="mt-3 inline-flex flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+                  <div className="mt-3 inline-flex max-w-full flex-wrap items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
                     <span className="font-semibold">Cadeira:</span>
-                    <span>{targetCourse.name}</span>
+                    <span className="min-w-0 break-words">{targetCourse.name}</span>
                     <span className="rounded-md bg-background/70 px-2 py-0.5 font-semibold text-muted-foreground">{targetCourse.code}</span>
                   </div>
                 )}
@@ -176,8 +179,8 @@ export default function PucImportPage() {
         <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><FileText className="h-5 w-5 text-primary" />Selecionar PUC em PDF</CardTitle></CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4 rounded-2xl border border-dashed border-primary/35 bg-primary/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div>
-              <div className="text-sm font-semibold">{fileName || "Ainda não selecionaste nenhum ficheiro"}</div>
+            <div className="min-w-0">
+              <div className="break-all text-sm font-semibold sm:break-words">{fileName || "Ainda não selecionaste nenhum ficheiro"}</div>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">PDF com texto digital · máximo 20 MB e 80 páginas{pageCount ? ` · ${pageCount} páginas lidas` : ""}.</p>
             </div>
             <div className="shrink-0">

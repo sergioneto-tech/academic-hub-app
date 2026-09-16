@@ -18,6 +18,13 @@ const MODEL_OPTIONS: Array<{ value: EvaluationModel; label: string }> = [
   { value: "exam-only", label: "Avaliação por exame" },
 ];
 
+function toNullableNumber(rawValue: string): number | null {
+  const raw = rawValue.trim();
+  if (raw === "") return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export default function PucReviewDraft({
   result,
   rawText,
@@ -33,10 +40,12 @@ export default function PucReviewDraft({
   const [isOpen, setIsOpen] = useState(false);
   const [draftModel, setDraftModel] = useState<EvaluationModel>(importDraft.model);
   const [draftEvents, setDraftEvents] = useState<PucImportDraftEvent[]>(importDraft.events);
+  const [draftFinalPoints, setDraftFinalPoints] = useState<number | null>(importDraft.finalAssessment?.maxPoints ?? null);
 
   const resetDraft = () => {
     setDraftModel(importDraft.model);
     setDraftEvents(importDraft.events.map((event) => ({ ...event })));
+    setDraftFinalPoints(importDraft.finalAssessment?.maxPoints ?? null);
   };
 
   const openReview = () => {
@@ -109,7 +118,7 @@ export default function PucReviewDraft({
       <div className="mt-4 space-y-3">
         {draftEvents.length === 0 ? (
           <div className="rounded-xl border border-dashed p-5 text-center text-sm text-muted-foreground">
-            O PUC não contém atividades importáveis com datas estruturadas. Exame e recurso continuam a ser tratados pelo calendário oficial.
+            O PUC não contém atividades importáveis com datas estruturadas. A prova final pode ainda ter uma cotação própria indicada abaixo.
           </div>
         ) : draftEvents.map((event) => (
           <div key={event.key} className="rounded-2xl border bg-background/45 p-3 sm:p-4">
@@ -127,11 +136,7 @@ export default function PucReviewDraft({
                   inputMode="decimal"
                   value={event.maxPoints ?? ""}
                   placeholder="Confirmar"
-                  onChange={(change) => {
-                    const raw = change.target.value.trim();
-                    const parsed = raw === "" ? null : Number(raw);
-                    updateEvent(event.key, { maxPoints: parsed !== null && Number.isFinite(parsed) ? parsed : null });
-                  }}
+                  onChange={(change) => updateEvent(event.key, { maxPoints: toNullableNumber(change.target.value) })}
                 />
               </div>
               <div>
@@ -151,8 +156,35 @@ export default function PucReviewDraft({
         ))}
       </div>
 
+      {importDraft.finalAssessment && (
+        <div className="mt-4 rounded-2xl border border-primary/30 bg-primary/[0.045] p-3 sm:p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Cotação da prova final</div>
+              <div className="mt-1 text-sm font-semibold">{importDraft.finalAssessment.name}</div>
+              <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+                Apenas esta cotação vem do PUC. A data e a hora do exame, bem como o recurso, continuam ligadas ao calendário oficial já usado pelo Academic Hub.
+              </p>
+            </div>
+            <div className="grid w-full gap-1 sm:w-44 sm:shrink-0">
+              <Label htmlFor="puc-final-points" className="text-[11px] text-muted-foreground">Valor máximo</Label>
+              <Input
+                id="puc-final-points"
+                type="number"
+                min="0"
+                step="0.5"
+                inputMode="decimal"
+                value={draftFinalPoints ?? ""}
+                placeholder="Confirmar"
+                onChange={(change) => setDraftFinalPoints(toNullableNumber(change.target.value))}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 p-3 text-xs leading-5 text-emerald-800 dark:text-emerald-200">
-        As datas de exame e recurso não fazem parte desta revisão e continuarão a ser mantidas pelo calendário oficial já usado pelo Academic Hub. A prova só será alterada quanto à cotação numa fase posterior, depois de validarmos este passo.
+        As datas e horas de exame e recurso não são importadas do PUC. Permanecem sempre associadas ao calendário oficial que o Academic Hub já utiliza; desta prova apenas será guardada a cotação confirmada pelo aluno.
       </div>
 
       <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -162,7 +194,7 @@ export default function PucReviewDraft({
           </Button>
           <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Fechar revisão</Button>
         </div>
-        <Button type="button" disabled title="A gravação só será ativada depois de validares esta fase visual e as cotações detetadas.">
+        <Button type="button" disabled title="O botão de gravação ficará sempre aqui, dentro da revisão, e só será ativado depois de validares esta fase.">
           <Save className="mr-2 h-4 w-4" />Guardar na cadeira · próximo passo
         </Button>
       </div>

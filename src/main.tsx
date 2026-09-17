@@ -14,6 +14,7 @@ import { Toaster } from "@/components/ui/toaster";
 import LocalTimeIndicator from "@/components/LocalTimeIndicator";
 import { parseImplicitAuthCallback } from "@/lib/authCallback";
 import { reportClientError } from "@/lib/clientErrorReporting";
+import { applyPushNavigation } from "@/lib/pushDeepLinkNavigation";
 import {
   getStoredSession,
   isUabStudentEmail,
@@ -30,17 +31,7 @@ document.documentElement.lang = "pt-PT";
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.addEventListener("message", (event) => {
     if (event?.data?.type !== "ACADEMIC_HUB_NOTIFICATION_NAVIGATE" || typeof event.data.url !== "string") return;
-    try {
-      const target = new URL(event.data.url, window.location.href);
-      if (target.origin !== window.location.origin) return;
-      if (target.pathname === window.location.pathname && target.search === window.location.search && target.hash) {
-        window.location.hash = target.hash;
-      } else {
-        window.location.assign(target.href);
-      }
-    } catch {
-      // Ignora payloads de navegação inválidos; a app continua funcional.
-    }
+    applyPushNavigation(event.data.url);
   });
 }
 

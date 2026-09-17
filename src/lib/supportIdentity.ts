@@ -7,6 +7,7 @@ import {
   type AuthSession,
   type CloudConfig,
 } from "@/lib/cloudSync";
+import { getPublicSupabaseConfig } from "@/lib/publicSupabaseConfig";
 
 export type SupportIdentityState = {
   supportId: string | null;
@@ -14,16 +15,7 @@ export type SupportIdentityState = {
   available: boolean;
 };
 
-export function getAcademicHubCloudConfig(): CloudConfig | null {
-  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
-  const supabaseAnonKey = (
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    import.meta.env.VITE_SUPABASE_ANON_KEY ||
-    ""
-  ).trim();
-
-  return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
-}
+export const getAcademicHubCloudConfig = getPublicSupabaseConfig;
 
 function sessionNeedsRefresh(session: AuthSession) {
   const expiresAtMs = Number(session.expires_at ?? 0) * 1000;

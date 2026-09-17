@@ -13,6 +13,7 @@ import AdminSupportShortcut from "./components/AdminSupportShortcut";
 import AdminFeedbackMonitor from "./components/AdminFeedbackMonitor";
 import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
 import FeedbackBetaEnhancements from "./components/FeedbackBetaEnhancements";
+import FeedbackBetaUiFix from "./components/FeedbackBetaUiFix";
 import FeedbackGlobalSyncPulse from "./components/FeedbackGlobalSyncPulse";
 import AppSatisfactionSurvey from "./components/AppSatisfactionSurvey";
 import AdminSurveyResults from "./components/AdminSurveyResults";
@@ -78,6 +79,7 @@ function AcademicHubApp() {
       <FeedbackCloudBridge />
       <FeedbackGlobalSyncPulse />
       <FeedbackBetaEnhancements />
+      <FeedbackBetaUiFix />
       <AdminFeedbackMonitor />
       <AppSatisfactionSurvey />
       <AdminSurveyResults />

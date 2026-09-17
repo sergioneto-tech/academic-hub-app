@@ -202,11 +202,10 @@ export default function CourseDetail() {
   const course = useMemo(() => state.courses.find((c) => c.id === id), [state.courses, id]);
   const rules = useMemo(() => (id ? getRules(state, id) : null), [state, id]);
 
-  // garantir itens padrão (para não ficar vazio)
+  // Exame e recurso continuam a existir como estruturas-base. Os e-fólios são livres:
+  // podem ser adicionados/removidos pelo aluno e não são recriados ao abrir a cadeira.
   useEffect(() => {
     if (!id) return;
-    ensureAssessment(id, "efolio", "e-fólio A");
-    ensureAssessment(id, "efolio", "e-fólio B");
     ensureAssessment(id, "exam", "g-fólio");
     ensureAssessment(id, "resit", "recurso");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,7 +228,6 @@ export default function CourseDetail() {
   const examOutcome = useMemo(() => (id ? getExamOutcome(state, id) : null), [state, id]);
   const resitOutcome = useMemo(() => (id ? getResitOutcome(state, id) : null), [state, id]);
 
-  // Sessões (ex.: abertura, antes de e‑fólios, antes de exame)
   const sessions = useMemo(() => course?.sessions ?? [], [course?.sessions]);
   const sessionsSorted = useMemo(
     () => [...sessions].sort((a, b) => String(a.dateTime).localeCompare(String(b.dateTime))),
@@ -253,7 +251,6 @@ export default function CourseDetail() {
       : status.badge === "danger"
       ? "bg-rose-100 text-rose-900 border-rose-200"
       : "bg-slate-100 text-slate-900 border-slate-200";
-
 
   function completeCourse() {
     markCourseCompleted(course.id);
@@ -387,7 +384,7 @@ export default function CourseDetail() {
           <div className="space-y-1">
             <CardTitle>E‑fólios</CardTitle>
             <p className="text-xs text-muted-foreground">
-              Podes adicionar os e‑fólios necessários para esta cadeira. Define sempre o valor real indicado no PUC.
+              Podes adicionar ou remover os e‑fólios necessários para esta cadeira. Define sempre o valor real indicado no PUC.
             </p>
           </div>
           <Button
@@ -417,22 +414,20 @@ export default function CourseDetail() {
                       {a.endDate ? `Até ${formatPtDate(a.endDate)}` : "Defina as datas para lembretes/planeamento."}
                     </div>
                   </div>
-                  {!["e-fólio A", "e-fólio B"].includes(a.name) && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="shrink-0 text-muted-foreground hover:text-destructive md:hidden"
-                      aria-label={`Remover ${a.name}`}
-                      onClick={() => {
-                        if (window.confirm(`Remover ${a.name}? As respetivas datas e nota serão eliminadas.`)) {
-                          removeAssessment(a.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 text-muted-foreground hover:text-destructive md:hidden"
+                    aria-label={`Remover ${a.name}`}
+                    onClick={() => {
+                      if (window.confirm(`Remover ${a.name}? As respetivas datas e nota serão eliminadas.`)) {
+                        removeAssessment(a.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 md:flex md:gap-3 md:items-end">
@@ -451,22 +446,20 @@ export default function CourseDetail() {
                     placeholder="0,00"
                     onCommit={(v) => setAssessmentGrade(a.id, v)}
                   />
-                  {!["e-fólio A", "e-fólio B"].includes(a.name) && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="hidden shrink-0 text-muted-foreground hover:text-destructive md:inline-flex"
-                      aria-label={`Remover ${a.name}`}
-                      onClick={() => {
-                        if (window.confirm(`Remover ${a.name}? As respetivas datas e nota serão eliminadas.`)) {
-                          removeAssessment(a.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="hidden shrink-0 text-muted-foreground hover:text-destructive md:inline-flex"
+                    aria-label={`Remover ${a.name}`}
+                    onClick={() => {
+                      if (window.confirm(`Remover ${a.name}? As respetivas datas e nota serão eliminadas.`)) {
+                        removeAssessment(a.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
 
@@ -496,8 +489,7 @@ export default function CourseDetail() {
             </div>
           ))}
         </CardContent>
-      
-</Card>
+      </Card>
 
       <Card className="bg-card/80 backdrop-blur">
         <CardHeader>

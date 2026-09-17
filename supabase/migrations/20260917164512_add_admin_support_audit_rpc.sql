@@ -1,0 +1,9 @@
+-- Historical migration sync marker.
+--
+-- This migration version already exists in the production Supabase history as
+-- "add_admin_support_audit_rpc". Its RPC was subsequently replaced and hardened
+-- by 20260917170413_harden_admin_support_reason_validation.sql.
+--
+-- This no-op file is intentionally kept so the repository migration sequence
+-- matches production without reconstructing obsolete privileged SQL. Fresh
+-- installations receive the final RPC definition in the following migration.

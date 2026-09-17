@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Users } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
 import { getStoredSession, refreshSession, type CloudConfig } from "@/lib/cloudSync";
-import { FEEDBACK_BETA_MANAGER_USER_ID, playAcademicHubAppSound } from "@/lib/feedbackBeta";
+import { FEEDBACK_BETA_MANAGER_USER_ID } from "@/lib/feedbackBeta";
 
 const STORAGE_KEY = "academic_hub_admin_user_count";
 const SUMMARY_CACHE_KEY = "academic_hub_admin_user_summary_v1";
@@ -56,15 +55,6 @@ function cacheSummary(summary: Summary) {
     localStorage.setItem(STORAGE_KEY, String(summary.totalUsers));
   } catch {
     // O valor remoto continua a ser mostrado mesmo sem cache local.
-  }
-}
-
-function previousStoredTotal(): number {
-  try {
-    const value = Number(localStorage.getItem(STORAGE_KEY) || "0");
-    return Number.isFinite(value) ? value : 0;
-  } catch {
-    return 0;
   }
 }
 
@@ -193,18 +183,8 @@ export default function AdminUserMonitor() {
         return;
       }
 
-      const previous = previousStoredTotal();
       setSummary(next);
       setUsingCachedValue(false);
-
-      if (previous > 0 && next.totalUsers > previous) {
-        const added = next.totalUsers - previous;
-        playAcademicHubAppSound("notification");
-        toast({
-          title: added === 1 ? "Novo utilizador registado" : `${added} novos utilizadores registados`,
-          description: `O Academic Hub tem agora ${next.totalUsers} contas registadas.`,
-        });
-      }
       cacheSummary(next);
     };
 

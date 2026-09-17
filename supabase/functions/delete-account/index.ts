@@ -31,10 +31,36 @@ Deno.serve(async (req: Request) => {
   const user = userData?.user;
   if (userError || !user?.id) return json({ error: "Unauthorized" }, 401);
 
-  // Delete the authenticated Auth user directly. Database foreign keys with
-  // ON DELETE CASCADE remove the user's dependent Academic Hub records in the
-  // same database operation. Audit/security records configured with SET NULL
-  // are retained without continuing to identify the deleted account.
+  const { data: folders, error: listRootError } = await admin.storage
+    .from("feedback-attachments")
+    .list(user.id, { limit: 1000 });
+  if (listRootError) {
+    console.error("delete-account storage list", listRootError.message);
+    return json({ error: "Account deletion failed" }, 503);
+  }
+
+  for (const folder of folders ?? []) {
+    if (!folder.name) continue;
+    const { data: files, error: listFilesError } = await admin.storage
+      .from("feedback-attachments")
+      .list(`${user.id}/${folder.name}`, { limit: 1000 });
+    if (listFilesError) {
+      console.error("delete-account storage folder", listFilesError.message);
+      return json({ error: "Account deletion failed" }, 503);
+    }
+
+    const paths = (files ?? [])
+      .map((file) => file.name ? `${user.id}/${folder.name}/${file.name}` : "")
+      .filter(Boolean);
+    if (paths.length) {
+      const { error: removeError } = await admin.storage.from("feedback-attachments").remove(paths);
+      if (removeError) {
+        console.error("delete-account storage remove", removeError.message);
+        return json({ error: "Account deletion failed" }, 503);
+      }
+    }
+  }
+
   const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
   if (deleteError) {
     console.error("delete-account", deleteError.message);

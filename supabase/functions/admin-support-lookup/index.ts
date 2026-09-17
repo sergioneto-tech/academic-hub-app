@@ -63,9 +63,12 @@ Deno.serve(async (req: Request) => {
   if (payload.action === "access") return json({ allowed: true });
 
   const supportId = String(payload.supportId ?? "").trim().toUpperCase();
-  const reason = String(payload.reason ?? "").trim();
+  const reason = String(payload.reason ?? "").trim().replace(/\s+/g, " ");
   if (!SUPPORT_ID_PATTERN.test(supportId)) return json({ error: "invalid_support_id" }, 400);
   if (reason.length < 8 || reason.length > 500) return json({ error: "invalid_reason" }, 400);
+  if (reason.toUpperCase() === supportId || !/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(reason)) {
+    return json({ error: "invalid_reason" }, 400);
+  }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },

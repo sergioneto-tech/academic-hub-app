@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   getStoredSession,
@@ -84,8 +84,7 @@ export function useMySupportIdentity(): SupportIdentityState {
     available: false,
   });
 
-  useEffect(() => {
-    let cancelled = false;
+  const reload = useCallback(() => {
     const config = getAcademicHubCloudConfig();
     if (!config) {
       setState({ supportId: null, loading: false, available: false });
@@ -98,18 +97,17 @@ export function useMySupportIdentity(): SupportIdentityState {
       return;
     }
 
+    setState((current) => ({ ...current, loading: true }));
     void fetchMySupportId(config, session)
-      .then((supportId) => {
-        if (!cancelled) setState({ supportId, loading: false, available: Boolean(supportId) });
-      })
-      .catch(() => {
-        if (!cancelled) setState({ supportId: null, loading: false, available: false });
-      });
-
-    return () => {
-      cancelled = true;
-    };
+      .then((supportId) => setState({ supportId, loading: false, available: Boolean(supportId) }))
+      .catch(() => setState({ supportId: null, loading: false, available: false }));
   }, []);
+
+  useEffect(() => {
+    reload();
+    window.addEventListener("academic-hub-auth-changed", reload);
+    return () => window.removeEventListener("academic-hub-auth-changed", reload);
+  }, [reload]);
 
   return state;
 }

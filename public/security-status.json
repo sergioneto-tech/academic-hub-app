@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "product": "Academic Hub",
   "securityLevel": "2026.09",
-  "lastAudit": "2026-09-17T23:24:37.000Z",
-  "status": "review",
-  "summary": "A última vistoria detetou um controlo de segurança que requer revisão.",
+  "lastAudit": "2026-09-17T23:28:45.219Z",
+  "status": "protected",
+  "summary": "Sem vulnerabilidades críticas ou altas ou desvios à baseline de segurança detetados na última vistoria automática.",
   "checks": [
     {
       "id": "dependencies",
@@ -21,8 +21,8 @@
     {
       "id": "database",
       "label": "Base de dados e acesso",
-      "status": "fail",
-      "detail": "Baseline live detetou desvios: unexpected authenticated table privilege."
+      "status": "pass",
+      "detail": "RLS/FORCE RLS, ACLs de tabelas e sequências, SECURITY DEFINER, views, Storage e default privileges passaram a baseline live através da API read-only."
     },
     {
       "id": "frontend",

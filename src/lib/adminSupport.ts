@@ -124,16 +124,20 @@ export function normalizeSupportReason(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
-export function isValidSupportReason(value: string) {
+export function isValidSupportReason(value: string, supportIdValue = "") {
   const reason = normalizeSupportReason(value);
-  return reason.length >= 8 && reason.length <= 500;
+  const supportId = normalizeSupportId(supportIdValue);
+  if (reason.length < 8 || reason.length > 500) return false;
+  if (!/[A-Za-zÀ-ÖØ-öø-ÿ]/.test(reason)) return false;
+  if (supportId && reason.toUpperCase() === supportId) return false;
+  return true;
 }
 
 export async function lookupAdminSupport(value: string, reasonValue: string): Promise<AdminSupportLookup> {
   const supportId = normalizeSupportId(value);
   const reason = normalizeSupportReason(reasonValue);
   if (!isValidSupportId(supportId)) throw new Error("invalid_support_id");
-  if (!isValidSupportReason(reason)) throw new Error("invalid_reason");
+  if (!isValidSupportReason(reason, supportId)) throw new Error("invalid_reason");
   const response = await callAdminSupport({ supportId, reason });
   if (response.status === 404) throw new Error("not_found");
   if (response.status === 403) throw new Error("forbidden");

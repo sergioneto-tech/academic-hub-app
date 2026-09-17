@@ -9,9 +9,11 @@ import CloudSyncStatusBadge from "./components/CloudSyncStatusBadge";
 import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
 import AdminUserMonitor from "./components/AdminUserMonitor";
+import AdminSupportShortcut from "./components/AdminSupportShortcut";
 import AdminFeedbackMonitor from "./components/AdminFeedbackMonitor";
 import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
 import FeedbackBetaEnhancements from "./components/FeedbackBetaEnhancements";
+import FeedbackBetaUiFix from "./components/FeedbackBetaUiFix";
 import FeedbackGlobalSyncPulse from "./components/FeedbackGlobalSyncPulse";
 import AppSatisfactionSurvey from "./components/AppSatisfactionSurvey";
 import AdminSurveyResults from "./components/AdminSurveyResults";
@@ -33,18 +35,21 @@ const CoursesPage = lazy(() => import("./pages/Courses"));
 const CourseDetailPremium = lazy(() => import("./pages/CourseDetailPremium"));
 const SettingsPremium = lazy(() => import("./pages/SettingsPremium"));
 const AccountProfilePage = lazy(() => import("./pages/AccountProfile"));
+const MyDataPrivacyPage = lazy(() => import("./pages/MyDataPrivacy"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPassword"));
 const StudyPlan = lazy(() => import("./pages/StudyPlan"));
 const PersonalStudyPlan = lazy(() => import("./pages/PersonalStudyPlan"));
 const HelpPage = lazy(() => import("./pages/Help"));
 const FeedbackPage = lazy(() => import("./pages/Feedback"));
 const LegalPage = lazy(() => import("./pages/Legal"));
+const TermsOfUsePage = lazy(() => import("./pages/TermsOfUse"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
 const PucImportPage = lazy(() => import("./pages/PucImportPage"));
 const PucSharedReviewPage = lazy(() => import("./pages/PucSharedReviewLab"));
 const PucAdminReviewPage = lazy(() => import("./pages/PucAdminReviewLab"));
 const PucUpdateAlertsPage = lazy(() => import("./pages/PucUpdateAlertsLab"));
+const AdminSupportPage = lazy(() => import("./pages/AdminSupport"));
 
 const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
@@ -72,9 +77,11 @@ function AcademicHubApp() {
       <PushDeepLinkNotice />
       <DesktopPushPrompt />
       <AdminUserMonitor />
+      <AdminSupportShortcut />
       <FeedbackCloudBridge />
       <FeedbackGlobalSyncPulse />
       <FeedbackBetaEnhancements />
+      <FeedbackBetaUiFix />
       <AdminFeedbackMonitor />
       <AppSatisfactionSurvey />
       <AdminSurveyResults />
@@ -92,16 +99,21 @@ function AcademicHubApp() {
             <Route path="/plano" element={<LazyPage><ExplorePage><StudyPlan /></ExplorePage></LazyPage>} />
             <Route path="/plano/estudo" element={<LazyPage><ExplorePage><PersonalStudyPlan /></ExplorePage></LazyPage>} />
             <Route path="/conta" element={<LazyPage><AccountProfilePage /></LazyPage>} />
+            <Route path="/dados-privacidade" element={<LazyPage><MyDataPrivacyPage /></LazyPage>} />
             <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
             <Route path="/seguranca-privacidade" element={<SecurityPrivacyPage />} />
+            <Route path="/seguranca-transparencia" element={<SecurityPrivacyPage />} />
             <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
             <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
             <Route path="/feedback" element={<LazyPage><FeedbackPage /></LazyPage>} />
             <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
+            <Route path="/privacidade" element={<LazyPage><LegalPage /></LazyPage>} />
+            <Route path="/termos" element={<LazyPage><TermsOfUsePage /></LazyPage>} />
             <Route path="/puc/importar" element={<LazyPage><PucImportPage /></LazyPage>} />
             <Route path="/puc/rever" element={<LazyPage><PucSharedReviewPage /></LazyPage>} />
             <Route path="/puc/atualizacoes" element={<LazyPage><PucUpdateAlertsPage /></LazyPage>} />
             <Route path="/administracao/puc-correcoes" element={<LazyPage><PucAdminReviewPage /></LazyPage>} />
+            <Route path="/administracao/suporte" element={<LazyPage><AdminSupportPage /></LazyPage>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

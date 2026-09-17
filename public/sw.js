@@ -1,5 +1,5 @@
-const APP_VERSION = "1.6.5";
-const SW_VERSION = "1.6.5-maintenance-6";
+const APP_VERSION = "1.6.6";
+const SW_VERSION = "1.6.6-privacy-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -15,7 +15,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.6.5",
+  "./release-notes.json?v=1.6.6",
 ];
 
 function delay(ms) {
@@ -43,12 +43,50 @@ async function fetchVerifiedAppShell(request) {
   throw lastError ?? new Error("Não foi possível validar o app-shell");
 }
 
+function extractAppShellAssetUrls(html) {
+  const urls = new Set();
+  const pattern = /(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/gi;
+  let match;
+
+  while ((match = pattern.exec(html)) !== null) {
+    try {
+      const url = new URL(match[1], self.registration.scope);
+      if (url.origin === self.location.origin) urls.add(url.href);
+    } catch {
+      // Ignora referências inválidas no HTML; o app-shell já foi validado acima.
+    }
+  }
+
+  return [...urls];
+}
+
+async function cacheInstalledAppAssets(cache, appShell) {
+  let html = "";
+  try {
+    html = await appShell.clone().text();
+  } catch {
+    return;
+  }
+
+  const assetUrls = extractAppShellAssetUrls(html);
+  await Promise.all(assetUrls.map(async (assetUrl) => {
+    try {
+      const request = new Request(assetUrl, { cache: "no-store" });
+      const response = await fetch(request);
+      if (response.ok) await cache.put(request, response.clone());
+    } catch {
+      // Um asset complementar não deve bloquear toda a instalação.
+    }
+  }));
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     const shellUrl = new URL("./", self.location.href).href;
     const shellResponse = await fetchVerifiedAppShell(new Request(shellUrl));
     await cache.put(APP_SHELL_KEY, shellResponse.clone());
+    await cacheInstalledAppAssets(cache, shellResponse);
     const staticUrls = PRECACHE_URLS.filter((url) => url !== "./");
     if (staticUrls.length) await cache.addAll(staticUrls);
     if (AUTO_ACTIVATE) await self.skipWaiting();
@@ -118,15 +156,14 @@ self.addEventListener("notificationclick", (event) => {
   const targetUrl = new URL(event.notification?.data?.url || "./", self.location.href).href;
   event.waitUntil((async () => {
     const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+
     for (const client of clientList) {
-      if ("focus" in client) {
-        if ("navigate" in client) {
-          try { await client.navigate(targetUrl); }
-          catch { /* Se o browser não permitir navegar este cliente, tenta apenas focá-lo. */ }
-        }
-        return client.focus();
+      if ("postMessage" in client) {
+        client.postMessage({ type: "ACADEMIC_HUB_NOTIFICATION_NAVIGATE", url: targetUrl });
       }
+      if ("focus" in client) return client.focus();
     }
+
     if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
     return undefined;
   })());

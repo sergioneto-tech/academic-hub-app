@@ -1,7 +1,23 @@
 import { useEffect } from "react";
-import { FEEDBACK_BETA_EVENT, loadFeedbackStore } from "@/lib/feedbackBeta";
+import {
+  FEEDBACK_BETA_EVENT,
+  isFeedbackBetaManager,
+  loadFeedbackStore,
+} from "@/lib/feedbackBeta";
+import {
+  getStoredSession,
+  refreshSession,
+  storeSession,
+  type AuthSession,
+  type CloudConfig,
+} from "@/lib/cloudSync";
+import { getPublicSupabaseConfig } from "@/lib/publicSupabaseConfig";
 
 const STYLE_ID = "academic-hub-feedback-ui-fix";
+const SUPPORT_ID_PATTERN = /^AH-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/;
+const supportIdsByReference = new Map<string, string>();
+let supportIdsLoadedAt = 0;
+let supportIdsBusy = false;
 
 function ensureStyles() {
   if (document.getElementById(STYLE_ID)) return;
@@ -9,6 +25,26 @@ function ensureStyles() {
   style.id = STYLE_ID;
   style.textContent = `
     [data-ah-feedback-sound="true"] { display: none !important; }
+    #academic-hub-feedback-filters { display: none !important; }
+
+    /* O canal deixou de ser apresentado como Beta. Mantém apenas o contador real de não lidos. */
+    a[href$="/feedback"]::after { content: none !important; display: none !important; }
+    a[href$="/feedback"][data-feedback-unread="true"]::after {
+      content: attr(data-feedback-count) !important;
+      display: inline-grid !important;
+      place-items: center;
+      min-width: 1.25rem;
+      height: 1.25rem;
+      margin-left: auto;
+      border: 1px solid hsl(var(--destructive));
+      border-radius: 9999px;
+      padding: 0 .3rem;
+      background: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+      font-size: .58rem;
+      font-weight: 800;
+      line-height: 1;
+    }
 
     [data-feedback-kind="opinion"] { border-color: rgb(59 130 246 / .58) !important; background: rgb(59 130 246 / .035) !important; }
     [data-feedback-kind="opinion"] svg { color: rgb(96 165 250) !important; }
@@ -26,13 +62,138 @@ function ensureStyles() {
     button[data-feedback-list-kind="suggestion"] { border-left: 4px solid rgb(34 197 94) !important; }
     button[data-feedback-list-kind="bug"] { border-left: 4px solid rgb(239 68 68) !important; }
 
+    .ah-feedback-support-id {
+      display: inline-flex;
+      width: fit-content;
+      max-width: 100%;
+      align-items: center;
+      margin-top: .45rem;
+      border: 1px solid rgb(16 185 129 / .34);
+      border-radius: 9999px;
+      background: rgb(16 185 129 / .08);
+      padding: .22rem .48rem;
+      color: rgb(16 185 129);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: .68rem;
+      font-weight: 650;
+      line-height: 1rem;
+      white-space: nowrap;
+    }
+    .dark .ah-feedback-support-id { color: rgb(110 231 183); }
+
     .ah-feedback-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
     @media (min-width: 1280px) { .ah-feedback-stats { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; } }
   `;
   document.head.appendChild(style);
 }
 
+function sessionNeedsRefresh(session: AuthSession) {
+  const expiresAtMs = Number(session.expires_at ?? 0) * 1000;
+  return Boolean(expiresAtMs && expiresAtMs <= Date.now() + 60_000);
+}
+
+async function requestSupportIds(config: CloudConfig, session: AuthSession) {
+  const url = new URL(`${config.supabaseUrl.replace(/\/$/, "")}/rest/v1/feedback_requests`);
+  url.searchParams.set("select", "reference,sender_support_id");
+  url.searchParams.set("order", "created_at.desc");
+  url.searchParams.set("limit", "200");
+
+  return fetch(url.toString(), {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      apikey: config.supabaseAnonKey,
+      Authorization: `Bearer ${session.access_token}`,
+      Accept: "application/json",
+    },
+  });
+}
+
+async function refreshSupportIds(force = false) {
+  if (!window.location.hash.includes("/feedback") || !isFeedbackBetaManager() || supportIdsBusy) return;
+  if (!force && Date.now() - supportIdsLoadedAt < 30_000) return;
+
+  const config = getPublicSupabaseConfig();
+  if (!config) return;
+  let session = getStoredSession(config);
+  if (!session) return;
+
+  supportIdsBusy = true;
+  try {
+    if (sessionNeedsRefresh(session)) {
+      try {
+        session = await refreshSession(config, session);
+        storeSession(config, session);
+      } catch {
+        return;
+      }
+    }
+
+    let response = await requestSupportIds(config, session);
+    if (response.status === 401) {
+      try {
+        session = await refreshSession(config, session);
+        storeSession(config, session);
+        response = await requestSupportIds(config, session);
+      } catch {
+        return;
+      }
+    }
+    if (!response.ok) return;
+
+    const rows = (await response.json().catch(() => [])) as Array<{
+      reference?: unknown;
+      sender_support_id?: unknown;
+    }>;
+    supportIdsByReference.clear();
+    for (const row of rows) {
+      const reference = typeof row.reference === "string" ? row.reference.trim() : "";
+      const supportId = typeof row.sender_support_id === "string" ? row.sender_support_id.trim().toUpperCase() : "";
+      if (reference && SUPPORT_ID_PATTERN.test(supportId)) supportIdsByReference.set(reference, supportId);
+    }
+    supportIdsLoadedAt = Date.now();
+    window.requestAnimationFrame(applyFixes);
+  } finally {
+    supportIdsBusy = false;
+  }
+}
+
+function ensureSupportBadge(button: HTMLButtonElement, supportId: string) {
+  let badge = button.querySelector<HTMLElement>("[data-ah-feedback-support-id]");
+  if (!badge) {
+    badge = document.createElement("span");
+    badge.dataset.ahFeedbackSupportId = "true";
+    badge.className = "ah-feedback-support-id";
+    button.appendChild(badge);
+  }
+  badge.textContent = `Remetente · ${supportId}`;
+  badge.setAttribute("aria-label", `ID Academic Hub do remetente: ${supportId}`);
+}
+
+function replaceExactText(root: ParentNode, from: string, to: string) {
+  root.querySelectorAll<HTMLElement>("span,h1,h2,h3,h4,div").forEach((node) => {
+    if (node.children.length === 0 && node.textContent?.trim() === from) node.textContent = to;
+  });
+}
+
+function applySupportTerminology() {
+  document.querySelectorAll<HTMLAnchorElement>('a[href$="/feedback"]').forEach((link) => {
+    link.querySelectorAll<HTMLElement>("span").forEach((span) => {
+      if (span.textContent?.trim() === "Feedback") span.textContent = "Suporte";
+    });
+  });
+
+  if (!window.location.hash.includes("/feedback")) return;
+  const topTitle = document.querySelector<HTMLElement>("header h1");
+  if (topTitle?.textContent?.trim() === "Feedback") topTitle.textContent = "Suporte";
+  replaceExactText(document, "Opinião, sugestões e problemas", "Suporte e pedidos");
+  replaceExactText(document, "Gestão de feedback", "Gestão de suporte");
+  replaceExactText(document, "Enviar feedback", "Enviar pedido");
+  replaceExactText(document, "Caixa de feedback", "Gestão de pedidos");
+}
+
 function applyFixes() {
+  applySupportTerminology();
   if (!window.location.hash.includes("/feedback")) return;
 
   document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
@@ -52,21 +213,26 @@ function applyFixes() {
   if (cards.length === 4 && cards.every((card) => card.parentElement === cards[0].parentElement)) cards[0].parentElement?.classList.add("ah-feedback-stats");
 
   const entries = loadFeedbackStore().entries;
+  const manager = isFeedbackBetaManager();
   document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
     const entry = entries.find((item) => button.textContent?.includes(item.reference));
-    if (entry) button.dataset.feedbackListKind = entry.kind;
+    if (!entry) return;
+    button.dataset.feedbackListKind = entry.kind;
+    const supportId = manager ? supportIdsByReference.get(entry.reference) : undefined;
+    if (supportId) ensureSupportBadge(button, supportId);
   });
 }
 
-function schedule() {
+function schedule(forceSupportRefresh = false) {
   [0, 80, 250, 700].forEach((delay) => window.setTimeout(() => window.requestAnimationFrame(applyFixes), delay));
+  void refreshSupportIds(forceSupportRefresh);
 }
 
 export default function FeedbackBetaUiFix() {
   useEffect(() => {
     ensureStyles();
-    schedule();
-    const refresh = () => schedule();
+    schedule(true);
+    const refresh = () => schedule(true);
     const click = () => { if (window.location.hash.includes("/feedback")) window.setTimeout(applyFixes, 0); };
     window.addEventListener(FEEDBACK_BETA_EVENT, refresh);
     window.addEventListener("hashchange", refresh);

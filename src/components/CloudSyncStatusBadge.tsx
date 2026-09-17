@@ -1,19 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Cloud, CloudOff, ShieldAlert } from "lucide-react";
 
+import SupportIdentityBadge from "@/components/SupportIdentityBadge";
 import { useAppStore } from "@/lib/AppStore";
 import { getStoredSession, type CloudConfig } from "@/lib/cloudSync";
 import { CLOUD_CONFLICT_CHANGED_EVENT, hasCloudConflict } from "@/lib/cloudSyncState";
+import { getPublicSupabaseConfig } from "@/lib/publicSupabaseConfig";
 
 type CloudSyncStatusBadgeProps = {
   embedded?: boolean;
 };
-
-function getCloudConfig(): CloudConfig | null {
-  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || "").trim();
-  const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
-  return supabaseUrl && supabaseAnonKey ? { supabaseUrl, supabaseAnonKey } : null;
-}
 
 function hasAccountSession(config: CloudConfig | null): boolean {
   return Boolean(config && getStoredSession(config));
@@ -21,10 +18,11 @@ function hasAccountSession(config: CloudConfig | null): boolean {
 
 export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStatusBadgeProps) {
   const { state } = useAppStore();
-  const config = useMemo(getCloudConfig, []);
+  const config = useMemo(getPublicSupabaseConfig, []);
   const [online, setOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [conflict, setConflict] = useState(() => hasCloudConflict());
   const [authenticated, setAuthenticated] = useState(() => hasAccountSession(config));
+  const [sidebarMount, setSidebarMount] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     const onOnline = () => setOnline(true);
@@ -52,6 +50,34 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
       window.removeEventListener("pageshow", onAuthChanged);
     };
   }, [config]);
+
+  useEffect(() => {
+    if (embedded || typeof document === "undefined") return;
+
+    let mount: HTMLDivElement | null = null;
+    let frame = 0;
+
+    const attach = () => {
+      const footer = document.querySelector<HTMLElement>("aside > div:last-child");
+      if (!footer) {
+        frame = window.requestAnimationFrame(attach);
+        return;
+      }
+
+      mount = document.createElement("div");
+      mount.dataset.cloudSidebarStatus = "true";
+      footer.prepend(mount);
+      setSidebarMount(mount);
+    };
+
+    frame = window.requestAnimationFrame(attach);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      setSidebarMount(null);
+      mount?.remove();
+    };
+  }, [embedded]);
 
   const syncEnabled = Boolean(state.sync?.enabled);
   const lastSync = state.sync?.lastSyncAt
@@ -104,22 +130,27 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
 
   if (embedded) {
     return (
-      <div
-        className={`mt-5 inline-flex w-20 min-w-0 items-center justify-center gap-1 rounded-full border bg-background/90 px-2 py-1.5 text-center text-[9px] font-medium leading-tight shadow-sm backdrop-blur sm:w-24 sm:text-[10px] md:hidden ${tone}`}
-        role="status"
-        aria-live="polite"
-        aria-label={detail}
-        title={detail}
-      >
-        <Icon className="h-3 w-3 shrink-0" />
-        <span className="min-w-0 break-words">{compactLabel}</span>
+      <div className="flex max-w-[15rem] flex-col items-center">
+        <div
+          className={`mt-3 inline-flex min-w-0 items-center justify-center gap-1 rounded-full border bg-background/90 px-2 py-1 text-center text-[9px] font-medium leading-none shadow-sm backdrop-blur sm:mt-5 sm:px-2 sm:py-1.5 sm:text-[10px] md:hidden ${tone}`}
+          role="status"
+          aria-live="polite"
+          aria-label={detail}
+          title={detail}
+        >
+          <Icon className="h-3 w-3 shrink-0 max-sm:h-2.5 max-sm:w-2.5" />
+          <span className="whitespace-nowrap">{compactLabel}</span>
+        </div>
+        {authenticated && <SupportIdentityBadge compact className="mt-1.5" />}
       </div>
     );
   }
 
-  return (
+  if (!sidebarMount) return null;
+
+  return createPortal(
     <div
-      className={`fixed bottom-[8.25rem] left-4 z-50 hidden w-56 max-w-[calc(100vw-2rem)] min-w-0 items-center justify-center gap-1.5 rounded-xl border bg-sidebar/95 px-3 py-2 text-center text-[11px] font-medium leading-tight shadow-md backdrop-blur md:bottom-[9rem] md:inline-flex xl:bottom-[8.25rem] ${tone}`}
+      className={`inline-flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border bg-sidebar-accent/25 px-3 py-2 text-center text-[11px] font-medium leading-tight ${tone}`}
       role="status"
       aria-live="polite"
       aria-label={detail}
@@ -127,6 +158,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0 break-words">{label}</span>
-    </div>
+    </div>,
+    sidebarMount,
   );
 }

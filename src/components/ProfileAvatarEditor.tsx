@@ -75,7 +75,7 @@ export function ProfileAvatar({ className, editable = false }: { className?: str
   );
 
   if (editable) return <ProfileAvatarEditor trigger={content} />;
-  if (isDashboardHeroAvatar) return <div className="flex flex-col items-center">{content}<CloudSyncStatusBadge embedded /></div>;
+  if (isDashboardHeroAvatar) return <div className="flex flex-col items-center max-sm:w-[9.5rem] max-sm:translate-x-2">{content}<CloudSyncStatusBadge embedded /></div>;
   return content;
 }
 

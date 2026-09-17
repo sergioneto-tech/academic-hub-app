@@ -12,7 +12,8 @@ export async function openTransparencyDocument(): Promise<void> {
     throw new Error("É necessário iniciar sessão para consultar o documento completo.");
   }
 
-  const viewer = window.open("", "_blank", "noopener,noreferrer");
+  const viewer = window.open("", "_blank");
+  if (viewer) viewer.opener = null;
   const endpoint = `${config.supabaseUrl.replace(/\/$/, "")}/functions/v1/transparency-document`;
 
   try {

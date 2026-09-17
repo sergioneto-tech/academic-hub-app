@@ -13,6 +13,7 @@ import { useAppStore } from "@/lib/AppStore";
 import type { AppState } from "@/lib/types";
 import { type AccountMigrationStatus, type AuthSession, type CloudConfig, UAB_STUDENT_EMAIL_DOMAIN, deleteUserAccount, fetchRemoteState, getOrCreateAccountMigrationStatus, getStoredSession, isUabStudentEmail, refreshSession, requestAccountEmailChange, signIn, signUp, storeSession, upsertRemoteState } from "@/lib/cloudSync";
 import { clearCloudConflict, getDeviceId, getDeviceLabel, normalizeCloudState, setSyncBaseline } from "@/lib/cloudSyncState";
+import { getPublicSupabaseConfig } from "@/lib/publicSupabaseConfig";
 import { APP_VERSION } from "@/lib/version";
 import { reportAuthSecurityEvent } from "@/lib/securityTelemetry";
 
@@ -24,7 +25,7 @@ function isCompleteEmail(value:string){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
 
 export default function CloudAccountPanel() {
  const { state,setSync,exportData,replaceState,resetData }=useAppStore();
- const cloudConfig:CloudConfig|null=useMemo(()=>{const u=(import.meta.env.VITE_SUPABASE_URL||"").trim();const k=(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY||import.meta.env.VITE_SUPABASE_ANON_KEY||"").trim();return u&&k?{supabaseUrl:u,supabaseAnonKey:k}:null;},[]);
+ const cloudConfig:CloudConfig|null=useMemo(getPublicSupabaseConfig,[]);
  const [session,setSession]=useState<AuthSession|null>(null),[authMode,setAuthMode]=useState<AuthMode>("overview"),[signupEmail,setSignupEmail]=useState(""),[signupPassword,setSignupPassword]=useState(""),[signinEmail,setSigninEmail]=useState(""),[signinPassword,setSigninPassword]=useState(""),[confirmationEmail,setConfirmationEmail]=useState(""),[authBusy,setAuthBusy]=useState(false),[resetBusy,setResetBusy]=useState(false);
  const [migrationStatus,setMigrationStatus]=useState<AccountMigrationStatus|null>(null),[migrationBusy,setMigrationBusy]=useState(false),[migrationEmail,setMigrationEmail]=useState(""),[migrationRequestedEmail,setMigrationRequestedEmail]=useState(""),[pendingCloudAction,setPendingCloudAction]=useState<PendingCloudAction>(null);
  const [cloudBusy,setCloudBusy]=useState<"upload"|"download"|null>(null),[deleteMode,setDeleteMode]=useState(false),[deleteConfirmation,setDeleteConfirmation]=useState(""),[deleting,setDeleting]=useState(false);

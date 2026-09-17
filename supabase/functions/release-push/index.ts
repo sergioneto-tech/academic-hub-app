@@ -135,11 +135,26 @@ export default {
     const entry = suppliedRelease ?? await releaseFromPublishedMetadata();
     if (!entry) return jsonResponse({ error: "Release metadata unavailable or invalid" }, 502);
 
+    const kind: ReleaseKind = entry.kind ?? "app";
+    const source = suppliedRelease ? "internal-release-payload" : "published-release-metadata";
+
+    if (entry.pushNotify === false) {
+      return jsonResponse({
+        sent: 0,
+        usersNotified: 0,
+        skipped: true,
+        reason: "push-disabled-for-release",
+        version: entry.version,
+        kind,
+        securityLevel: entry.securityLevel ?? null,
+        source,
+      });
+    }
+
     if (compareVersions(entry.version, FIRST_AUTOMATIC_PUSH_VERSION) < 0) {
       return jsonResponse({ sent: 0, skipped: true, reason: "release-before-automatic-push", version: entry.version });
     }
 
-    const kind: ReleaseKind = entry.kind ?? "app";
     const eventKey = eventKeyFor(entry);
 
     const { data: subscriptions, error: subError } = await db
@@ -232,7 +247,7 @@ export default {
       version: entry.version,
       kind,
       securityLevel: entry.securityLevel ?? null,
-      source: suppliedRelease ? "internal-release-payload" : "published-release-metadata",
+      source,
     });
   },
 };

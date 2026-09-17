@@ -29,12 +29,37 @@ function currentRoute() {
   return `${window.location.pathname}${window.location.hash || ""}`.slice(0, 240);
 }
 
+function persistedSupabaseAccessToken(config: CloudConfig): string {
+  try {
+    const projectRef = new URL(config.supabaseUrl).hostname.split(".")[0]?.trim();
+    if (!projectRef) return "";
+
+    const raw = localStorage.getItem(`sb-${projectRef}-auth-token`);
+    if (!raw) return "";
+
+    const parsed = JSON.parse(raw) as {
+      access_token?: unknown;
+      currentSession?: { access_token?: unknown };
+    };
+    const candidate = typeof parsed?.access_token === "string"
+      ? parsed.access_token
+      : typeof parsed?.currentSession?.access_token === "string"
+        ? parsed.currentSession.access_token
+        : "";
+    return candidate.trim();
+  } catch {
+    return "";
+  }
+}
+
 export async function reportClientError(args: ReportClientErrorArgs) {
   const config = cloudConfig();
   if (!config) return;
 
   const stored = getStoredSession(config);
-  const accessToken = args.accessToken?.trim() || stored?.access_token || "";
+  const accessToken = args.accessToken?.trim()
+    || stored?.access_token
+    || persistedSupabaseAccessToken(config);
   if (!accessToken) return;
 
   try {

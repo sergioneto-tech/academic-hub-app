@@ -27,6 +27,25 @@ function ensureStyles() {
     [data-ah-feedback-sound="true"] { display: none !important; }
     #academic-hub-feedback-filters { display: none !important; }
 
+    /* O canal deixou de ser apresentado como Beta. Mantém apenas o contador real de não lidos. */
+    a[href$="/feedback"]::after { content: none !important; display: none !important; }
+    a[href$="/feedback"][data-feedback-unread="true"]::after {
+      content: attr(data-feedback-count) !important;
+      display: inline-grid !important;
+      place-items: center;
+      min-width: 1.25rem;
+      height: 1.25rem;
+      margin-left: auto;
+      border: 1px solid hsl(var(--destructive));
+      border-radius: 9999px;
+      padding: 0 .3rem;
+      background: hsl(var(--destructive));
+      color: hsl(var(--destructive-foreground));
+      font-size: .58rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
     [data-feedback-kind="opinion"] { border-color: rgb(59 130 246 / .58) !important; background: rgb(59 130 246 / .035) !important; }
     [data-feedback-kind="opinion"] svg { color: rgb(96 165 250) !important; }
     [data-feedback-kind="opinion"][data-selected="true"] { border-color: rgb(96 165 250) !important; background: rgb(59 130 246 / .16) !important; box-shadow: 0 0 0 1px rgb(96 165 250 / .3); }
@@ -151,7 +170,30 @@ function ensureSupportBadge(button: HTMLButtonElement, supportId: string) {
   badge.setAttribute("aria-label", `ID Academic Hub do remetente: ${supportId}`);
 }
 
+function replaceExactText(root: ParentNode, from: string, to: string) {
+  root.querySelectorAll<HTMLElement>("span,h1,h2,h3,h4,div").forEach((node) => {
+    if (node.children.length === 0 && node.textContent?.trim() === from) node.textContent = to;
+  });
+}
+
+function applySupportTerminology() {
+  document.querySelectorAll<HTMLAnchorElement>('a[href$="/feedback"]').forEach((link) => {
+    link.querySelectorAll<HTMLElement>("span").forEach((span) => {
+      if (span.textContent?.trim() === "Feedback") span.textContent = "Suporte";
+    });
+  });
+
+  if (!window.location.hash.includes("/feedback")) return;
+  const topTitle = document.querySelector<HTMLElement>("header h1");
+  if (topTitle?.textContent?.trim() === "Feedback") topTitle.textContent = "Suporte";
+  replaceExactText(document, "Opinião, sugestões e problemas", "Suporte e pedidos");
+  replaceExactText(document, "Gestão de feedback", "Gestão de suporte");
+  replaceExactText(document, "Enviar feedback", "Enviar pedido");
+  replaceExactText(document, "Caixa de feedback", "Gestão de pedidos");
+}
+
 function applyFixes() {
+  applySupportTerminology();
   if (!window.location.hash.includes("/feedback")) return;
 
   document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {

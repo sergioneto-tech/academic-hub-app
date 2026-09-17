@@ -1,6 +1,18 @@
 {
-  "latest": "1.6.0",
+  "latest": "1.6.2",
   "versions": [
+    {
+      "version": "1.6.2",
+      "date": "2026-09-17",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "Corrigido o Calendário para apresentar as datas registadas em qualquer tipo de elemento de avaliação, e não apenas em e-fólios, exames e recursos.",
+        "Atividades, projetos, apresentações, discussões, e-fólios, exames, recursos, época especial e outros elementos passam a refletir início, fim, publicação da nota e/ou data e hora sempre que esses campos existam.",
+        "A exportação para calendário do telemóvel (.ics) passa a usar a mesma lógica da Agenda do Academic Hub, evitando diferenças entre as duas vistas.",
+        "Adicionados testes de regressão para todos os tipos de avaliação e para atividades com datas de início, fim e publicação da nota."
+      ]
+    },
     {
       "version": "1.6.0",
       "date": "2026-09-17",

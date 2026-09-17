@@ -25,6 +25,7 @@ function ensureStyles() {
   style.id = STYLE_ID;
   style.textContent = `
     [data-ah-feedback-sound="true"] { display: none !important; }
+    #academic-hub-feedback-filters { display: none !important; }
 
     [data-feedback-kind="opinion"] { border-color: rgb(59 130 246 / .58) !important; background: rgb(59 130 246 / .035) !important; }
     [data-feedback-kind="opinion"] svg { color: rgb(96 165 250) !important; }

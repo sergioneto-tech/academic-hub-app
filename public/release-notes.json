@@ -1,6 +1,20 @@
 {
-  "latest": "1.6.4",
+  "latest": "1.6.5",
   "versions": [
+    {
+      "version": "1.6.5",
+      "date": "2026-09-17",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "Corrigida a abertura do Academic Hub através de notificações no telemóvel: quando a PWA já está aberta ou em segundo plano, a janela existente é focada e recebe apenas o destino interno sem recarregar todo o documento.",
+        "O encaminhamento de notificações deixa de forçar client.navigate() numa janela existente, reduzindo o risco de misturar um app-shell antigo com ficheiros de uma release entretanto publicada e evitando a tela preta observada no Android.",
+        "O Service Worker passa a guardar também os ficheiros JavaScript e CSS referenciados pelo app-shell validado, reforçando a abertura a frio mesmo depois de uma publicação posterior substituir os ficheiros no servidor.",
+        "A navegação recebida do Service Worker é validada para a mesma origem e, quando pertence ao HashRouter do Academic Hub, altera apenas a rota interna em vez de provocar um novo carregamento da PWA.",
+        "Mantém-se a atualização controlada pelo utilizador e não são apagados dados locais, cloud, cadeiras, avaliações ou sessões. Esta release não altera a infraestrutura Supabase.",
+        "Esta correção fica sem Push automático para não voltar a acionar o fluxo afetado antes de os dispositivos receberem a nova versão."
+      ]
+    },
     {
       "version": "1.6.4",
       "date": "2026-09-17",

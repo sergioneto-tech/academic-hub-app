@@ -42,6 +42,7 @@ const PersonalStudyPlan = lazy(() => import("./pages/PersonalStudyPlan"));
 const HelpPage = lazy(() => import("./pages/Help"));
 const FeedbackPage = lazy(() => import("./pages/Feedback"));
 const LegalPage = lazy(() => import("./pages/Legal"));
+const TermsOfUsePage = lazy(() => import("./pages/TermsOfUse"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
 const PucImportPage = lazy(() => import("./pages/PucImportPage"));
@@ -101,10 +102,13 @@ function AcademicHubApp() {
             <Route path="/dados-privacidade" element={<LazyPage><MyDataPrivacyPage /></LazyPage>} />
             <Route path="/definicoes" element={<LazyPage><><CloudConflictPanel /><SettingsPremium /></></LazyPage>} />
             <Route path="/seguranca-privacidade" element={<SecurityPrivacyPage />} />
+            <Route path="/seguranca-transparencia" element={<SecurityPrivacyPage />} />
             <Route path="/reset-password" element={<LazyPage><ResetPasswordPage /></LazyPage>} />
             <Route path="/ajuda" element={<LazyPage><HelpPage /></LazyPage>} />
             <Route path="/feedback" element={<LazyPage><FeedbackPage /></LazyPage>} />
             <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
+            <Route path="/privacidade" element={<LazyPage><LegalPage /></LazyPage>} />
+            <Route path="/termos" element={<LazyPage><TermsOfUsePage /></LazyPage>} />
             <Route path="/puc/importar" element={<LazyPage><PucImportPage /></LazyPage>} />
             <Route path="/puc/rever" element={<LazyPage><PucSharedReviewPage /></LazyPage>} />
             <Route path="/puc/atualizacoes" element={<LazyPage><PucUpdateAlertsPage /></LazyPage>} />

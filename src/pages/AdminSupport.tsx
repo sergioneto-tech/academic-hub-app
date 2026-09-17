@@ -15,11 +15,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   canAccessAdminSupport,
   isValidSupportId,
+  isValidSupportReason,
   lookupAdminSupport,
   normalizeSupportId,
+  normalizeSupportReason,
   type AdminSupportLookup,
 } from "@/lib/adminSupport";
 
@@ -39,6 +42,7 @@ function StatusValue({ ok, yes = "Sim", no = "Não" }: { ok: boolean; yes?: stri
 export default function AdminSupportPage() {
   const [allowed, setAllowed] = useState<boolean | null>(null);
   const [supportId, setSupportId] = useState("");
+  const [reason, setReason] = useState("");
   const [result, setResult] = useState<AdminSupportLookup | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -54,18 +58,22 @@ export default function AdminSupportPage() {
   }, []);
 
   const normalized = useMemo(() => normalizeSupportId(supportId), [supportId]);
+  const normalizedReason = useMemo(() => normalizeSupportReason(reason), [reason]);
   const valid = isValidSupportId(normalized);
+  const validReason = isValidSupportReason(normalizedReason);
 
   const search = async () => {
-    if (!valid || busy) return;
+    if (!valid || !validReason || busy) return;
     setBusy(true);
     setError("");
     setResult(null);
     try {
-      setResult(await lookupAdminSupport(normalized));
+      setResult(await lookupAdminSupport(normalized, normalizedReason));
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : "lookup_failed";
       if (code === "not_found") setError("Não existe nenhuma conta associada a este ID Academic Hub.");
+      else if (code === "invalid_reason") setError("Indica um motivo concreto para a consulta, entre 8 e 500 caracteres.");
+      else if (code === "audit_failed") setError("A consulta não foi disponibilizada porque não foi possível criar o registo de auditoria.");
       else if (code === "forbidden" || code === "unauthorized") setError("A sessão atual não tem autorização para consultar esta área.");
       else setError("Não foi possível consultar os diagnósticos deste ID. Tenta novamente.");
     } finally {
@@ -93,24 +101,52 @@ export default function AdminSupportPage() {
 
       <Card className="premium-card">
         <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base"><Fingerprint className="h-4 w-4 text-primary" />Identificar conta</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row">
+        <CardContent className="space-y-4">
+          <div>
+            <label htmlFor="support-id" className="mb-2 block text-xs font-semibold">ID Academic Hub</label>
             <Input
+              id="support-id"
               value={supportId}
-              onChange={(event) => setSupportId(event.target.value.toUpperCase())}
-              onKeyDown={(event) => { if (event.key === "Enter" && valid) void search(); }}
+              onChange={(event) => {
+                setSupportId(event.target.value.toUpperCase());
+                setResult(null);
+                setError("");
+              }}
               placeholder="AH-XXXX-XXXX-XXXX"
               autoComplete="off"
               spellCheck={false}
               className="font-mono uppercase"
               aria-label="ID Academic Hub"
             />
-            <Button type="button" onClick={() => void search()} disabled={!valid || busy} className="shrink-0">
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
-              Consultar
-            </Button>
+            {supportId && !valid && <p className="mt-1.5 text-xs text-muted-foreground">Formato esperado: AH-XXXX-XXXX-XXXX.</p>}
           </div>
-          {supportId && !valid && <p className="text-xs text-muted-foreground">Formato esperado: AH-XXXX-XXXX-XXXX.</p>}
+
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <label htmlFor="support-reason" className="text-xs font-semibold">Motivo da consulta</label>
+              <span className="text-[10px] text-muted-foreground">{normalizedReason.length}/500</span>
+            </div>
+            <Textarea
+              id="support-reason"
+              value={reason}
+              onChange={(event) => {
+                setReason(event.target.value.slice(0, 500));
+                setResult(null);
+                setError("");
+              }}
+              placeholder="Ex.: Verificar falha de sincronização comunicada pelo utilizador."
+              rows={3}
+              maxLength={500}
+            />
+            <p className="mt-1.5 text-xs leading-5 text-muted-foreground">Obrigatório. A consulta só é disponibilizada se ficar registado quem consultou, qual o ID, o motivo, os campos devolvidos e a data/hora.</p>
+          </div>
+
+          <Button type="button" onClick={() => void search()} disabled={!valid || !validReason || busy} className="w-full sm:w-auto">
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
+            Consultar e registar acesso
+          </Button>
+
+          {reason && !validReason && <p className="text-xs text-muted-foreground">Descreve o motivo em pelo menos 8 caracteres.</p>}
           {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</div>}
         </CardContent>
       </Card>
@@ -123,7 +159,10 @@ export default function AdminSupportPage() {
                 <div className="text-xs font-medium text-muted-foreground">Conta consultada</div>
                 <div className="mt-1 font-mono text-base font-semibold">{result.supportId}</div>
               </div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"><ShieldCheck className="h-4 w-4" />Identificação pseudónima</div>
+              <div className="flex flex-col gap-1 text-xs sm:items-end">
+                <div className="inline-flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400"><ShieldCheck className="h-4 w-4" />Identificação pseudónima</div>
+                <div className="text-muted-foreground">Acesso registado no histórico administrativo</div>
+              </div>
             </CardContent>
           </Card>
 
@@ -167,7 +206,7 @@ export default function AdminSupportPage() {
           </section>
 
           <div className="rounded-xl border border-sky-500/25 bg-sky-500/5 p-4 text-xs leading-5 text-muted-foreground">
-            Esta consulta devolve apenas informação operacional necessária ao suporte. Não devolve email, nome, número de aluno, UUID interno, notas, avaliações, conteúdos do perfil, endpoints/chaves Push ou mensagens de feedback.
+            Esta consulta devolve apenas informação operacional necessária ao suporte. Não devolve email, nome, número de aluno, UUID interno, notas, avaliações, conteúdos do perfil, endpoints/chaves Push ou mensagens de feedback. Qualquer futuro acesso excecional a dados identificativos deverá ser uma operação separada, explicitamente justificada e auditada.
           </div>
         </>
       )}

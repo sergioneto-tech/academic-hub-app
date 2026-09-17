@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   BellRing,
@@ -46,6 +46,8 @@ export default function AdminSupportPage() {
   const [result, setResult] = useState<AdminSupportLookup | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const supportIdRef = useRef<HTMLInputElement | null>(null);
+  const reasonRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +62,16 @@ export default function AdminSupportPage() {
   const normalized = useMemo(() => normalizeSupportId(supportId), [supportId]);
   const normalizedReason = useMemo(() => normalizeSupportReason(reason), [reason]);
   const valid = isValidSupportId(normalized);
-  const validReason = isValidSupportReason(normalizedReason);
+  const validReason = isValidSupportReason(normalizedReason, normalized);
+
+  const focusField = (element: HTMLInputElement | HTMLTextAreaElement | null) => {
+    if (!element || document.activeElement === element) return;
+    try {
+      element.focus({ preventScroll: true });
+    } catch {
+      element.focus();
+    }
+  };
 
   const search = async () => {
     if (!valid || !validReason || busy) return;
@@ -72,7 +83,7 @@ export default function AdminSupportPage() {
     } catch (cause) {
       const code = cause instanceof Error ? cause.message : "lookup_failed";
       if (code === "not_found") setError("Não existe nenhuma conta associada a este ID Academic Hub.");
-      else if (code === "invalid_reason") setError("Indica um motivo concreto para a consulta, entre 8 e 500 caracteres.");
+      else if (code === "invalid_reason") setError("Indica um motivo concreto para a consulta, entre 8 e 500 caracteres. O próprio ID não é aceite como motivo.");
       else if (code === "audit_failed") setError("A consulta não foi disponibilizada porque não foi possível criar o registo de auditoria.");
       else if (code === "forbidden" || code === "unauthorized") setError("A sessão atual não tem autorização para consultar esta área.");
       else setError("Não foi possível consultar os diagnósticos deste ID. Tenta novamente.");
@@ -105,17 +116,31 @@ export default function AdminSupportPage() {
           <div>
             <label htmlFor="support-id" className="mb-2 block text-xs font-semibold">ID Academic Hub</label>
             <Input
+              ref={supportIdRef}
               id="support-id"
+              type="text"
+              inputMode="text"
+              enterKeyHint="next"
+              autoCapitalize="characters"
+              autoCorrect="off"
               value={supportId}
+              onPointerDown={() => focusField(supportIdRef.current)}
+              onTouchStart={() => focusField(supportIdRef.current)}
               onChange={(event) => {
                 setSupportId(event.target.value.toUpperCase());
                 setResult(null);
                 setError("");
               }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  focusField(reasonRef.current);
+                }
+              }}
               placeholder="AH-XXXX-XXXX-XXXX"
               autoComplete="off"
               spellCheck={false}
-              className="font-mono uppercase"
+              className="font-mono uppercase [touch-action:manipulation] [user-select:text] [-webkit-user-select:text]"
               aria-label="ID Academic Hub"
             />
             {supportId && !valid && <p className="mt-1.5 text-xs text-muted-foreground">Formato esperado: AH-XXXX-XXXX-XXXX.</p>}
@@ -127,8 +152,15 @@ export default function AdminSupportPage() {
               <span className="text-[10px] text-muted-foreground">{normalizedReason.length}/500</span>
             </div>
             <Textarea
+              ref={reasonRef}
               id="support-reason"
+              inputMode="text"
+              enterKeyHint="done"
+              autoCapitalize="sentences"
+              autoCorrect="on"
               value={reason}
+              onPointerDown={() => focusField(reasonRef.current)}
+              onTouchStart={() => focusField(reasonRef.current)}
               onChange={(event) => {
                 setReason(event.target.value.slice(0, 500));
                 setResult(null);
@@ -137,6 +169,7 @@ export default function AdminSupportPage() {
               placeholder="Ex.: Verificar falha de sincronização comunicada pelo utilizador."
               rows={3}
               maxLength={500}
+              className="text-base [touch-action:manipulation] [user-select:text] [-webkit-user-select:text] md:text-sm"
             />
             <p className="mt-1.5 text-xs leading-5 text-muted-foreground">Obrigatório. A consulta só é disponibilizada se ficar registado quem consultou, qual o ID, o motivo, os campos devolvidos e a data/hora.</p>
           </div>
@@ -146,7 +179,7 @@ export default function AdminSupportPage() {
             Consultar e registar acesso
           </Button>
 
-          {reason && !validReason && <p className="text-xs text-muted-foreground">Descreve o motivo em pelo menos 8 caracteres.</p>}
+          {reason && !validReason && <p className="text-xs text-muted-foreground">Descreve um motivo real em pelo menos 8 caracteres; o ID Academic Hub, sozinho, não é aceite.</p>}
           {error && <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive" role="alert">{error}</div>}
         </CardContent>
       </Card>

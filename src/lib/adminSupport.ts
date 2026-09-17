@@ -120,13 +120,27 @@ export function isValidSupportId(value: string) {
   return /^AH-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}$/.test(normalizeSupportId(value));
 }
 
-export async function lookupAdminSupport(value: string): Promise<AdminSupportLookup> {
+export function normalizeSupportReason(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
+
+export function isValidSupportReason(value: string) {
+  const reason = normalizeSupportReason(value);
+  return reason.length >= 8 && reason.length <= 500;
+}
+
+export async function lookupAdminSupport(value: string, reasonValue: string): Promise<AdminSupportLookup> {
   const supportId = normalizeSupportId(value);
+  const reason = normalizeSupportReason(reasonValue);
   if (!isValidSupportId(supportId)) throw new Error("invalid_support_id");
-  const response = await callAdminSupport({ supportId });
+  if (!isValidSupportReason(reason)) throw new Error("invalid_reason");
+  const response = await callAdminSupport({ supportId, reason });
   if (response.status === 404) throw new Error("not_found");
   if (response.status === 403) throw new Error("forbidden");
   if (response.status === 401) throw new Error("unauthorized");
+  const apiError = (response.data as { error?: string } | null)?.error;
+  if (apiError === "invalid_reason") throw new Error("invalid_reason");
+  if (apiError === "audit_failed") throw new Error("audit_failed");
   if (response.status !== 200 || !response.data) throw new Error("lookup_failed");
   return response.data as AdminSupportLookup;
 }

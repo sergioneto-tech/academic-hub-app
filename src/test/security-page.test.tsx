@@ -6,7 +6,7 @@ import SecurityPrivacyPage from "@/pages/SecurityPrivacy";
 import SecurityStatusCard from "@/components/SecurityStatusCard";
 import * as securitySelfCheck from "@/lib/securitySelfCheck";
 
-describe("Segurança e Privacidade", () => {
+describe("Segurança e Transparência", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
@@ -18,9 +18,9 @@ describe("Segurança e Privacidade", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "Segurança e Privacidade" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Segurança e Transparência" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Verificar agora/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Voltar às Definições/i })).toHaveAttribute("href", "/definicoes");
+    expect(screen.getByRole("link", { name: /Voltar a Os meus dados/i })).toHaveAttribute("href", "/dados-privacidade");
   });
 
   it("conclui automaticamente os seis controlos quando aberto com verificar=1", async () => {

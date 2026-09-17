@@ -99,162 +99,224 @@ function checkApplication() {
   if (!ok) auditIncomplete = true;
 }
 
-function checkDatabase() {
-  const dbUrl = process.env.SUPABASE_DB_URL;
-  if (!dbUrl) {
+async function checkDatabase() {
+  const token = process.env.SUPABASE_ACCESS_TOKEN;
+  const projectRef = process.env.SUPABASE_PROJECT_REF;
+
+  if (!token || !projectRef) {
     auditIncomplete = true;
-    results.database = { ok: false, severity: "warning", detail: "SUPABASE_DB_URL não foi preparado pelo workflow." };
+    results.database = { ok: false, severity: "warning", detail: "Credenciais read-only da vistoria não estão disponíveis." };
     return;
   }
 
-  const lint = run("supabase", ["db", "lint", "--db-url", dbUrl, "--level", "warning", "--fail-on", "error"]);
-  if (!lint.ok) auditIncomplete = true;
-
-  const dbSecuritySql = `do $audit$
-begin
-  if exists (
-    select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
+  const dbSecuritySql = `
+with allowed(table_name, privilege_type) as (
+  values
+    ('account_email_migration','INSERT'),('account_email_migration','SELECT'),
+    ('app_survey_responses','INSERT'),('app_survey_responses','SELECT'),
+    ('feedback_attachments','INSERT'),('feedback_attachments','SELECT'),
+    ('feedback_history','SELECT'),
+    ('feedback_messages','INSERT'),('feedback_messages','SELECT'),
+    ('feedback_requests','INSERT'),('feedback_requests','SELECT'),('feedback_requests','UPDATE'),
+    ('push_preferences','INSERT'),('push_preferences','SELECT'),('push_preferences','UPDATE'),
+    ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
+    ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
+    ('user_state_history','SELECT')
+),
+actual_authenticated as (
+  select c.relname::text as table_name, x.privilege_type::text as privilege_type
+  from pg_catalog.pg_class c
+  join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+  cross join lateral pg_catalog.aclexplode(coalesce(c.relacl, pg_catalog.acldefault('r', c.relowner))) x
+  left join pg_catalog.pg_roles r on r.oid=x.grantee
+  where n.nspname='public' and c.relkind='r' and r.rolname='authenticated'
+),
+violations as (
+  select 'public table without RLS/FORCE RLS'::text as issue
+  where exists (
+    select 1
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
     where n.nspname='public' and c.relkind='r' and (not c.relrowsecurity or not c.relforcerowsecurity)
-  ) then raise exception 'AH_AUDIT: public table without RLS/FORCE RLS'; end if;
+  )
 
-  if exists (
+  union all
+  select 'anon has direct public-table privileges'
+  where exists (
     select 1
-    from pg_class c
-    join pg_namespace n on n.oid=c.relnamespace
-    cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
-    left join pg_roles r on r.oid=x.grantee
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    cross join lateral pg_catalog.aclexplode(coalesce(c.relacl, pg_catalog.acldefault('r', c.relowner))) x
+    left join pg_catalog.pg_roles r on r.oid=x.grantee
     where n.nspname='public' and c.relkind='r' and r.rolname='anon'
-  ) then raise exception 'AH_AUDIT: anon has direct public-table privileges'; end if;
+  )
 
-  if exists (
-    with allowed(table_name, privilege_type) as (values
-      ('account_email_migration','INSERT'),('account_email_migration','SELECT'),
-      ('app_survey_responses','INSERT'),('app_survey_responses','SELECT'),
-      ('feedback_attachments','INSERT'),('feedback_attachments','SELECT'),
-      ('feedback_history','SELECT'),
-      ('feedback_messages','INSERT'),('feedback_messages','SELECT'),
-      ('feedback_requests','INSERT'),('feedback_requests','SELECT'),('feedback_requests','UPDATE'),
-      ('push_preferences','INSERT'),('push_preferences','SELECT'),('push_preferences','UPDATE'),
-      ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
-      ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
-      ('user_state_history','SELECT')
-    ), actual as (
-      select c.relname::text as table_name, x.privilege_type::text as privilege_type
-      from pg_class c
-      join pg_namespace n on n.oid=c.relnamespace
-      cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
-      left join pg_roles r on r.oid=x.grantee
-      where n.nspname='public' and c.relkind='r' and r.rolname='authenticated'
+  union all
+  select 'unexpected authenticated table privilege'
+  where exists (
+    select 1 from actual_authenticated g
+    where not exists (
+      select 1 from allowed a
+      where a.table_name=g.table_name and a.privilege_type=g.privilege_type
     )
-    select 1 from actual g
-    where not exists (select 1 from allowed a where a.table_name=g.table_name and a.privilege_type=g.privilege_type)
-  ) then raise exception 'AH_AUDIT: unexpected authenticated table privilege'; end if;
+  )
 
-  if exists (
-    with allowed(table_name, privilege_type) as (values
-      ('account_email_migration','INSERT'),('account_email_migration','SELECT'),
-      ('app_survey_responses','INSERT'),('app_survey_responses','SELECT'),
-      ('feedback_attachments','INSERT'),('feedback_attachments','SELECT'),
-      ('feedback_history','SELECT'),
-      ('feedback_messages','INSERT'),('feedback_messages','SELECT'),
-      ('feedback_requests','INSERT'),('feedback_requests','SELECT'),('feedback_requests','UPDATE'),
-      ('push_preferences','INSERT'),('push_preferences','SELECT'),('push_preferences','UPDATE'),
-      ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
-      ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
-      ('user_state_history','SELECT')
-    ), actual as (
-      select c.relname::text as table_name, x.privilege_type::text as privilege_type
-      from pg_class c
-      join pg_namespace n on n.oid=c.relnamespace
-      cross join lateral aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) x
-      left join pg_roles r on r.oid=x.grantee
-      where n.nspname='public' and c.relkind='r' and r.rolname='authenticated'
-    )
+  union all
+  select 'expected authenticated table privilege missing'
+  where exists (
     select 1 from allowed a
-    where not exists (select 1 from actual g where g.table_name=a.table_name and g.privilege_type=a.privilege_type)
-  ) then raise exception 'AH_AUDIT: expected authenticated table privilege missing'; end if;
+    where not exists (
+      select 1 from actual_authenticated g
+      where g.table_name=a.table_name and g.privilege_type=a.privilege_type
+    )
+  )
 
-  if exists (
+  union all
+  select 'anon has sequence privilege'
+  where exists (
     select 1
-    from pg_class c
-    join pg_namespace n on n.oid=c.relnamespace
-    cross join lateral aclexplode(coalesce(c.relacl, acldefault('S', c.relowner))) x
-    left join pg_roles r on r.oid=x.grantee
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    cross join lateral pg_catalog.aclexplode(coalesce(c.relacl, pg_catalog.acldefault('S', c.relowner))) x
+    left join pg_catalog.pg_roles r on r.oid=x.grantee
     where n.nspname='public' and c.relkind='S' and r.rolname='anon'
-  ) then raise exception 'AH_AUDIT: anon has sequence privilege'; end if;
+  )
 
-  if exists (
+  union all
+  select 'unexpected authenticated sequence privilege'
+  where exists (
     select 1
-    from pg_class c
-    join pg_namespace n on n.oid=c.relnamespace
-    cross join lateral aclexplode(coalesce(c.relacl, acldefault('S', c.relowner))) x
-    left join pg_roles r on r.oid=x.grantee
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    cross join lateral pg_catalog.aclexplode(coalesce(c.relacl, pg_catalog.acldefault('S', c.relowner))) x
+    left join pg_catalog.pg_roles r on r.oid=x.grantee
     where n.nspname='public' and c.relkind='S' and r.rolname='authenticated'
       and not (c.relname='feedback_reference_seq' and x.privilege_type='USAGE')
-  ) then raise exception 'AH_AUDIT: unexpected authenticated sequence privilege'; end if;
+  )
 
-  if not exists (
+  union all
+  select 'feedback reference sequence privilege missing'
+  where not exists (
     select 1
-    from pg_class c
-    join pg_namespace n on n.oid=c.relnamespace
-    cross join lateral aclexplode(coalesce(c.relacl, acldefault('S', c.relowner))) x
-    left join pg_roles r on r.oid=x.grantee
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    cross join lateral pg_catalog.aclexplode(coalesce(c.relacl, pg_catalog.acldefault('S', c.relowner))) x
+    left join pg_catalog.pg_roles r on r.oid=x.grantee
     where n.nspname='public' and c.relkind='S' and r.rolname='authenticated'
       and c.relname='feedback_reference_seq' and x.privilege_type='USAGE'
-  ) then raise exception 'AH_AUDIT: feedback reference sequence privilege missing'; end if;
+  )
 
-  if exists (
-    select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-    where p.prosecdef and n.nspname in ('public','private')
-      and (has_function_privilege('anon',p.oid,'EXECUTE') or has_function_privilege('authenticated',p.oid,'EXECUTE'))
-  ) then raise exception 'AH_AUDIT: SECURITY DEFINER executable by client role'; end if;
-
-  if exists (
-    select 1 from pg_class c join pg_namespace n on n.oid=c.relnamespace
-    where n.nspname='public' and c.relkind in ('v','m')
-      and (has_table_privilege('anon',c.oid,'SELECT') or has_table_privilege('authenticated',c.oid,'SELECT'))
-  ) then raise exception 'AH_AUDIT: client-readable public view/materialized view'; end if;
-
-  if exists (select 1 from storage.buckets where public=true)
-  then raise exception 'AH_AUDIT: public storage bucket detected'; end if;
-
-  if exists (
+  union all
+  select 'SECURITY DEFINER executable by client role'
+  where exists (
     select 1
-    from pg_default_acl d
-    join pg_roles owner on owner.oid=d.defaclrole
-    left join pg_namespace ns on ns.oid=d.defaclnamespace
-    cross join lateral aclexplode(d.defaclacl) x
-    left join pg_roles grantee on grantee.oid=x.grantee
-    where owner.rolname='postgres' and ns.nspname='public' and grantee.rolname in ('anon','authenticated')
-  ) then raise exception 'AH_AUDIT: insecure postgres default privileges restored'; end if;
-end
-$audit$;`;
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid=p.pronamespace
+    where p.prosecdef and n.nspname in ('public','private')
+      and (
+        pg_catalog.has_function_privilege('anon',p.oid,'EXECUTE')
+        or pg_catalog.has_function_privilege('authenticated',p.oid,'EXECUTE')
+      )
+  )
 
-  const dbControls = run("psql", [dbUrl, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", dbSecuritySql]);
-  const controlsOk = dbControls.ok;
-  let severity = "pass";
-  let controlsDetail = "RLS/FORCE RLS, ACLs exatas de tabelas e sequências (incluindo MAINTAIN), SECURITY DEFINER, views, Storage e default privileges passaram a baseline live.";
+  union all
+  select 'client-readable public view/materialized view'
+  where exists (
+    select 1
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='public' and c.relkind in ('v','m')
+      and (
+        pg_catalog.has_table_privilege('anon',c.oid,'SELECT')
+        or pg_catalog.has_table_privilege('authenticated',c.oid,'SELECT')
+      )
+  )
 
-  if (!dbControls.ok) {
-    const errorText = `${dbControls.stderr}\n${dbControls.stdout}`;
-    if (errorText.includes("AH_AUDIT:")) {
-      securityFailure = true;
-      severity = "fail";
-      controlsDetail = `Baseline live falhou: ${shortError(dbControls)}.`;
-    } else {
+  union all
+  select 'public storage bucket detected'
+  where exists (
+    select 1 from storage.buckets b where b.public=true
+  )
+
+  union all
+  select 'insecure postgres default privileges restored'
+  where exists (
+    select 1
+    from pg_catalog.pg_default_acl d
+    join pg_catalog.pg_roles owner on owner.oid=d.defaclrole
+    left join pg_catalog.pg_namespace ns on ns.oid=d.defaclnamespace
+    cross join lateral pg_catalog.aclexplode(d.defaclacl) x
+    left join pg_catalog.pg_roles grantee on grantee.oid=x.grantee
+    where owner.rolname='postgres'
+      and ns.nspname='public'
+      and grantee.rolname in ('anon','authenticated')
+  )
+)
+select v.issue from violations v order by v.issue;
+`;
+
+  try {
+    const response = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query/read-only`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query: dbSecuritySql }),
+    });
+
+    const raw = await response.text();
+    if (!response.ok) {
       auditIncomplete = true;
-      severity = "warning";
-      controlsDetail = `O comando da baseline live não concluiu (${shortError(dbControls)}).`;
+      results.database = {
+        ok: false,
+        severity: "warning",
+        detail: `A consulta read-only da baseline não concluiu (HTTP ${response.status}: ${raw.replace(/\\s+/g, " ").slice(0, 240)}).`,
+      };
+      return;
     }
-  }
 
-  const ok = controlsOk && lint.ok;
-  if (!lint.ok && severity !== "fail") severity = "warning";
-  results.database = {
-    ok,
-    severity,
-    detail: `${controlsDetail}${lint.ok ? " DB lint sem erros." : ` DB lint não concluiu (${shortError(lint)}).`}`,
-  };
+    let parsed;
+    try {
+      parsed = JSON.parse(raw || "[]");
+    } catch {
+      auditIncomplete = true;
+      results.database = { ok: false, severity: "warning", detail: "A resposta da baseline read-only não pôde ser interpretada." };
+      return;
+    }
+
+    const rows = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.result)
+        ? parsed.result
+        : Array.isArray(parsed?.data)
+          ? parsed.data
+          : [];
+
+    if (rows.length > 0) {
+      securityFailure = true;
+      const issues = rows.map((row) => row?.issue).filter(Boolean);
+      results.database = {
+        ok: false,
+        severity: "fail",
+        detail: `Baseline live detetou desvios: ${issues.join("; ") || "resultado inesperado"}.`,
+      };
+      return;
+    }
+
+    results.database = {
+      ok: true,
+      severity: "pass",
+      detail: "RLS/FORCE RLS, ACLs de tabelas e sequências, SECURITY DEFINER, views, Storage e default privileges passaram a baseline live através da API read-only.",
+    };
+  } catch (error) {
+    auditIncomplete = true;
+    results.database = {
+      ok: false,
+      severity: "warning",
+      detail: `Não foi possível executar a baseline read-only (${error instanceof Error ? error.message : "erro"}).`,
+    };
+  }
 }
 
 function checkFrontend() {
@@ -330,7 +392,7 @@ function writeStatus() {
 try {
   await checkDependencies();
   checkApplication();
-  checkDatabase();
+  await checkDatabase();
   checkFrontend();
   await checkWebProtection();
 } catch (error) {

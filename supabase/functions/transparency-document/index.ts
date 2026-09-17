@@ -27,6 +27,7 @@ type Section = { title: string; paragraphs: Paragraph[]; newPage?: boolean };
 const sections: Section[] = [
   {
     title: "1. Resumo executivo",
+    newPage: true,
     paragraphs: [
       { text: "O Academic Hub nasceu como uma ferramenta de organização académica criada por um estudante para uso próprio. A adesão espontânea de outros colegas transformou gradualmente esse projeto pessoal numa aplicação utilizada por dezenas de estudantes. Em 17 de setembro de 2026, o serviço contabiliza 89 registos de utilizador." },
       { text: "Uma ferramenta facultativa, não uma plataforma oficial", bold: true },

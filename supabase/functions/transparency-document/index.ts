@@ -205,6 +205,32 @@ export default {
     if (req.method === "OPTIONS") return new Response("ok", { headers: cors(req) });
     if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: cors(req) });
 
+    const authorization = req.headers.get("authorization") ?? "";
+    const token = authorization.toLowerCase().startsWith("bearer ") ? authorization.slice(7).trim() : "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
+    if (!token || !supabaseUrl || !anonKey) {
+      return new Response("Unauthorized", { status: 401, headers: { ...cors(req), "Cache-Control": "no-store" } });
+    }
+
+    const userResponse = await fetch(`${supabaseUrl.replace(/\/$/, "")}/auth/v1/user`, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!userResponse.ok) {
+      return new Response("Unauthorized", { status: 401, headers: { ...cors(req), "Cache-Control": "no-store" } });
+    }
+
+    const user = await userResponse.json().catch(() => null) as { id?: string } | null;
+    if (!user?.id) {
+      return new Response("Unauthorized", { status: 401, headers: { ...cors(req), "Cache-Control": "no-store" } });
+    }
+
     const pdf = await PDFDocument.create();
     pdf.setTitle("Academic Hub — Transparência, Privacidade e Evolução do Projeto");
     pdf.setSubject("Informação aos utilizadores, privacidade, segurança e evolução do projeto");

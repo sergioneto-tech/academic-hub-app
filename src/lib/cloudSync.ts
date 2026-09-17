@@ -374,19 +374,13 @@ export async function upsertRemoteState(config: CloudConfig, session: AuthSessio
 }
 
 export async function deleteUserAccount(config: CloudConfig, session: AuthSession): Promise<void> {
-  const deleteStateUrl = `${normUrl(config.supabaseUrl)}/rest/v1/user_state?user_id=eq.${session.user.id}`;
-  const deleteStateRes = await fetch(deleteStateUrl, {
-    method: "DELETE",
+  const deleteAccountUrl = `${normUrl(config.supabaseUrl)}/functions/v1/delete-account`;
+  const deleteAccountRes = await fetch(deleteAccountUrl, {
+    method: "POST",
+    cache: "no-store",
     headers: headers(config, session),
+    body: JSON.stringify({}),
   });
 
-  if (!deleteStateRes.ok) throw await parseRestError(deleteStateRes, "Erro ao apagar dados");
-
-  const deleteAuthUrl = `${normUrl(config.supabaseUrl)}/auth/v1/user`;
-  const deleteAuthRes = await fetch(deleteAuthUrl, {
-    method: "DELETE",
-    headers: headers(config, session),
-  });
-
-  if (!deleteAuthRes.ok) throw await parseRestError(deleteAuthRes, "Erro ao apagar conta");
+  if (!deleteAccountRes.ok) throw await parseRestError(deleteAccountRes, "Erro ao apagar conta");
 }

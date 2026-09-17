@@ -1,5 +1,5 @@
-const APP_VERSION = "1.6.4";
-const SW_VERSION = "1.6.4-puc-reconcile-1";
+const APP_VERSION = "1.6.5";
+const SW_VERSION = "1.6.5-push-open-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -15,7 +15,7 @@ const PRECACHE_URLS = [
   "./academic-hub-icon-v10-512.png",
   NOTIFICATION_ICON,
   NOTIFICATION_BADGE,
-  "./release-notes.json?v=1.6.4",
+  "./release-notes.json?v=1.6.5",
 ];
 
 function delay(ms) {
@@ -69,6 +69,43 @@ async function fetchVerifiedAppShell() {
   throw lastError;
 }
 
+function extractAppShellAssetUrls(html) {
+  const urls = new Set();
+  const pattern = /(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/gi;
+  let match;
+
+  while ((match = pattern.exec(html)) !== null) {
+    try {
+      const url = new URL(match[1], self.registration.scope);
+      if (url.origin === self.location.origin) urls.add(url.href);
+    } catch {
+      // Ignora referências inválidas no HTML; o app-shell já foi validado acima.
+    }
+  }
+
+  return [...urls];
+}
+
+async function cacheInstalledAppAssets(cache, appShell) {
+  let html = "";
+  try {
+    html = await appShell.clone().text();
+  } catch {
+    return;
+  }
+
+  const assetUrls = extractAppShellAssetUrls(html);
+  await Promise.all(assetUrls.map(async (assetUrl) => {
+    try {
+      const request = new Request(assetUrl, { cache: "no-store" });
+      const response = await fetch(request);
+      if (response.ok) await cache.put(request, response.clone());
+    } catch {
+      // A instalação não falha por um asset complementar; o fetch normal continua disponível.
+    }
+  }));
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
@@ -78,6 +115,11 @@ self.addEventListener("install", (event) => {
     // versão do Service Worker. Isto evita misturar app-shell e código de releases diferentes.
     const appShell = await fetchVerifiedAppShell();
     await cache.put(APP_SHELL_KEY, appShell.clone());
+
+    // Guarda também os JS/CSS referenciados pelo app-shell validado. Assim, uma
+    // abertura a frio continua a poder executar a versão instalada mesmo depois
+    // de uma release seguinte substituir os ficheiros publicados no servidor.
+    await cacheInstalledAppAssets(cache, appShell);
 
     // Mantém a nova release em espera até o utilizador confirmar Atualizar agora.
     // Não devemos ativar automaticamente enquanto o bundle anterior ainda está em execução:
@@ -205,26 +247,19 @@ self.addEventListener("notificationclick", (event) => {
   const target = buildNotificationTarget(event.notification);
 
   event.waitUntil((async () => {
-    const clientList = await clients.matchAll({ type: "window", includeUncontrolled: true });
+    const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
 
+    // Se já existe uma janela da PWA, não força client.navigate(). Um reload total
+    // neste ponto pode arrancar um app-shell antigo quando uma release nova acabou
+    // de ser publicada e provocar a conhecida tela preta. A janela ativa recebe
+    // apenas o deep link interno e é trazida para a frente.
     for (const client of clientList) {
-      let navigated = false;
-      if ("navigate" in client) {
-        try {
-          await client.navigate(target);
-          navigated = true;
-        } catch {
-          navigated = false;
-        }
-      }
-
-      if (!navigated && "postMessage" in client) {
+      if ("postMessage" in client) {
         client.postMessage({ type: "ACADEMIC_HUB_NOTIFICATION_NAVIGATE", url: target });
       }
-
       if ("focus" in client) return client.focus();
     }
 
-    return clients.openWindow ? clients.openWindow(target) : undefined;
+    return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
   })());
 });

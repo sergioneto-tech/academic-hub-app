@@ -19,6 +19,7 @@ concurrency:
 
 # O workflow só escreve o ficheiro público com o resultado da vistoria.
 # Não altera políticas, dados dos alunos, segredos ou configuração do Supabase.
+# Audit uses a direct database connection for read-only verification.
 permissions:
   contents: write
   issues: write

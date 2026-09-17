@@ -100,7 +100,14 @@ function checkApplication() {
 }
 
 function checkDatabase() {
-  const lint = run("supabase", ["db", "lint", "--linked", "--level", "warning", "--fail-on", "error"]);
+  const dbUrl = process.env.SUPABASE_DB_URL;
+  if (!dbUrl) {
+    auditIncomplete = true;
+    results.database = { ok: false, severity: "warning", detail: "SUPABASE_DB_URL não foi preparado pelo workflow." };
+    return;
+  }
+
+  const lint = run("supabase", ["db", "lint", "--db-url", dbUrl, "--level", "warning", "--fail-on", "error"]);
   if (!lint.ok) auditIncomplete = true;
 
   const dbSecuritySql = `do $audit$
@@ -223,7 +230,7 @@ begin
 end
 $audit$;`;
 
-  const dbControls = run("supabase", ["db", "query", "--linked", dbSecuritySql]);
+  const dbControls = run("psql", [dbUrl, "-v", "ON_ERROR_STOP=1", "-X", "-q", "-c", dbSecuritySql]);
   const controlsOk = dbControls.ok;
   let severity = "pass";
   let controlsDetail = "RLS/FORCE RLS, ACLs exatas de tabelas e sequências (incluindo MAINTAIN), SECURITY DEFINER, views, Storage e default privileges passaram a baseline live.";

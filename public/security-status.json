@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "product": "Academic Hub",
   "securityLevel": "2026.09",
-  "lastAudit": "2026-09-17T23:21:51.953Z",
-  "status": "attention",
-  "summary": "A última vistoria não conseguiu concluir todos os controlos e requer nova validação.",
+  "lastAudit": "2026-09-17T23:24:37.000Z",
+  "status": "review",
+  "summary": "A última vistoria detetou um controlo de segurança que requer revisão.",
   "checks": [
     {
       "id": "dependencies",
@@ -21,8 +21,8 @@
     {
       "id": "database",
       "label": "Base de dados e acesso",
-      "status": "warning",
-      "detail": "O comando da baseline live não concluiu (psql: error: connection to server at \"aws-0-eu-west-1.pooler.supabase.com\" (34.241.16.247), port 5432 failed: FATAL: (ENOTFOUND) tenant/user postgres.apgoyzfzuukkpmuxiqvy not found). DB lint não concluiu (Connecting to remote database... failed to connect to postgres: failed to connect to `host=aws-0-eu-west-1.pooler.supabase.com user=postgres.apgoyzfzuukkpmuxiqvy database=postgres`: server error (FATAL: (ENOTFOUND) tenant/user postgres.apgoyzfzuukkpmuxiqvy not found (SQLSTATE XX000)) Try rerunning the command with --de)."
+      "status": "fail",
+      "detail": "Baseline live detetou desvios: unexpected authenticated table privilege."
     },
     {
       "id": "frontend",

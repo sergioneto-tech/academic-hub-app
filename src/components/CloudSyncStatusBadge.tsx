@@ -132,14 +132,14 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
     return (
       <div className="flex max-w-[15rem] flex-col items-center">
         <div
-          className={`mt-5 inline-flex w-20 min-w-0 items-center justify-center gap-1 rounded-full border bg-background/90 px-2 py-1.5 text-center text-[9px] font-medium leading-tight shadow-sm backdrop-blur sm:w-24 sm:text-[10px] md:hidden ${tone}`}
+          className={`mt-3 inline-flex min-w-0 items-center justify-center gap-1 rounded-full border bg-background/90 px-2 py-1 text-center text-[9px] font-medium leading-none shadow-sm backdrop-blur sm:mt-5 sm:px-2 sm:py-1.5 sm:text-[10px] md:hidden ${tone}`}
           role="status"
           aria-live="polite"
           aria-label={detail}
           title={detail}
         >
-          <Icon className="h-3 w-3 shrink-0" />
-          <span className="min-w-0 break-words">{compactLabel}</span>
+          <Icon className="h-3 w-3 shrink-0 max-sm:h-2.5 max-sm:w-2.5" />
+          <span className="whitespace-nowrap">{compactLabel}</span>
         </div>
         {authenticated && <SupportIdentityBadge compact className="mt-1.5" />}
       </div>

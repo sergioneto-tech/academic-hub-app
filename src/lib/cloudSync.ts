@@ -181,7 +181,29 @@ export async function refreshSession(config: CloudConfig, session: AuthSession):
   const latestStored = getStoredSession(config);
   const source = latestStored?.user.id === session.user.id ? latestStored : session;
   refreshInFlight = (async () => {
-    const fresh = await postJson<AuthSession>(`${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=refresh_token`, { method: "POST", headers: headers(config), body: JSON.stringify({ refresh_token: source.refresh_token }) });
+    const res = await fetch(`${normUrl(config.supabaseUrl)}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: headers(config),
+      body: JSON.stringify({ refresh_token: source.refresh_token }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      let json: unknown = null;
+      try { json = text ? JSON.parse(text) : null; } catch { /* keep raw text */ }
+      const code = (getStringField(json, "code", "error_code") ?? "").toLowerCase();
+      const rawMessage = (getStringField(json, "msg", "message", "error_description", "error") ?? text ?? "").toLowerCase();
+      const invalidRefresh = res.status === 400 && (
+        code === "refresh_token_not_found" ||
+        code === "invalid_refresh_token" ||
+        code === "invalid_grant" ||
+        rawMessage.includes("refresh token not found") ||
+        rawMessage.includes("invalid refresh token") ||
+        rawMessage.includes("refresh token has already been used")
+      );
+      if (invalidRefresh) storeSession(config, null);
+      throw new Error(friendlyAuthError(json, res.statusText || "Erro ao renovar sessão"));
+    }
+    const fresh = await res.json() as AuthSession;
     storeSession(config, fresh);
     return fresh;
   })();

@@ -15,7 +15,9 @@ function isChunkLikeError(error: Error | null) {
     message.includes("dynamically imported module") ||
     message.includes("loading chunk") ||
     message.includes("chunkloaderror") ||
-    message.includes("importing a module script")
+    message.includes("importing a module script") ||
+    message.includes("valid javascript mime type") ||
+    (message.includes("mime type") && message.includes("text/html"))
   );
 }
 

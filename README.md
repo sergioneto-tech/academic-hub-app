@@ -4,15 +4,18 @@
 
 Aplicação web progressiva (PWA) para acompanhar o percurso académico num único espaço, com funcionamento adaptado a computador, tablet e telemóvel.
 
+**Acesso:** https://academichub.sergioneto.pt
+
 ## Estado atual
 
-- **Versão da aplicação:** 1.4.0
+- **Versão da aplicação:** 1.6.2
 - **Interface:** responsiva, com modo claro/escuro
 - **Instalação:** PWA em computador, tablet e telemóvel
 - **Sincronização:** cloud entre dispositivos, com atualização automática e resolução de conflitos
-- **Notificações:** alertas Push por dispositivo para e-fólios, exames/recursos e prazos oficiais da UAb
-- **Sons da aplicação:** opção geral para confirmações, avisos, erros e notificações enquanto o Academic Hub está aberto
+- **Notificações:** alertas Push por dispositivo para e-fólios, exames/recursos, prazos oficiais, atualizações e outros avisos relevantes
+- **Importação PUC:** leitura local do PDF, revisão obrigatória e gravação apenas após confirmação do aluno
 - **Feedback:** área integrada para opiniões, sugestões e reporte de problemas, com referência, estado, histórico e persistência protegida no Supabase
+- **Segurança:** RLS, validações server-side, monitorização técnica, controlo de sessões e alertas de incidentes
 - **Desempenho:** otimizado para desktop e dispositivos móveis
 
 ## Funcionalidades principais
@@ -20,9 +23,14 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 - Gestão das cadeiras ativas e concluídas.
 - Plano de estudos e cálculo do progresso da licenciatura por ECTS.
 - Registo de e-fólios, avaliações, exames, recursos e notas finais.
-- Modelos de avaliação compatíveis com o regime anterior e com o Regulamento de Avaliação de 2026.
+- Modelos de avaliação compatíveis com o regime anterior e com o Regulamento de Avaliação de 2026/2027.
+- Importação assistida dos dados do PUC, mantendo sempre uma revisão editável antes de guardar.
+- Suporte à importação do PUC em cadeiras do regime anterior que estejam a ser frequentadas, sem converter automaticamente a cadeira para o novo regulamento.
+- Preservação das datas e horas oficiais de exame e recurso; o PUC não substitui a fonte oficial dessas provas.
+- Proteção de dados já preenchidos: datas manuais exigem confirmação adicional e classificações/submissões existentes impedem substituições automáticas.
+- Catálogo partilhado de estruturas PUC validadas por UC, ano letivo e edição/turma, com aceitação individual pelo aluno.
 - Calendário académico e agenda pessoal.
-- Alertas Push configuráveis por dispositivo para prazos académicos.
+- Alertas Push configuráveis por dispositivo para prazos académicos, versões e outras alterações relevantes.
 - Histórico académico.
 - Relatório das cadeiras concluídas, preparado para impressão/PDF.
 - Critérios e pré-requisitos específicos de inscrição quando publicados pela UAb.
@@ -30,10 +38,31 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 - Conta Academic Hub com email institucional UAb e recuperação de password.
 - Sincronização automática dos dados entre dispositivos, mantendo suporte a backup local.
 - Área **Feedback** para enviar uma opinião, sugerir uma melhoria ou reportar um problema.
-- Identificação visual do tipo de feedback: opinião a azul, sugestão a verde e problema a vermelho.
 - Caixa de feedback com filtros por tipo e estado, referências `AH-0001`, `AH-0002`, etc., histórico de alterações e respostas identificadas como **Academic Hub**.
 - Reporte de problemas com descrição do percurso, comportamento observado, resultado esperado e suporte a 1–3 capturas de ecrã.
 - Sons opcionais da aplicação configuráveis em **Definições**, independentes do som das notificações Push controlado pelo sistema operativo.
+
+## Importação assistida do PUC
+
+O Academic Hub pode ler localmente o PDF do PUC e propor os elementos de avaliação, datas e cotações identificados. O PDF não é guardado na base de dados.
+
+Antes de qualquer alteração, o aluno revê os dados extraídos e pode corrigi-los. A gravação é sempre explícita. Um PUC identificado como pertencendo a outra unidade curricular é bloqueado.
+
+Nas cadeiras do regime anterior, a importação preserva o regime e a estrutura já escolhidos. Nas cadeiras configuradas apenas como histórico de nota final, a importação do PUC não é apresentada, porque esse modo se destina exclusivamente ao registo da classificação final conhecida.
+
+As datas e horas de exame, recurso e épocas especiais continuam a ser obtidas exclusivamente das fontes oficiais usadas pelo Academic Hub. Quando o PUC contém essas datas, elas não substituem o calendário oficial.
+
+## Notificações
+
+As notificações Push são ativadas individualmente em cada dispositivo. É recomendável mantê-las ativas para receber alertas de prazos, atualizações da aplicação, respostas a feedback e outras alterações que possam exigir revisão do aluno.
+
+Uma atualização de PUC partilhado nunca altera automaticamente os dados pessoais de uma cadeira. Quando existe uma nova versão validada aplicável à mesma UC, ano letivo e edição/turma, o aluno é avisado para rever e aceitar a alteração se esta corresponder ao seu PUC.
+
+## Monitorização e recuperação
+
+O Academic Hub regista de forma limitada e sanitizada determinados erros técnicos quando existe uma sessão autenticada válida. Estes relatórios não incluem passwords nem tokens e podem originar um alerta administrativo para facilitar a correção de problemas reais encontrados nos dispositivos dos alunos.
+
+Falhas de carregamento provocadas por ficheiros de versões diferentes têm uma tentativa única de recuperação automática. Se o problema persistir, a aplicação mantém um ecrã de recuperação manual em vez de deixar a interface bloqueada ou vazia.
 
 ## Área de Feedback
 
@@ -53,7 +82,9 @@ O Academic Hub utiliza uma identidade própria em azul-marinho, dourado e prata.
 
 Os dados académicos pertencem ao utilizador. A aplicação mantém os dados locais disponíveis e, quando a conta e a sincronização estão ativas, utiliza a cloud para permitir continuidade entre dispositivos. A sincronização inclui mecanismos de comparação de versões para reduzir o risco de substituição silenciosa de alterações realizadas noutro dispositivo.
 
-Os feedbacks são privados: cada aluno consulta apenas os próprios pedidos. A conta responsável pela gestão do Academic Hub pode acompanhar os pedidos recebidos, responder em nome do **Academic Hub** e alterar o respetivo estado. As políticas RLS impedem que um aluno consulte pedidos pertencentes a outros utilizadores.
+As áreas expostas no Supabase usam controlo de acesso adequado ao respetivo objetivo, incluindo RLS, funções protegidas no servidor e validações de identidade. Operações administrativas sensíveis não dependem apenas de verificações no frontend.
+
+Os feedbacks são privados: cada aluno consulta apenas os próprios pedidos. A conta responsável pela gestão do Academic Hub pode acompanhar os pedidos recebidos, responder em nome do **Academic Hub** e alterar o respetivo estado.
 
 ## Fontes académicas
 
@@ -74,6 +105,8 @@ O projeto é mantido no GitHub. As alterações são desenvolvidas em branches p
 
 O repositório executa verificações automáticas antes de considerar uma alteração validada:
 
+- auditoria de dependências;
+- consistência da versão e dos metadados de release;
 - verificação TypeScript;
 - build de produção;
 - testes automatizados;

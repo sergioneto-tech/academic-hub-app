@@ -95,7 +95,7 @@ jobs:
           console.log(`Release metadata, app shell and service worker aligned with v${appVersion}.`);
           NODE
 
-      - name: Require version bump for production runtime changes
+      - name: Require release bump or PWA build revision for production runtime changes
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           parent="$(git rev-parse HEAD^)"
@@ -104,19 +104,32 @@ jobs:
           echo "$changed"
 
           if ! printf '%s\n' "$changed" | grep -Eq '^(src/|public/|index\.html$|package\.json$|package-lock\.json$|vite\.config\.|tsconfig)'; then
-            echo "No production runtime files changed; version bump not required."
+            echo "No production runtime files changed; release/build revision not required."
             exit 0
           fi
 
-          current_version="$(node -e "const s=require('fs').readFileSync('src/lib/version.ts','utf8'); const m=s.match(/APP_VERSION\\s*=\\s*['\"]([^'\"]+)['\"]/); if(!m) process.exit(2); process.stdout.write(m[1]);")"
+          read_app_version() {
+            node -e "const s=require('fs').readFileSync(process.argv[1],'utf8'); const m=s.match(/APP_VERSION\\s*=\\s*['\"]([^'\"]+)['\"]/); if(!m) process.exit(2); process.stdout.write(m[1]);" "$1"
+          }
+
+          current_version="$(read_app_version src/lib/version.ts)"
           previous_version="$(git show "$parent:src/lib/version.ts" | node -e "let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{const m=s.match(/APP_VERSION\\s*=\\s*['\"]([^'\"]+)['\"]/); if(!m) process.exit(2); process.stdout.write(m[1]);});")"
 
-          if [ "$current_version" = "$previous_version" ]; then
-            echo "::error::Ficheiros de produção mudaram sem incrementar APP_VERSION ($current_version). Publicar builds diferentes com a mesma versão pode misturar app-shell e chunks em instalações PWA."
-            exit 1
+          if [ "$current_version" != "$previous_version" ]; then
+            echo "Runtime production change accompanied by release bump: $previous_version -> $current_version."
+            exit 0
           fi
 
-          echo "Runtime production change accompanied by version bump: $previous_version -> $current_version."
+          current_sw="$(node -e "const s=require('fs').readFileSync('public/sw.js','utf8'); const m=s.match(/const\\s+SW_VERSION\\s*=\\s*['\"]([^'\"]+)['\"]/); if(!m) process.exit(2); process.stdout.write(m[1]);")"
+          previous_sw="$(git show "$parent:public/sw.js" | node -e "let s=''; process.stdin.on('data',d=>s+=d).on('end',()=>{const m=s.match(/const\\s+SW_VERSION\\s*=\\s*['\"]([^'\"]+)['\"]/); if(!m) process.exit(2); process.stdout.write(m[1]);});")"
+
+          if [ "$current_sw" != "$previous_sw" ]; then
+            echo "Same public app version ($current_version) with a new PWA build revision: $previous_sw -> $current_sw."
+            exit 0
+          fi
+
+          echo "::error::Ficheiros de produção mudaram sem incrementar APP_VERSION ($current_version) nem SW_VERSION ($current_sw). Para manutenção sem nova versão pública, altera apenas o sufixo de SW_VERSION."
+          exit 1
 
       - name: TypeScript project check
         run: npx tsc -b --pretty false

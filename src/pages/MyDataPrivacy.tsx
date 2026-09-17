@@ -22,6 +22,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useAppStore } from "@/lib/AppStore";
 import { getStoredSession, type AuthSession } from "@/lib/cloudSync";
 import { getPublicSupabaseConfig } from "@/lib/publicSupabaseConfig";
+import { openTransparencyDocument } from "@/lib/transparencyDocument";
 
 const RETENTION = [
   ["Entregas de notificações Push", "até 180 dias"],
@@ -56,6 +57,7 @@ export default function MyDataPrivacyPage() {
   const { state, exportData } = useAppStore();
   const config = useMemo(getPublicSupabaseConfig, []);
   const [session, setSession] = useState<AuthSession | null>(() => config ? getStoredSession(config) : null);
+  const [openingDocument, setOpeningDocument] = useState(false);
 
   useEffect(() => {
     const refresh = () => setSession(config ? getStoredSession(config) : null);
@@ -69,6 +71,21 @@ export default function MyDataPrivacyPage() {
   }, [config]);
 
   const cloudEnabled = Boolean(session && state.sync?.enabled);
+  const openFullTransparencyDocument = async () => {
+    if (!session) return;
+    try {
+      setOpeningDocument(true);
+      await openTransparencyDocument();
+    } catch (error) {
+      toast({
+        title: "Não foi possível abrir o documento",
+        description: error instanceof Error ? error.message : "Tenta novamente dentro de alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setOpeningDocument(false);
+    }
+  };
   const exportMine = () => {
     const stamp = new Date().toISOString().slice(0, 10);
     downloadJson(`academic-hub-meus-dados-${stamp}.json`, exportData());
@@ -109,7 +126,7 @@ export default function MyDataPrivacyPage() {
         <Card className="premium-card border-destructive/25"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><Trash2 className="h-4 w-4 text-destructive"/>Eliminar conta</CardTitle></CardHeader><CardContent className="space-y-3"><p className="text-sm leading-6 text-muted-foreground">A eliminação é feita na área Conta e Perfil e exige confirmação explícita. A conta, os registos associados por utilizador e os anexos privados de suporte são removidos pelo procedimento de eliminação.</p><Button asChild variant="outline"><Link to="/conta">Gerir ou eliminar conta</Link></Button></CardContent></Card>
       </div>
 
-      <Card className="premium-card"><CardContent className="p-4"><div className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary"/>Documentação e transparência</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Privacidade, condições de utilização e segurança são apresentadas separadamente para ser mais claro o que cada documento explica.</p><div className="mt-3 flex flex-wrap gap-2"><Button asChild variant="outline" size="sm"><Link to="/privacidade">Privacidade e RGPD</Link></Button><Button asChild variant="outline" size="sm"><Link to="/termos">Termos de Utilização</Link></Button><Button asChild variant="outline" size="sm"><Link to="/seguranca-transparencia">Segurança e Transparência</Link></Button></div></CardContent></Card>
+      <Card className="premium-card"><CardContent className="p-4"><div className="flex items-center gap-2 text-sm font-semibold"><FileText className="h-4 w-4 text-primary"/>Documentação e transparência</div><p className="mt-1 text-xs leading-5 text-muted-foreground">Privacidade, condições de utilização e segurança são apresentadas separadamente para ser mais claro o que cada documento explica.</p><div className="mt-3 flex flex-wrap gap-2"><Button asChild variant="outline" size="sm"><Link to="/privacidade">Privacidade e RGPD</Link></Button><Button asChild variant="outline" size="sm"><Link to="/termos">Termos de Utilização</Link></Button><Button asChild variant="outline" size="sm"><Link to="/seguranca-transparencia">Segurança e Transparência</Link></Button><Button asChild variant="outline" size="sm"><Link to="/transparencia">Sobre o Academic Hub</Link></Button>{session&&<Button type="button" size="sm" onClick={()=>void openFullTransparencyDocument()} disabled={openingDocument}><FileText className="mr-2 h-4 w-4"/>{openingDocument?"A abrir...":"Documento completo (PDF)"}</Button>}</div></CardContent></Card>
     </div>
   );
 }

@@ -43,6 +43,7 @@ const HelpPage = lazy(() => import("./pages/Help"));
 const FeedbackPage = lazy(() => import("./pages/Feedback"));
 const LegalPage = lazy(() => import("./pages/Legal"));
 const TermsOfUsePage = lazy(() => import("./pages/TermsOfUse"));
+const TransparencyPage = lazy(() => import("./pages/Transparency"));
 const AcademicReportPage = lazy(() => import("./pages/AcademicReport"));
 const AcademicProgressReport = lazy(() => import("./pages/AcademicProgressReport"));
 const PucImportPage = lazy(() => import("./pages/PucImportPage"));
@@ -109,6 +110,7 @@ function AcademicHubApp() {
             <Route path="/legal" element={<LazyPage><LegalPage /></LazyPage>} />
             <Route path="/privacidade" element={<LazyPage><LegalPage /></LazyPage>} />
             <Route path="/termos" element={<LazyPage><TermsOfUsePage /></LazyPage>} />
+            <Route path="/transparencia" element={<LazyPage><TransparencyPage /></LazyPage>} />
             <Route path="/puc/importar" element={<LazyPage><PucImportPage /></LazyPage>} />
             <Route path="/puc/rever" element={<LazyPage><PucSharedReviewPage /></LazyPage>} />
             <Route path="/puc/atualizacoes" element={<LazyPage><PucUpdateAlertsPage /></LazyPage>} />

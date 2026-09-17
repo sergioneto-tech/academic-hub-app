@@ -193,6 +193,7 @@ jobs:
           src/lib/securityTelemetry.ts
           src/lib/storage.ts
           src/lib/theme.ts
+          src/lib/transparencyDocument.ts
           src/lib/types.ts
           src/lib/updateLifecycle.ts
           src/lib/version.ts
@@ -209,6 +210,7 @@ jobs:
           src/pages/PucUpdateAlertsLab.tsx
           src/pages/SecurityPrivacy.tsx
           src/pages/SettingsPremium.tsx
+          src/pages/Transparency.tsx
           src/test/cloud-sync-reliability.test.ts
           src/test/puc-catalog-selection.test.ts
           src/test/puc-import-apply.test.ts

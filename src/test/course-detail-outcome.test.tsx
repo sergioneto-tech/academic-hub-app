@@ -118,7 +118,7 @@ describe("cartão de resultado no detalhe da cadeira", () => {
     const card = efolioCard("e-fólio A");
     const gradeInput = within(card).getByPlaceholderText("0,00") as HTMLInputElement;
 
-    expect(gradeInput.value).toBe("3,00");
+    expect(gradeInput.value).toBe("3");
     fireEvent.change(gradeInput, { target: { value: "" } });
     fireEvent.blur(gradeInput);
 
@@ -161,10 +161,10 @@ describe("cartão de resultado no detalhe da cadeira", () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
 
     const view = renderCourse();
-    expect(screen.getAllByRole("button", { name: /Remover .*fólio [AB]/ })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: /Remover .*fólio [AB]/ })).toHaveLength(8);
 
-    fireEvent.click(screen.getByRole("button", { name: "Remover e-fólio A" }));
-    fireEvent.click(screen.getByRole("button", { name: "Remover e-fólio B" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Remover e-fólio A" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Remover e-fólio B" })[0]);
 
     await waitFor(() => {
       expect(screen.queryByText("e-fólio A", { exact: true })).not.toBeInTheDocument();

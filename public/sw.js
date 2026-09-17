@@ -1,5 +1,5 @@
 const APP_VERSION = "1.6.5";
-const SW_VERSION = "1.6.5-maintenance-2";
+const SW_VERSION = "1.6.5-maintenance-3";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -83,6 +83,16 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+
+  if (event.data?.type === "GET_VERSION") {
+    const reply = { appVersion: APP_VERSION, swVersion: SW_VERSION };
+    if (event.ports?.[0]) {
+      event.ports[0].postMessage(reply);
+    } else if (event.source && "postMessage" in event.source) {
+      event.source.postMessage({ type: "VERSION", ...reply });
+    }
   }
 });
 

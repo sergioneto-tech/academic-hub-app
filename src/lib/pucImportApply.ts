@@ -24,11 +24,13 @@ export type PucImportApplyResult =
       summary: {
         importedEvents: number;
         finalAssessmentUpdated: boolean;
+        reusedExisting: number;
+        preservedProgress: number;
       };
     }
   | {
       ok: false;
-      reason: "invalid" | "replace-confirmation" | "existing-progress";
+      reason: "invalid" | "replace-confirmation" | "reconciliation-conflict";
       errors: string[];
     };
 
@@ -63,6 +65,41 @@ function hasManualStructure(assessment: Assessment): boolean {
       || assessment.gradeReleaseDate
       || assessment.description,
   );
+}
+
+function normalizeAssessmentName(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("pt-PT")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function semanticAssessmentKey(value: string): string {
+  const normalized = normalizeAssessmentName(value);
+  const efolio = normalized.match(/\be\s*folio\s*([a-z]|\d+)\b/);
+  if (efolio) return `efolio:${efolio[1]}`;
+
+  const numbers = normalized.match(/\b\d+\b/g);
+  if (numbers?.length) return `ordinal:${numbers[numbers.length - 1]}`;
+  return "";
+}
+
+function sortByOrder<T extends { order?: number; name: string }>(items: T[]): T[] {
+  return [...items].sort((a, b) => {
+    const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.name.localeCompare(b.name, "pt-PT");
+  });
+}
+
+function typesAreCompatible(existing: Assessment, event: PucImportApplyEvent): boolean {
+  const importedType = importedAssessmentType(event.name);
+  if (existing.type === importedType) return true;
+  if (importedType === "efolio" || existing.type === "efolio") return false;
+  return existing.type !== "exam" && existing.type !== "resit" && existing.type !== "special";
 }
 
 function validateDraft(
@@ -121,6 +158,138 @@ function validateDraft(
   return Array.from(new Set(errors));
 }
 
+type ReconciliationResult = {
+  imported: Assessment[];
+  reusedExisting: number;
+  preservedProgress: number;
+  conflicts: string[];
+};
+
+function reconcileAssessments(
+  courseId: string,
+  existing: Assessment[],
+  events: PucImportApplyEvent[],
+): ReconciliationResult {
+  const available = sortByOrder(existing);
+  const assignments = new Map<number, Assessment>();
+  const usedIds = new Set<string>();
+
+  const assign = (eventIndex: number, assessment: Assessment | undefined) => {
+    if (!assessment || usedIds.has(assessment.id)) return false;
+    assignments.set(eventIndex, assessment);
+    usedIds.add(assessment.id);
+    return true;
+  };
+
+  events.forEach((event, eventIndex) => {
+    const normalized = normalizeAssessmentName(event.name);
+    const exact = available.find((assessment) => (
+      !usedIds.has(assessment.id)
+      && normalizeAssessmentName(assessment.name) === normalized
+    ));
+    assign(eventIndex, exact);
+  });
+
+  events.forEach((event, eventIndex) => {
+    if (assignments.has(eventIndex)) return;
+    const key = semanticAssessmentKey(event.name);
+    if (!key) return;
+    const semantic = available.find((assessment) => (
+      !usedIds.has(assessment.id)
+      && typesAreCompatible(assessment, event)
+      && semanticAssessmentKey(assessment.name) === key
+    ));
+    assign(eventIndex, semantic);
+  });
+
+  events.forEach((event, eventIndex) => {
+    if (assignments.has(eventIndex)) return;
+    const orderMatch = available.find((assessment) => (
+      !usedIds.has(assessment.id)
+      && typesAreCompatible(assessment, event)
+      && assessment.order === eventIndex + 1
+    ));
+    assign(eventIndex, orderMatch);
+  });
+
+  let unmatchedEvents = events
+    .map((_, index) => index)
+    .filter((index) => !assignments.has(index));
+  let remainingProgress = available.filter((assessment) => !usedIds.has(assessment.id) && hasStudentProgress(assessment));
+
+  if (remainingProgress.length > 0 && remainingProgress.length <= unmatchedEvents.length) {
+    remainingProgress = sortByOrder(remainingProgress);
+    remainingProgress.forEach((assessment, index) => {
+      assign(unmatchedEvents[index], assessment);
+    });
+  }
+
+  unmatchedEvents = events
+    .map((_, index) => index)
+    .filter((index) => !assignments.has(index));
+
+  const remainingUnprogressed = sortByOrder(
+    available.filter((assessment) => !usedIds.has(assessment.id) && !hasStudentProgress(assessment)),
+  );
+  unmatchedEvents.forEach((eventIndex, index) => {
+    assign(eventIndex, remainingUnprogressed[index]);
+  });
+
+  const conflicts = available
+    .filter((assessment) => !usedIds.has(assessment.id) && hasStudentProgress(assessment))
+    .map((assessment) => `${assessment.name} já contém ${assessment.grade !== null ? `a classificação ${assessment.grade}` : "progresso registado"} e não existe no PUC revisto de forma que permita associá-lo com segurança.`);
+
+  let reusedExisting = 0;
+  let preservedProgress = 0;
+  const imported = events.map((event, index): Assessment => {
+    const matched = assignments.get(index);
+    const importedType = importedAssessmentType(event.name);
+    if (matched) {
+      reusedExisting += 1;
+      if (hasStudentProgress(matched)) preservedProgress += 1;
+      const nextType = importedType === "efolio" || matched.type === "efolio"
+        ? importedType
+        : matched.type;
+      return {
+        ...matched,
+        courseId,
+        type: nextType,
+        name: event.name.trim(),
+        maxPoints: event.maxPoints as number,
+        required: true,
+        order: index + 1,
+        startDate: event.startDate || undefined,
+        endDate: event.endDate || undefined,
+        gradeReleaseDate: event.gradeReleaseDate || undefined,
+      };
+    }
+
+    return {
+      id: uuid(),
+      courseId,
+      type: importedType,
+      name: event.name.trim(),
+      maxPoints: event.maxPoints as number,
+      grade: null,
+      mode: "asynchronous",
+      required: true,
+      status: "todo",
+      order: index + 1,
+      startDate: event.startDate || undefined,
+      endDate: event.endDate || undefined,
+      gradeReleaseDate: event.gradeReleaseDate || undefined,
+    };
+  });
+
+  for (const assessment of imported) {
+    if (assessment.grade !== null && assessment.grade > assessment.maxPoints + 0.001) {
+      conflicts.push(`${assessment.name}: a classificação já registada (${assessment.grade}) é superior à nova cotação do PUC (${assessment.maxPoints}). Confirma primeiro a classificação antes de aplicar esta alteração.`);
+    }
+  }
+
+  return { imported, reusedExisting, preservedProgress, conflicts };
+}
+
 export function applyPucImportToState(
   state: AppState,
   courseId: string,
@@ -160,23 +329,41 @@ export function applyPucImportToState(
     : courseAssessments.filter(
         (item) => item.type !== "exam" && item.type !== "resit" && item.type !== "special",
       );
+  const currentExam = courseAssessments.find((item) => item.type === "exam");
+  const finalPoints = effectiveDraft.finalAssessmentMaxPoints;
+  const examProgressWillBeReconciled = Boolean(
+    currentExam
+      && hasStudentProgress(currentExam)
+      && typeof finalPoints === "number"
+      && Math.abs(currentExam.maxPoints - finalPoints) > 0.001,
+  );
+  const hasExistingProgress = replaceable.some(hasStudentProgress) || examProgressWillBeReconciled;
+  const hasExistingManualStructure = replaceable.some(hasManualStructure);
 
-  if (replaceable.some(hasStudentProgress)) {
-    return {
-      ok: false,
-      reason: "existing-progress",
-      errors: [
-        "Esta cadeira já contém classificações ou elementos submetidos. Por segurança, a importação automática não vai substituir essa estrutura. Revê a cadeira manualmente.",
-      ],
-    };
-  }
-
-  if (!options.allowReplaceExisting && replaceable.some(hasManualStructure)) {
+  if (!options.allowReplaceExisting && (hasExistingProgress || hasExistingManualStructure)) {
+    const confirmationErrors: string[] = [];
+    if (hasExistingProgress) {
+      confirmationErrors.push("Esta cadeira já contém classificações, submissões ou progresso registado. Podes atualizar a estrutura pelo PUC: o Academic Hub preservará as notas e os estados nos elementos que conseguir associar à versão revista.");
+    }
+    if (hasExistingManualStructure) {
+      confirmationErrors.push("Já existem datas ou dados configurados manualmente. Ao confirmares, os campos visíveis nesta revisão passam a refletir o PUC atual.");
+    }
+    confirmationErrors.push("As datas e horas oficiais de exame, recurso e época especial permanecem inalteradas.");
     return {
       ok: false,
       reason: "replace-confirmation",
+      errors: confirmationErrors,
+    };
+  }
+
+  const reconciliation = reconcileAssessments(courseId, replaceable, effectiveDraft.events);
+  if (reconciliation.conflicts.length > 0) {
+    return {
+      ok: false,
+      reason: "reconciliation-conflict",
       errors: [
-        "Já existem datas configuradas manualmente nesta cadeira. Confirma explicitamente a substituição antes de guardar os dados revistos do PUC.",
+        "O PUC foi lido corretamente, mas existem dados académicos já registados que não podem ser reposicionados automaticamente sem risco de associar uma classificação ao elemento errado.",
+        ...reconciliation.conflicts,
       ],
     };
   }
@@ -187,29 +374,23 @@ export function applyPucImportToState(
         (item) => item.courseId !== courseId || item.type === "exam" || item.type === "resit" || item.type === "special",
       );
 
-  const imported: Assessment[] = effectiveDraft.events.map((event, index) => ({
-    id: uuid(),
-    courseId,
-    type: importedAssessmentType(event.name),
-    name: event.name.trim(),
-    maxPoints: event.maxPoints as number,
-    grade: null,
-    mode: "asynchronous",
-    required: true,
-    status: "todo",
-    order: index + 1,
-    startDate: event.startDate || undefined,
-    endDate: event.endDate || undefined,
-    gradeReleaseDate: event.gradeReleaseDate || undefined,
-  }));
-
   let finalAssessmentUpdated = false;
-  const finalPoints = effectiveDraft.finalAssessmentMaxPoints;
+  let preservedProgress = reconciliation.preservedProgress;
   let nextPreserved = preserved;
 
   if (typeof finalPoints === "number" && finalPoints > 0) {
-    const exam = courseAssessments.find((item) => item.type === "exam");
+    const exam = currentExam;
     if (exam) {
+      if (exam.grade !== null && exam.grade > finalPoints + 0.001) {
+        return {
+          ok: false,
+          reason: "reconciliation-conflict",
+          errors: [
+            `${exam.name}: a classificação já registada (${exam.grade}) é superior à nova cotação do PUC (${finalPoints}). Confirma primeiro a classificação antes de aplicar esta alteração.`,
+          ],
+        };
+      }
+      if (hasStudentProgress(exam)) preservedProgress += 1;
       nextPreserved = preserved.map((item) => item.id === exam.id ? {
         ...item,
         maxPoints: finalPoints,
@@ -227,7 +408,7 @@ export function applyPucImportToState(
         mode: "synchronous",
         required: true,
         status: "todo",
-        order: imported.length + 1,
+        order: reconciliation.imported.length + 1,
       };
       nextPreserved = [...preserved, newExam];
       finalAssessmentUpdated = true;
@@ -245,7 +426,7 @@ export function applyPucImportToState(
             evaluationModel: effectiveDraft.model,
           }
       : item),
-    assessments: [...nextPreserved, ...imported],
+    assessments: [...nextPreserved, ...reconciliation.imported],
   };
 
   return {
@@ -254,8 +435,10 @@ export function applyPucImportToState(
     errors: [],
     nextState,
     summary: {
-      importedEvents: imported.length,
+      importedEvents: reconciliation.imported.length,
       finalAssessmentUpdated,
+      reusedExisting: reconciliation.reusedExisting,
+      preservedProgress,
     },
   };
 }

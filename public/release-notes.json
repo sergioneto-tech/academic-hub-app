@@ -1,6 +1,23 @@
 {
-  "latest": "1.6.5",
+  "latest": "1.6.6",
   "versions": [
+    {
+      "version": "1.6.6",
+      "date": "2026-09-17",
+      "kind": "mixed",
+      "securityLevel": "2026.09",
+      "securitySummary": "Reforça minimização de dados, suporte pseudónimo, eliminação de conta e recibos de leitura do Feedback, preservando a atualização controlada da PWA.",
+      "pushNotify": false,
+      "changes": [
+        "Adicionado um ID Academic Hub pseudónimo e estável para suporte, reduzindo a necessidade de utilizar email ou número de estudante nas consultas normais de apoio.",
+        "Reforçada a minimização de dados nas áreas de conta, suporte, privacidade e transparência, mantendo o email apenas nos fluxos em que é realmente necessário para autenticação, recuperação ou gestão da conta.",
+        "A consulta administrativa de suporte passa a ser auditada e limitada aos dados necessários ao diagnóstico, com retenção definida e rotinas automáticas de limpeza operacional.",
+        "A eliminação de conta passa a percorrer integralmente os anexos privados do utilizador no Storage, com paginação, remoção em lotes e verificação final antes de apagar a conta.",
+        "O recibo de leitura das respostas do Academic Hub deixa de depender de uma função SECURITY DEFINER exposta a utilizadores autenticados e passa a usar SECURITY INVOKER, RLS e atualização restrita ao campo de leitura.",
+        "Restaurada a navegação segura a partir de notificações: quando a PWA já está aberta, o Service Worker envia apenas o deep link interno e foca a janela, evitando client.navigate() e um reload completo durante transições de versão.",
+        "O Service Worker volta a preservar os ficheiros JavaScript e CSS associados ao app-shell validado e mantém a atualização controlada pelo utilizador, sem ativação automática da nova versão."
+      ]
+    },
     {
       "version": "1.6.5",
       "date": "2026-09-17",

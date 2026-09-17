@@ -1,4 +1,3 @@
-// Manual audit refresh trigger: 2026-09-17
 import { spawnSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";

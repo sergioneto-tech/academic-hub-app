@@ -114,12 +114,17 @@ with allowed(table_name, privilege_type) as (
   values
     ('account_email_migration','INSERT'),('account_email_migration','SELECT'),
     ('app_survey_responses','INSERT'),('app_survey_responses','SELECT'),
+    ('app_survey_deferrals','INSERT'),('app_survey_deferrals','SELECT'),
     ('feedback_attachments','INSERT'),('feedback_attachments','SELECT'),
     ('feedback_history','SELECT'),
     ('feedback_messages','INSERT'),('feedback_messages','SELECT'),
     ('feedback_requests','INSERT'),('feedback_requests','SELECT'),('feedback_requests','UPDATE'),
     ('push_preferences','INSERT'),('push_preferences','SELECT'),('push_preferences','UPDATE'),
     ('push_subscriptions','DELETE'),('push_subscriptions','INSERT'),('push_subscriptions','SELECT'),('push_subscriptions','UPDATE'),
+    ('puc_catalog_acceptances','DELETE'),('puc_catalog_acceptances','INSERT'),('puc_catalog_acceptances','SELECT'),('puc_catalog_acceptances','UPDATE'),
+    ('puc_catalog_entries','SELECT'),
+    ('puc_catalog_submissions','INSERT'),('puc_catalog_submissions','SELECT'),
+    ('user_support_identity','SELECT'),
     ('user_state','DELETE'),('user_state','INSERT'),('user_state','SELECT'),('user_state','UPDATE'),
     ('user_state_history','SELECT')
 ),

@@ -40,14 +40,14 @@ export default function SupportIdentityBadge({ className, compact = false, showC
       className,
     )}>
       <Fingerprint className={compact ? "h-3 w-3 shrink-0" : "h-3.5 w-3.5 shrink-0"} />
-      <span className="shrink-0">ID Academic Hub</span>
-      <span className="truncate font-mono font-semibold text-foreground">{supportId}</span>
+      {!compact && <span className="shrink-0">ID Academic Hub</span>}
+      <span className="whitespace-nowrap font-mono font-semibold text-foreground">{supportId}</span>
       {showCopy && (
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className={compact ? "-mr-1 h-5 w-5" : "-mr-1 h-6 w-6"}
+          className={compact ? "-mr-1 h-5 w-5 shrink-0" : "-mr-1 h-6 w-6 shrink-0"}
           onClick={copy}
           aria-label="Copiar ID Academic Hub"
           title="Copiar ID Academic Hub"

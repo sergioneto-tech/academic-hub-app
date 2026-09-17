@@ -1,6 +1,21 @@
 {
-  "latest": "1.6.3",
+  "latest": "1.6.4",
   "versions": [
+    {
+      "version": "1.6.4",
+      "date": "2026-09-17",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "A importação assistida do PUC passa a poder atualizar uma cadeira mesmo quando já existem classificações, submissões ou outros dados registados, tanto no regime anterior como no Regulamento de Avaliação 2026/2027.",
+        "Ao confirmar a substituição, o Academic Hub reconcilia os elementos existentes com o PUC revisto e preserva identificadores, classificações e estados sempre que a associação é segura, em vez de apagar o progresso do aluno.",
+        "Se uma estrutura revista tiver menos elementos e existir progresso que não possa ser associado com segurança, a operação é interrompida para evitar deslocar uma classificação para o elemento errado.",
+        "Elementos sem progresso que deixaram de existir no PUC são removidos durante a reconciliação, evitando cartões duplicados e somas incorretas da escala de avaliação.",
+        "No regime anterior, qualquer e-fólio, incluindo A e B, pode ser eliminado manualmente; cartões removidos deixam de ser recriados automaticamente ao voltar a abrir a cadeira.",
+        "Mantêm-se inalteradas as proteções já existentes: datas e horas oficiais de exame, recurso e época especial não são substituídas pelo PUC e o aluno continua a rever e confirmar os dados antes de guardar.",
+        "Adicionados testes de regressão para cadeiras com progresso existente, reconciliação segura, conflitos de estrutura, remoção persistente de e-fólios duplicados e limpeza manual de classificações."
+      ]
+    },
     {
       "version": "1.6.3",
       "date": "2026-09-17",

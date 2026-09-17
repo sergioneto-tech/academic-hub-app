@@ -8,7 +8,7 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 
 ## Estado atual
 
-- **Versão da aplicação:** 1.6.3
+- **Versão da aplicação:** 1.6.4
 - **Interface:** responsiva, com modo claro/escuro
 - **Instalação:** PWA em computador, tablet e telemóvel
 - **Sincronização:** cloud entre dispositivos, com atualização automática e resolução de conflitos
@@ -27,7 +27,10 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 - Importação assistida dos dados do PUC, mantendo sempre uma revisão editável antes de guardar.
 - Suporte à importação do PUC em cadeiras do regime anterior que estejam a ser frequentadas, sem converter automaticamente a cadeira para o novo regulamento.
 - Preservação das datas e horas oficiais de exame e recurso; o PUC não substitui a fonte oficial dessas provas.
-- Proteção de dados já preenchidos: datas manuais exigem confirmação adicional e classificações/submissões existentes impedem substituições automáticas.
+- Reconciliação segura de cadeiras já preenchidas: a importação pode atualizar estrutura, cotações e datas sem apagar classificações ou estados quando existe correspondência segura entre os elementos.
+- Proteção contra associações perigosas: se uma alteração de estrutura puder deslocar uma classificação para o elemento errado, a aplicação interrompe a operação e pede revisão manual.
+- Elementos sem progresso que deixaram de existir no PUC podem ser removidos durante a reconciliação, evitando cartões duplicados e somas incorretas.
+- No regime anterior, e-fólios podem ser adicionados ou eliminados manualmente, incluindo os cartões A/B; um cartão removido não volta a ser criado apenas por abrir a cadeira.
 - Catálogo partilhado de estruturas PUC validadas por UC, ano letivo e edição/turma, com aceitação individual pelo aluno.
 - Calendário académico e agenda pessoal.
 - Alertas Push configuráveis por dispositivo para prazos académicos, versões e outras alterações relevantes.
@@ -47,6 +50,10 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 O Academic Hub pode ler localmente o PDF do PUC e propor os elementos de avaliação, datas e cotações identificados. O PDF não é guardado na base de dados.
 
 Antes de qualquer alteração, o aluno revê os dados extraídos e pode corrigi-los. A gravação é sempre explícita. Um PUC identificado como pertencendo a outra unidade curricular é bloqueado.
+
+Quando a cadeira já tem dados, o Academic Hub tenta reconciliar a estrutura existente com a versão revista do PUC. Sempre que existe correspondência segura, mantém o mesmo elemento e preserva classificações, submissões e estados, atualizando apenas os dados académicos confirmados. Elementos sem progresso que já não façam parte da estrutura revista podem ser removidos.
+
+Se existirem classificações ou estados que não possam ser associados com segurança à nova estrutura, a importação é interrompida em vez de deslocar silenciosamente uma nota para outro elemento. O aluno pode então rever a cadeira manualmente.
 
 Nas cadeiras do regime anterior, a importação preserva o regime e a estrutura já escolhidos. Nas cadeiras configuradas apenas como histórico de nota final, a importação do PUC não é apresentada, porque esse modo se destina exclusivamente ao registo da classificação final conhecida.
 

@@ -166,12 +166,42 @@ describe("apply PUC import", () => {
     expect(confirmed.ok).toBe(true);
   });
 
-  it("blocks automatic replacement when the student already has grades or submitted work", () => {
+  it("allows replacing a current structure with the PUC while preserving an existing grade and status", () => {
     const state = baseState();
     state.assessments[0].grade = 3;
     state.assessments[0].status = "graded";
-    const result = applyPucImportToState(state, "course-1", draft, { allowReplaceExisting: true });
-    expect(result).toMatchObject({ ok: false, reason: "existing-progress" });
+
+    const firstAttempt = applyPucImportToState(state, "course-1", draft);
+    expect(firstAttempt).toMatchObject({ ok: false, reason: "replace-confirmation" });
+
+    const confirmed = applyPucImportToState(state, "course-1", draft, { allowReplaceExisting: true });
+    expect(confirmed.ok).toBe(true);
+    if (!confirmed.ok) return;
+
+    const imported = confirmed.nextState.assessments.find((item) => item.name === "Atividade Sumativa 1");
+    expect(imported).toMatchObject({
+      id: "a",
+      grade: 3,
+      status: "graded",
+      maxPoints: 6,
+      startDate: "2026-11-13",
+      endDate: "2026-11-23",
+      gradeReleaseDate: "2026-12-18",
+    });
+    expect(confirmed.nextState.assessments.some((item) => item.id === "b")).toBe(false);
+    expect(confirmed.summary.preservedProgress).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not silently discard multiple graded elements when a smaller PUC structure cannot preserve all of them", () => {
+    const state = baseState();
+    state.assessments[0].grade = 3;
+    state.assessments[0].status = "graded";
+    state.assessments[1].grade = 2;
+    state.assessments[1].status = "graded";
+
+    const confirmed = applyPucImportToState(state, "course-1", draft, { allowReplaceExisting: true });
+    expect(confirmed).toMatchObject({ ok: false, reason: "reconciliation-conflict" });
+    if (!confirmed.ok) expect(confirmed.errors.join(" ")).toContain("e-fólio");
   });
 
   it("rejects incoherent cotations before touching the state", () => {
@@ -213,6 +243,38 @@ describe("apply PUC import", () => {
       id: "resit",
       date: "2027-02-16T10:00",
       dateSource: "official",
+    });
+  });
+
+  it("reconciles a legacy PUC over existing grades without changing the legacy regime", () => {
+    const state = legacyState("efolios-exam");
+    state.assessments[0].grade = 3.5;
+    state.assessments[0].status = "graded";
+    state.assessments[1].status = "submitted";
+
+    const firstAttempt = applyPucImportToState(state, "course-1", legacyDraft);
+    expect(firstAttempt).toMatchObject({ ok: false, reason: "replace-confirmation" });
+
+    const confirmed = applyPucImportToState(state, "course-1", legacyDraft, { allowReplaceExisting: true });
+    expect(confirmed.ok).toBe(true);
+    if (!confirmed.ok) return;
+
+    expect(confirmed.nextState.courses[0]).toMatchObject({
+      evaluationRegime: "legacy",
+      legacyEvaluationMode: "efolios-exam",
+    });
+    expect(confirmed.nextState.assessments.find((item) => item.id === "a")).toMatchObject({
+      name: "E-fólio A",
+      grade: 3.5,
+      status: "graded",
+      startDate: "2026-11-01",
+      endDate: "2026-11-10",
+    });
+    expect(confirmed.nextState.assessments.find((item) => item.id === "b")).toMatchObject({
+      name: "E-fólio B",
+      status: "submitted",
+      startDate: "2026-12-01",
+      endDate: "2026-12-12",
     });
   });
 

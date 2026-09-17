@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Cloud, CloudOff, ShieldAlert } from "lucide-react";
 
 import SupportIdentityBadge from "@/components/SupportIdentityBadge";
@@ -21,6 +22,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
   const [online, setOnline] = useState(() => typeof navigator === "undefined" ? true : navigator.onLine);
   const [conflict, setConflict] = useState(() => hasCloudConflict());
   const [authenticated, setAuthenticated] = useState(() => hasAccountSession(config));
+  const [sidebarMount, setSidebarMount] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     const onOnline = () => setOnline(true);
@@ -48,6 +50,34 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
       window.removeEventListener("pageshow", onAuthChanged);
     };
   }, [config]);
+
+  useEffect(() => {
+    if (embedded || typeof document === "undefined") return;
+
+    let mount: HTMLDivElement | null = null;
+    let frame = 0;
+
+    const attach = () => {
+      const footer = document.querySelector<HTMLElement>("aside > div:last-child");
+      if (!footer) {
+        frame = window.requestAnimationFrame(attach);
+        return;
+      }
+
+      mount = document.createElement("div");
+      mount.dataset.cloudSidebarStatus = "true";
+      footer.prepend(mount);
+      setSidebarMount(mount);
+    };
+
+    frame = window.requestAnimationFrame(attach);
+
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      setSidebarMount(null);
+      mount?.remove();
+    };
+  }, [embedded]);
 
   const syncEnabled = Boolean(state.sync?.enabled);
   const lastSync = state.sync?.lastSyncAt
@@ -116,9 +146,11 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
     );
   }
 
-  return (
+  if (!sidebarMount) return null;
+
+  return createPortal(
     <div
-      className={`fixed bottom-[9.75rem] left-4 z-50 hidden w-56 max-w-[calc(100vw-2rem)] min-w-0 items-center justify-center gap-1.5 rounded-xl border bg-sidebar/95 px-3 py-2 text-center text-[11px] font-medium leading-tight shadow-md backdrop-blur md:inline-flex ${tone}`}
+      className={`inline-flex w-full min-w-0 items-center justify-center gap-1.5 rounded-xl border bg-sidebar-accent/25 px-3 py-2 text-center text-[11px] font-medium leading-tight ${tone}`}
       role="status"
       aria-live="polite"
       aria-label={detail}
@@ -126,6 +158,7 @@ export default function CloudSyncStatusBadge({ embedded = false }: CloudSyncStat
     >
       <Icon className="h-3.5 w-3.5 shrink-0" />
       <span className="min-w-0 break-words">{label}</span>
-    </div>
+    </div>,
+    sidebarMount,
   );
 }

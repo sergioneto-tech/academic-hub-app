@@ -1,5 +1,5 @@
 const APP_VERSION = "1.6.5";
-const SW_VERSION = "1.6.5-maintenance-4";
+const SW_VERSION = "1.6.5-maintenance-5";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";

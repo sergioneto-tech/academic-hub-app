@@ -1,5 +1,5 @@
 const APP_VERSION = "1.6.5";
-const SW_VERSION = "1.6.5-push-open-1";
+const SW_VERSION = "1.6.5-maintenance-1";
 const CACHE = `academic-hub-${SW_VERSION}`;
 const APP_SHELL_KEY = new URL("./__academic_hub_app_shell__", self.location.href).href;
 const NOTIFICATION_ICON = "./academic-hub-notification-gold.svg";
@@ -24,11 +24,7 @@ function delay(ms) {
 
 function responseFromText(response, text) {
   const headers = new Headers(response.headers);
-  headers.delete("content-encoding");
-  headers.delete("content-length");
-  headers.delete("transfer-encoding");
-  headers.delete("location");
-
+  headers.set("Content-Type", "text/html; charset=utf-8");
   return new Response(text, {
     status: response.status,
     statusText: response.statusText,
@@ -36,94 +32,42 @@ function responseFromText(response, text) {
   });
 }
 
-async function makeRedirectSafeResponse(response) {
-  if (!response.redirected) return response;
-  return responseFromText(response, await response.text());
-}
-
-async function fetchVerifiedAppShell() {
-  const shellUrl = new URL("./", self.registration.scope);
-  let lastError = new Error("App shell não verificado");
+async function fetchVerifiedAppShell(request) {
+  let lastError = null;
 
   for (let attempt = 1; attempt <= APP_SHELL_FETCH_ATTEMPTS; attempt += 1) {
     try {
-      shellUrl.searchParams.set("ah_shell", `${APP_VERSION}-${Date.now()}-${attempt}`);
-      const response = await fetch(new Request(shellUrl.href, {
-        cache: "no-store",
-        redirect: "follow",
-      }));
-      if (!response.ok) throw new Error(`App shell HTTP ${response.status}`);
+      const response = await fetch(request, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-      const text = await response.text();
-      if (!text.includes(APP_SHELL_VERSION_MARKER)) {
-        throw new Error(`App shell não corresponde à versão ${APP_VERSION}`);
+      const text = await response.clone().text();
+      if (text.includes(APP_SHELL_VERSION_MARKER)) {
+        return responseFromText(response, text);
       }
 
-      return responseFromText(response, text);
+      lastError = new Error(`app-shell ainda não corresponde a ${APP_VERSION}`);
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      if (attempt < APP_SHELL_FETCH_ATTEMPTS) await delay(APP_SHELL_RETRY_MS);
+      lastError = error;
+    }
+
+    if (attempt < APP_SHELL_FETCH_ATTEMPTS) {
+      await delay(APP_SHELL_RETRY_MS * attempt);
     }
   }
 
-  throw lastError;
-}
-
-function extractAppShellAssetUrls(html) {
-  const urls = new Set();
-  const pattern = /(?:src|href)=["']([^"']+\.(?:js|css)(?:\?[^"']*)?)["']/gi;
-  let match;
-
-  while ((match = pattern.exec(html)) !== null) {
-    try {
-      const url = new URL(match[1], self.registration.scope);
-      if (url.origin === self.location.origin) urls.add(url.href);
-    } catch {
-      // Ignora referências inválidas no HTML; o app-shell já foi validado acima.
-    }
-  }
-
-  return [...urls];
-}
-
-async function cacheInstalledAppAssets(cache, appShell) {
-  let html = "";
-  try {
-    html = await appShell.clone().text();
-  } catch {
-    return;
-  }
-
-  const assetUrls = extractAppShellAssetUrls(html);
-  await Promise.all(assetUrls.map(async (assetUrl) => {
-    try {
-      const request = new Request(assetUrl, { cache: "no-store" });
-      const response = await fetch(request);
-      if (response.ok) await cache.put(request, response.clone());
-    } catch {
-      // A instalação não falha por um asset complementar; o fetch normal continua disponível.
-    }
-  }));
+  throw lastError ?? new Error("Não foi possível validar o app-shell");
 }
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    await cache.addAll(PRECACHE_URLS).catch(() => {});
+    const shellUrl = new URL("./", self.location.href).href;
+    const shellResponse = await fetchVerifiedAppShell(new Request(shellUrl));
+    await cache.put(APP_SHELL_KEY, shellResponse.clone());
 
-    // Uma release só pode ficar pronta se o HTML obtido corresponder à mesma
-    // versão do Service Worker. Isto evita misturar app-shell e código de releases diferentes.
-    const appShell = await fetchVerifiedAppShell();
-    await cache.put(APP_SHELL_KEY, appShell.clone());
+    const staticUrls = PRECACHE_URLS.filter((url) => url !== "./");
+    if (staticUrls.length) await cache.addAll(staticUrls);
 
-    // Guarda também os JS/CSS referenciados pelo app-shell validado. Assim, uma
-    // abertura a frio continua a poder executar a versão instalada mesmo depois
-    // de uma release seguinte substituir os ficheiros publicados no servidor.
-    await cacheInstalledAppAssets(cache, appShell);
-
-    // Mantém a nova release em espera até o utilizador confirmar Atualizar agora.
-    // Não devemos ativar automaticamente enquanto o bundle anterior ainda está em execução:
-    // isso pode remover chunks antigos e deixar uma rota lazy numa tela vazia/preta.
     if (AUTO_ACTIVATE) await self.skipWaiting();
   })());
 });
@@ -131,135 +75,94 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(
-      keys
-        .filter((key) => key.startsWith("academic-hub-") && key !== CACHE)
-        .map((key) => caches.delete(key))
-    );
+    await Promise.all(keys.filter((k) => k.startsWith("academic-hub-") && k !== CACHE).map((k) => caches.delete(k)));
     await self.clients.claim();
   })());
 });
 
 self.addEventListener("message", (event) => {
-  if (event?.data?.type === "SKIP_WAITING") self.skipWaiting();
-  if (event?.data?.type === "GET_VERSION" && event.ports?.[0]) {
-    event.ports[0].postMessage({ appVersion: APP_VERSION, swVersion: SW_VERSION });
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
   }
 });
 
-const NETWORK_ONLY_PATHS = new Set(["/sw.js", "/release-notes.json", "/security-status.json"]);
-
 self.addEventListener("fetch", (event) => {
-  const request = event.request;
-  if (request.method !== "GET") return;
-
-  const url = new URL(request.url);
+  const req = event.request;
+  const url = new URL(req.url);
+  if (req.method !== "GET") return;
   if (url.origin !== self.location.origin) return;
 
-  if (NETWORK_ONLY_PATHS.has(url.pathname)) {
-    event.respondWith(fetch(new Request(request, { cache: "no-store" })));
-    return;
-  }
-
-  if (request.mode === "navigate") {
+  if (req.mode === "navigate") {
     event.respondWith((async () => {
-      const cache = await caches.open(CACHE);
-      const installedShell = await cache.match(APP_SHELL_KEY);
-      if (installedShell) return installedShell.clone();
-
-      // Não grava HTML não verificado em caso de perda inesperada do cache.
-      // Serve a rede apenas como fallback temporário; um novo ciclo de registo
-      // voltará a construir um app-shell validado.
-      const networkResponse = await fetch(new Request(request, {
-        cache: "no-store",
-        redirect: "follow",
-      }));
-      if (!networkResponse.ok) return networkResponse;
-      return makeRedirectSafeResponse(networkResponse);
+      try {
+        return await fetch(req, { cache: "no-store" });
+      } catch {
+        const cache = await caches.open(CACHE);
+        return (await cache.match(APP_SHELL_KEY)) || (await cache.match("./")) || Response.error();
+      }
     })());
     return;
   }
 
-  event.respondWith(
-    caches.open(CACHE).then(async (cache) => {
-      const cached = await cache.match(request);
-      if (cached) return cached;
-      const response = await fetch(request);
-      if (response.ok && response.type === "basic") await cache.put(request, response.clone());
-      return response;
-    })
-  );
+  event.respondWith((async () => {
+    const cached = await caches.match(req);
+    if (cached) return cached;
+    try {
+      const res = await fetch(req);
+      if (res.ok) {
+        const cache = await caches.open(CACHE);
+        cache.put(req, res.clone());
+      }
+      return res;
+    } catch {
+      return cached || Response.error();
+    }
+  })());
 });
 
 self.addEventListener("push", (event) => {
-  let payload = {};
+  let data = {};
   try {
-    payload = event.data?.json?.() || {};
+    data = event.data ? event.data.json() : {};
   } catch {
-    payload = { body: event.data?.text?.() || "" };
+    data = { body: event.data?.text?.() || "" };
   }
 
-  const title = payload.title || "Academic Hub";
-  const body = payload.body || "";
-  const suppliedData = payload.data && typeof payload.data === "object" ? payload.data : {};
-  const isRelease = suppliedData.kind === "release";
+  const title = data.title || "Academic Hub";
   const options = {
-    body,
-    icon: payload.icon || NOTIFICATION_ICON,
-    badge: payload.badge || NOTIFICATION_BADGE,
+    body: data.body || "Tens uma nova notificação no Academic Hub.",
+    icon: data.icon || NOTIFICATION_ICON,
+    badge: data.badge || NOTIFICATION_BADGE,
+    tag: data.tag || "academic-hub",
+    renotify: Boolean(data.renotify),
     data: {
-      ...suppliedData,
-      url: payload.url || suppliedData.url || "./",
-      title,
-      body,
+      url: data.url || data?.data?.url || "./",
+      ...(data.data || {}),
     },
-    tag: payload.tag || undefined,
-    renotify: Boolean(payload.tag),
-    silent: false,
-    vibrate: payload.vibrate || [180, 80, 180],
-    actions: isRelease ? [{ action: "update", title: "Atualizar agora" }] : undefined,
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-function buildNotificationTarget(notification) {
-  const rawTarget = notification?.data?.url || "./";
-  const target = new URL(rawTarget, self.registration.scope);
-
-  if (target.origin === self.location.origin && target.hash.startsWith("#/")) {
-    const rawRoute = target.hash.slice(1);
-    const queryIndex = rawRoute.indexOf("?");
-    const routePath = queryIndex >= 0 ? rawRoute.slice(0, queryIndex) : rawRoute;
-    const params = new URLSearchParams(queryIndex >= 0 ? rawRoute.slice(queryIndex + 1) : "");
-    params.set("_push", "1");
-    if (notification?.data?.title) params.set("_pushTitle", notification.data.title);
-    if (notification?.data?.body) params.set("_pushBody", notification.data.body);
-    const query = params.toString();
-    target.hash = `#${routePath}${query ? `?${query}` : ""}`;
-  }
-
-  return target.href;
-}
-
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = buildNotificationTarget(event.notification);
+  const targetUrl = new URL(event.notification?.data?.url || "./", self.location.href).href;
 
   event.waitUntil((async () => {
     const clientList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-
-    // Se já existe uma janela da PWA, não força client.navigate(). Um reload total
-    // neste ponto pode arrancar um app-shell antigo quando uma release nova acabou
-    // de ser publicada e provocar a conhecida tela preta. A janela ativa recebe
-    // apenas o deep link interno e é trazida para a frente.
     for (const client of clientList) {
-      if ("postMessage" in client) {
-        client.postMessage({ type: "ACADEMIC_HUB_NOTIFICATION_NAVIGATE", url: target });
+      if ("focus" in client) {
+        if ("navigate" in client) {
+          try {
+            await client.navigate(targetUrl);
+          } catch {
+            // Se o browser não permitir navegar este cliente, tenta apenas focá-lo.
+          }
+        }
+        return client.focus();
       }
-      if ("focus" in client) return client.focus();
     }
-
-    return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+    if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    return undefined;
   })());
 });

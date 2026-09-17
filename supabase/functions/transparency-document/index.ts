@@ -6,15 +6,19 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:5173",
 ]);
 
+const isAllowedOrigin = (origin: string) =>
+  ALLOWED_ORIGINS.has(origin) ||
+  /^https:\/\/[a-z0-9-]+\.academic-hub-app\.pages\.dev$/i.test(origin);
+
 const cors = (req: Request) => {
   const origin = req.headers.get("origin") ?? "";
-  const allowed = ALLOWED_ORIGINS.has(origin) ? origin : "https://academichub.sergioneto.pt";
-  return {
-    "Access-Control-Allow-Origin": allowed,
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Headers": "authorization, apikey, x-client-info, content-type",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
     "Vary": "Origin",
   };
+  if (isAllowedOrigin(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
 };
 
 type Paragraph = { text: string; bold?: boolean; bullet?: boolean; link?: string };

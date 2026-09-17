@@ -8,6 +8,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
+const AUDITED_FIELDS = [
+  "account.email_verified",
+  "account.created_at",
+  "account.last_sign_in_at",
+  "cloud.has_state",
+  "cloud.updated_at",
+  "push.subscription_counts",
+  "push.last_updated_at",
+  "errors.latest_metadata",
+  "feedback.references_status",
+  "puc.status_summary",
+];
 
 function json(body: unknown, status = 200) {
   return Response.json(body, {
@@ -41,7 +53,7 @@ Deno.serve(async (req: Request) => {
   if (callerError || !callerData.user) return json({ error: "unauthorized" }, 401);
   if (callerData.user.id !== MANAGER_USER_ID) return json({ error: "forbidden" }, 403);
 
-  let payload: { action?: unknown; supportId?: unknown } = {};
+  let payload: { action?: unknown; supportId?: unknown; reason?: unknown } = {};
   try {
     payload = await req.json();
   } catch {
@@ -51,7 +63,9 @@ Deno.serve(async (req: Request) => {
   if (payload.action === "access") return json({ allowed: true });
 
   const supportId = String(payload.supportId ?? "").trim().toUpperCase();
+  const reason = String(payload.reason ?? "").trim();
   if (!SUPPORT_ID_PATTERN.test(supportId)) return json({ error: "invalid_support_id" }, 400);
+  if (reason.length < 8 || reason.length > 500) return json({ error: "invalid_reason" }, 400);
 
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -78,6 +92,19 @@ Deno.serve(async (req: Request) => {
   if (authResult.error) return json({ error: "account_lookup_failed" }, 500);
   if (stateResult.error || pushResult.error || errorsResult.error || feedbackResult.error || pucResult.error) {
     return json({ error: "diagnostics_lookup_failed" }, 500);
+  }
+
+  const { error: auditError } = await admin.rpc("log_admin_support_access", {
+    p_admin_user_id: callerData.user.id,
+    p_subject_user_id: userId,
+    p_support_id: supportId,
+    p_reason: reason,
+    p_fields_returned: AUDITED_FIELDS,
+    p_action: "support_lookup",
+  });
+  if (auditError) {
+    console.error("[admin-support-lookup][audit]", auditError.message);
+    return json({ error: "audit_failed" }, 500);
   }
 
   const authUser = authResult.data.user;

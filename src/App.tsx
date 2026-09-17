@@ -9,6 +9,7 @@ import CloudSyncStatusBadge from "./components/CloudSyncStatusBadge";
 import CloudConflictPanel from "./components/CloudConflictPanel";
 import GuestReadOnly from "./components/GuestReadOnly";
 import AdminUserMonitor from "./components/AdminUserMonitor";
+import AdminSupportShortcut from "./components/AdminSupportShortcut";
 import AdminFeedbackMonitor from "./components/AdminFeedbackMonitor";
 import FeedbackCloudBridge from "./components/FeedbackCloudBridge";
 import FeedbackBetaEnhancements from "./components/FeedbackBetaEnhancements";
@@ -45,6 +46,7 @@ const PucImportPage = lazy(() => import("./pages/PucImportPage"));
 const PucSharedReviewPage = lazy(() => import("./pages/PucSharedReviewLab"));
 const PucAdminReviewPage = lazy(() => import("./pages/PucAdminReviewLab"));
 const PucUpdateAlertsPage = lazy(() => import("./pages/PucUpdateAlertsLab"));
+const AdminSupportPage = lazy(() => import("./pages/AdminSupport"));
 
 const maintenanceMode = import.meta.env.VITE_MAINTENANCE_MODE === "true";
 
@@ -72,6 +74,7 @@ function AcademicHubApp() {
       <PushDeepLinkNotice />
       <DesktopPushPrompt />
       <AdminUserMonitor />
+      <AdminSupportShortcut />
       <FeedbackCloudBridge />
       <FeedbackGlobalSyncPulse />
       <FeedbackBetaEnhancements />
@@ -102,6 +105,7 @@ function AcademicHubApp() {
             <Route path="/puc/rever" element={<LazyPage><PucSharedReviewPage /></LazyPage>} />
             <Route path="/puc/atualizacoes" element={<LazyPage><PucUpdateAlertsPage /></LazyPage>} />
             <Route path="/administracao/puc-correcoes" element={<LazyPage><PucAdminReviewPage /></LazyPage>} />
+            <Route path="/administracao/suporte" element={<LazyPage><AdminSupportPage /></LazyPage>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

@@ -1,6 +1,19 @@
 {
-  "latest": "1.6.6",
+  "latest": "1.6.7",
   "versions": [
+    {
+      "version": "1.6.7",
+      "date": "2026-09-17",
+      "kind": "app",
+      "pushNotify": false,
+      "changes": [
+        "Nova área pública Transparência e Privacidade no modo de exploração, com explicação simples sobre a natureza independente do Academic Hub, utilização facultativa, perguntas frequentes e ligações para fontes oficiais.",
+        "O documento completo Transparência, Privacidade e Evolução do Projeto v1.0 fica disponível dentro da aplicação apenas para utilizadores com sessão autenticada.",
+        "O acesso ao PDF é feito através de um endpoint protegido por autenticação, sem disponibilizar um endereço público permanente para o documento integral.",
+        "A área Os meus dados e privacidade passa a reunir também o acesso ao resumo público e, quando existe conta ligada, ao documento completo.",
+        "Esta versão é documental e de transparência: não altera dados académicos, regras de avaliação, sincronização, permissões de utilizador ou a baseline de segurança 2026.09."
+      ]
+    },
     {
       "version": "1.6.6",
       "date": "2026-09-17",

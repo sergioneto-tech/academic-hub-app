@@ -8,7 +8,7 @@ Aplicação web progressiva (PWA) para acompanhar o percurso académico num úni
 
 ## Estado atual
 
-- **Versão da aplicação:** 1.6.4
+- **Versão da aplicação:** 1.6.5
 - **Interface:** responsiva, com modo claro/escuro
 - **Instalação:** PWA em computador, tablet e telemóvel
 - **Sincronização:** cloud entre dispositivos, com atualização automática e resolução de conflitos
@@ -62,6 +62,8 @@ As datas e horas de exame, recurso e épocas especiais continuam a ser obtidas e
 ## Notificações
 
 As notificações Push são ativadas individualmente em cada dispositivo. É recomendável mantê-las ativas para receber alertas de prazos, atualizações da aplicação, respostas a feedback e outras alterações que possam exigir revisão do aluno.
+
+Ao tocar numa notificação com a PWA já aberta ou em segundo plano, o Academic Hub reutiliza a janela existente e muda apenas a rota interna, evitando um reload completo durante a transição entre releases. O Service Worker preserva também os ficheiros JS/CSS essenciais do app-shell instalado para reforçar a abertura a frio.
 
 Uma atualização de PUC partilhado nunca altera automaticamente os dados pessoais de uma cadeira. Quando existe uma nova versão validada aplicável à mesma UC, ano letivo e edição/turma, o aluno é avisado para rever e aceitar a alteração se esta corresponder ao seu PUC.
 

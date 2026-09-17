@@ -76,6 +76,18 @@ function baseState(): AppState {
   };
 }
 
+function legacyState(mode: "efolios-exam" | "exam-only" | "custom" | "final-grade-only" = "efolios-exam"): AppState {
+  const state = baseState();
+  state.courses[0] = {
+    ...state.courses[0],
+    evaluationRegime: "legacy",
+    evaluationRegimeSource: "manual",
+    legacyEvaluationMode: mode,
+    evaluationModel: undefined,
+  };
+  return state;
+}
+
 const draft = {
   model: "type4" as const,
   events: [{
@@ -87,6 +99,28 @@ const draft = {
   }],
   finalAssessmentName: "Atividade de Avaliação por Exame",
   finalAssessmentMaxPoints: 14,
+};
+
+const legacyDraft = {
+  model: "custom" as const,
+  events: [
+    {
+      name: "E-fólio A",
+      maxPoints: 4,
+      startDate: "2026-11-01",
+      endDate: "2026-11-10",
+      gradeReleaseDate: "2026-11-24",
+    },
+    {
+      name: "E-fólio B",
+      maxPoints: 4,
+      startDate: "2026-12-01",
+      endDate: "2026-12-12",
+      gradeReleaseDate: "2027-01-05",
+    },
+  ],
+  finalAssessmentName: "G-fólio",
+  finalAssessmentMaxPoints: 12,
 };
 
 describe("apply PUC import", () => {
@@ -147,5 +181,81 @@ describe("apply PUC import", () => {
     });
     expect(result).toMatchObject({ ok: false, reason: "invalid" });
     if (!result.ok) expect(result.errors.some((error) => error.includes("18 valores"))).toBe(true);
+  });
+
+  it("imports a legacy PUC without changing the legacy evaluation regime", () => {
+    const state = legacyState("efolios-exam");
+    const result = applyPucImportToState(state, "course-1", legacyDraft);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.nextState.courses[0]).toMatchObject({
+      evaluationRegime: "legacy",
+      evaluationRegimeSource: "manual",
+      legacyEvaluationMode: "efolios-exam",
+    });
+    expect(result.nextState.courses[0].evaluationModel).toBeUndefined();
+
+    const current = result.nextState.assessments.filter((item) => item.courseId === "course-1");
+    expect(current.find((item) => item.name === "E-fólio A")).toMatchObject({
+      type: "efolio",
+      maxPoints: 4,
+      startDate: "2026-11-01",
+      endDate: "2026-11-10",
+    });
+    expect(current.find((item) => item.type === "exam")).toMatchObject({
+      id: "exam",
+      maxPoints: 12,
+      date: "2027-01-25T10:00",
+      dateSource: "official",
+    });
+    expect(current.find((item) => item.type === "resit")).toMatchObject({
+      id: "resit",
+      date: "2027-02-16T10:00",
+      dateSource: "official",
+    });
+  });
+
+  it("allows a legacy PUC without a detected final cotation and preserves the existing final assessment", () => {
+    const state = legacyState("efolios-exam");
+    const result = applyPucImportToState(state, "course-1", {
+      ...legacyDraft,
+      finalAssessmentName: undefined,
+      finalAssessmentMaxPoints: null,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.nextState.courses[0].evaluationRegime).toBe("legacy");
+    expect(result.nextState.assessments.find((item) => item.id === "exam")).toMatchObject({
+      maxPoints: 12,
+      date: "2027-01-25T10:00",
+    });
+  });
+
+  it("does not import a PUC into a legacy course configured as final-grade-only", () => {
+    const result = applyPucImportToState(legacyState("final-grade-only"), "course-1", legacyDraft);
+    expect(result).toMatchObject({ ok: false, reason: "invalid" });
+    if (!result.ok) expect(result.errors[0]).toContain("já concluída");
+  });
+
+  it("keeps legacy exam-only structure and imports only a valid 20-point final assessment", () => {
+    const state = legacyState("exam-only");
+    const result = applyPucImportToState(state, "course-1", {
+      ...legacyDraft,
+      finalAssessmentName: "Exame",
+      finalAssessmentMaxPoints: 20,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.nextState.courses[0]).toMatchObject({
+      evaluationRegime: "legacy",
+      legacyEvaluationMode: "exam-only",
+    });
+    expect(result.nextState.assessments.find((item) => item.id === "exam")).toMatchObject({
+      maxPoints: 20,
+      date: "2027-01-25T10:00",
+    });
   });
 });

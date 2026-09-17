@@ -24,6 +24,7 @@ export default function CourseDetailPremium() {
 
   const regime = course.evaluationRegime ?? "legacy";
   const historicalMode = course.legacyEvaluationMode ?? "efolios-exam";
+  const canImportPuc = regime === "regulation-2026" || historicalMode !== "final-grade-only";
 
   return (
     <>
@@ -44,13 +45,9 @@ export default function CourseDetailPremium() {
       )}
       <EvaluationFrameworkNotice regime={regime} />
       <EvaluationModeSelector courseId={id} />
+      {canImportPuc && <PucImportEntry courseId={id} />}
       {regime === "regulation-2026"
-        ? (
-          <>
-            <PucImportEntry courseId={id} />
-            <FlexibleCourseDetail courseId={id} />
-          </>
-        )
+        ? <FlexibleCourseDetail courseId={id} />
         : historicalMode === "efolios-exam"
           ? (
             <>

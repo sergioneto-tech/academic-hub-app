@@ -65,10 +65,13 @@ function hasManualStructure(assessment: Assessment): boolean {
   );
 }
 
-function validateDraft(draft: PucImportApplyDraft): string[] {
+function validateDraft(
+  draft: PucImportApplyDraft,
+  options: { allowCustomModel?: boolean; requireCompleteTotal?: boolean } = {},
+): string[] {
   const errors: string[] = [];
 
-  if (draft.model === "custom") {
+  if (draft.model === "custom" && !options.allowCustomModel) {
     errors.push("Confirma a tipologia/modalidade antes de guardar.");
   }
 
@@ -104,7 +107,11 @@ function validateDraft(draft: PucImportApplyDraft): string[] {
     ...draft.events.map((event) => event.maxPoints),
     ...(draft.finalAssessmentMaxPoints !== null ? [draft.finalAssessmentMaxPoints] : []),
   ];
-  if (points.length > 0 && points.every((value): value is number => typeof value === "number" && Number.isFinite(value))) {
+  if (
+    options.requireCompleteTotal !== false
+    && points.length > 0
+    && points.every((value): value is number => typeof value === "number" && Number.isFinite(value))
+  ) {
     const total = points.reduce((sum, value) => sum + value, 0);
     if (Math.abs(total - 20) > 0.001) {
       errors.push(`As cotações confirmadas totalizam ${total} valores. A estrutura a guardar deve totalizar 20 valores.`);
@@ -125,13 +132,34 @@ export function applyPucImportToState(
     return { ok: false, reason: "invalid", errors: ["A cadeira selecionada já não existe."] };
   }
 
-  const errors = validateDraft(draft);
+  const isLegacy = (course.evaluationRegime ?? "legacy") === "legacy";
+  const legacyMode = course.legacyEvaluationMode ?? "efolios-exam";
+
+  if (isLegacy && legacyMode === "final-grade-only") {
+    return {
+      ok: false,
+      reason: "invalid",
+      errors: ["Esta cadeira está configurada como já concluída, apenas com nota final. O PUC não altera esse registo histórico."],
+    };
+  }
+
+  const legacyExamOnly = isLegacy && legacyMode === "exam-only";
+  const effectiveDraft: PucImportApplyDraft = legacyExamOnly
+    ? { ...draft, model: "exam-only", events: [] }
+    : draft;
+
+  const errors = validateDraft(effectiveDraft, {
+    allowCustomModel: isLegacy,
+    requireCompleteTotal: !isLegacy || legacyExamOnly || effectiveDraft.finalAssessmentMaxPoints !== null,
+  });
   if (errors.length > 0) return { ok: false, reason: "invalid", errors };
 
   const courseAssessments = state.assessments.filter((item) => item.courseId === courseId);
-  const replaceable = courseAssessments.filter(
-    (item) => item.type !== "exam" && item.type !== "resit" && item.type !== "special",
-  );
+  const replaceable = legacyExamOnly
+    ? []
+    : courseAssessments.filter(
+        (item) => item.type !== "exam" && item.type !== "resit" && item.type !== "special",
+      );
 
   if (replaceable.some(hasStudentProgress)) {
     return {
@@ -153,11 +181,13 @@ export function applyPucImportToState(
     };
   }
 
-  const preserved = state.assessments.filter(
-    (item) => item.courseId !== courseId || item.type === "exam" || item.type === "resit" || item.type === "special",
-  );
+  const preserved = legacyExamOnly
+    ? state.assessments
+    : state.assessments.filter(
+        (item) => item.courseId !== courseId || item.type === "exam" || item.type === "resit" || item.type === "special",
+      );
 
-  const imported: Assessment[] = draft.events.map((event, index) => ({
+  const imported: Assessment[] = effectiveDraft.events.map((event, index) => ({
     id: uuid(),
     courseId,
     type: importedAssessmentType(event.name),
@@ -174,7 +204,7 @@ export function applyPucImportToState(
   }));
 
   let finalAssessmentUpdated = false;
-  const finalPoints = draft.finalAssessmentMaxPoints;
+  const finalPoints = effectiveDraft.finalAssessmentMaxPoints;
   let nextPreserved = preserved;
 
   if (typeof finalPoints === "number" && finalPoints > 0) {
@@ -191,7 +221,7 @@ export function applyPucImportToState(
         id: uuid(),
         courseId,
         type: "exam",
-        name: draft.finalAssessmentName?.trim() || "Prova / exame final",
+        name: effectiveDraft.finalAssessmentName?.trim() || "Prova / exame final",
         maxPoints: finalPoints,
         grade: null,
         mode: "synchronous",
@@ -206,11 +236,15 @@ export function applyPucImportToState(
 
   const nextState: AppState = {
     ...state,
-    courses: state.courses.map((item) => item.id === courseId ? {
-      ...item,
-      evaluationRegime: "regulation-2026",
-      evaluationModel: draft.model,
-    } : item),
+    courses: state.courses.map((item) => item.id === courseId
+      ? isLegacy
+        ? item
+        : {
+            ...item,
+            evaluationRegime: "regulation-2026",
+            evaluationModel: effectiveDraft.model,
+          }
+      : item),
     assessments: [...nextPreserved, ...imported],
   };
 

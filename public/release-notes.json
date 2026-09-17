@@ -1,6 +1,20 @@
 {
-  "latest": "1.6.2",
+  "latest": "1.6.3",
   "versions": [
+    {
+      "version": "1.6.3",
+      "date": "2026-09-17",
+      "kind": "app",
+      "pushNotify": true,
+      "changes": [
+        "A importação assistida do PUC passa a estar disponível também nas cadeiras do regime anterior que estejam a ser frequentadas, sem converter automaticamente a cadeira para o Regulamento de Avaliação 2026/2027.",
+        "PUCs do regime anterior podem ser revistos e importados mesmo quando não apresentam uma Tipologia 1–4, mantendo a estrutura histórica escolhida pelo aluno e excluindo apenas o modo de cadeira já concluída com registo exclusivo da nota final.",
+        "Mantêm-se as proteções de dados existentes: datas preenchidas manualmente exigem confirmação adicional, classificações ou submissões bloqueiam substituições automáticas e as datas oficiais de exame, recurso e época especial não são substituídas pelo PUC.",
+        "Falhas de carregamento provocadas por ficheiros de versões diferentes passam a ter uma única tentativa de recuperação automática; se o problema persistir, continua disponível o ecrã de recuperação manual sem apagar dados do aluno.",
+        "O reporte técnico de erros passa também a procurar a sessão persistida pelo Supabase quando a sessão interna do Academic Hub não está disponível, tornando os alertas administrativos mais fiáveis.",
+        "Adicionados testes de regressão específicos para a importação do PUC no regime anterior, incluindo e-fólios, exame, preservação do regime, modo apenas exame e bloqueio do modo de nota final."
+      ]
+    },
     {
       "version": "1.6.2",
       "date": "2026-09-17",

@@ -243,6 +243,7 @@ async function checkAccountSecurity() {
     const unresolvedIncident = activity.some((item) =>
       Boolean(
         item.incident_reference &&
+        Number(item.severity ?? 0) >= 2 &&
         item.incident_status !== "resolved" &&
         item.incident_status !== "false_positive",
       ),

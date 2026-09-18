@@ -365,12 +365,33 @@ async function checkWebProtection() {
 
 function writeStatus() {
   const status = securityFailure ? "review" : auditIncomplete ? "attention" : "protected";
+  const check = (id, label, group, result, detail) => ({
+    id,
+    label,
+    group,
+    status: result.severity,
+    detail: result.ok ? detail : result.detail,
+  });
   const checks = [
-    { id: "dependencies", label: "Dependências", status: results.dependencies.severity, detail: results.dependencies.detail },
-    { id: "application", label: "Aplicação", status: results.application.severity, detail: results.application.detail },
-    { id: "database", label: "Base de dados e acesso", status: results.database.severity, detail: results.database.detail },
-    { id: "frontend", label: "Frontend", status: results.frontend.severity, detail: results.frontend.detail },
-    { id: "web-protection", label: "Proteção web", status: results.web.severity, detail: results.web.detail },
+    check("dependencies-audit", "Dependências npm — vulnerabilidades high/critical", "Aplicação e GitHub", results.dependencies, "npm audit sem vulnerabilidades high/critical."),
+    check("application-typescript", "TypeScript", "Aplicação e GitHub", results.application, "Compilação TypeScript concluída sem erros bloqueantes."),
+    check("application-build", "Build de produção", "Aplicação e GitHub", results.application, "Build de produção concluído sem erros bloqueantes."),
+    check("application-tests", "Testes automatizados", "Aplicação e GitHub", results.application, "Testes automatizados concluídos sem erros bloqueantes."),
+    check("database-rls", "RLS e FORCE RLS nas tabelas públicas", "Supabase — base de dados e acesso", results.database, "Todas as tabelas públicas verificadas têm RLS e FORCE RLS ativos."),
+    check("database-anon-tables", "Privilégios diretos de anon em tabelas", "Supabase — base de dados e acesso", results.database, "Nenhum privilégio direto inesperado de anon em tabelas públicas."),
+    check("database-auth-tables", "Privilégios de authenticated em tabelas", "Supabase — base de dados e acesso", results.database, "Privilégios de authenticated correspondem à allowlist da baseline."),
+    check("database-sequences", "Privilégios em sequences", "Supabase — base de dados e acesso", results.database, "Sem privilégios indevidos de anon/authenticated em sequences; exceção prevista validada."),
+    check("database-security-definer", "Funções SECURITY DEFINER", "Supabase — base de dados e acesso", results.database, "Nenhuma função SECURITY DEFINER verificada é executável por anon ou authenticated."),
+    check("database-views", "Views e materialized views públicas", "Supabase — base de dados e acesso", results.database, "Nenhuma view/materialized view pública verificada é legível pelos papéis cliente."),
+    check("database-storage", "Buckets públicos de Storage", "Supabase — base de dados e acesso", results.database, "Nenhum bucket público detetado."),
+    check("database-default-privileges", "Default privileges do PostgreSQL", "Supabase — base de dados e acesso", results.database, "Não foram restaurados default privileges inseguros para anon/authenticated."),
+    check("frontend-secrets", "Segredos privilegiados no cliente", "Frontend", results.frontend, "Sem SUPABASE_SERVICE_ROLE_KEY ou chaves sb_secret_ detetadas no cliente."),
+    check("frontend-execution", "Padrões de execução perigosos", "Frontend", results.frontend, "Sem eval, new Function ou dangerouslySetInnerHTML detetados."),
+    check("web-csp", "Content-Security-Policy (CSP)", "Proteção web", results.web, "Header CSP confirmado no site live."),
+    check("web-hsts", "Strict-Transport-Security (HSTS)", "Proteção web", results.web, "Header HSTS confirmado no site live."),
+    check("web-nosniff", "X-Content-Type-Options", "Proteção web", results.web, "Proteção nosniff confirmada no site live."),
+    check("web-framing", "Proteção anti-framing", "Proteção web", results.web, "X-Frame-Options confirmado no site live."),
+    check("web-referrer", "Referrer-Policy", "Proteção web", results.web, "Referrer-Policy confirmada no site live."),
   ];
   const now = new Date();
   const securityLevel = `${now.getUTCFullYear()}.${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -380,12 +401,13 @@ function writeStatus() {
       ? "A última vistoria detetou um controlo de segurança que requer revisão."
       : "A última vistoria não conseguiu concluir todos os controlos e requer nova validação.";
   const output = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     product: "Academic Hub",
     securityLevel,
     lastAudit: now.toISOString(),
     status,
     summary,
+    disclosure: "Este estado público apresenta apenas resultados técnicos e não expõe segredos, tokens, credenciais, dados pessoais, SQL, nomes de utilizadores ou configuração sensível.",
     checks,
     source: "automated-weekly-security-audit",
   };

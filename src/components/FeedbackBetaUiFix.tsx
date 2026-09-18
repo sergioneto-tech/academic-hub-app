@@ -170,30 +170,7 @@ function ensureSupportBadge(button: HTMLButtonElement, supportId: string) {
   badge.setAttribute("aria-label", `ID Academic Hub do remetente: ${supportId}`);
 }
 
-function replaceExactText(root: ParentNode, from: string, to: string) {
-  root.querySelectorAll<HTMLElement>("span,h1,h2,h3,h4,div").forEach((node) => {
-    if (node.children.length === 0 && node.textContent?.trim() === from) node.textContent = to;
-  });
-}
-
-function applySupportTerminology() {
-  document.querySelectorAll<HTMLAnchorElement>('a[href$="/feedback"]').forEach((link) => {
-    link.querySelectorAll<HTMLElement>("span").forEach((span) => {
-      if (span.textContent?.trim() === "Feedback") span.textContent = "Suporte";
-    });
-  });
-
-  if (!window.location.hash.includes("/feedback")) return;
-  const topTitle = document.querySelector<HTMLElement>("header h1");
-  if (topTitle?.textContent?.trim() === "Feedback") topTitle.textContent = "Suporte";
-  replaceExactText(document, "Opinião, sugestões e problemas", "Suporte e pedidos");
-  replaceExactText(document, "Gestão de feedback", "Gestão de suporte");
-  replaceExactText(document, "Enviar feedback", "Enviar pedido");
-  replaceExactText(document, "Caixa de feedback", "Gestão de pedidos");
-}
-
 function applyFixes() {
-  applySupportTerminology();
   if (!window.location.hash.includes("/feedback")) return;
 
   document.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {

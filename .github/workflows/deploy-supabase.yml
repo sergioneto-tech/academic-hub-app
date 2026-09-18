@@ -101,18 +101,27 @@ jobs:
       # obrigaria a alargar desnecessariamente o token. Mantemos explicitamente
       # apenas o Auth Hook suportado pela Management API. Os Auth Audit Logs são
       # monitorizados através da API de Logs com um token separado e read-only.
-      - name: Apply Academic Hub auth hook
+      - name: Verify Academic Hub auth hook function
         shell: bash
         run: |
           set -euo pipefail
-          curl --silent --show-error --fail-with-body \
-            --request PATCH \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/config/auth" \
-            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
-            --header "Content-Type: application/json" \
-            --data '{"hook_before_user_created_enabled":true,"hook_before_user_created_uri":"pg-functions://postgres/public/hook_restrict_signup_to_uab"}' \
-            > /dev/null
-          echo "Auth Hook do Academic Hub aplicado."
+          # O PAT de CI é deliberadamente limitado e não tem permissão para alterar
+          # config/auth via Management API. A função e os grants são geridos por
+          # migrations; a associação do Hook permanece uma configuração protegida
+          # do projeto, evitando alargar o token apenas para cada deploy.
+          result=$(psql "$SUPABASE_DB_URL" -Atc "
+            select case
+              when has_function_privilege(
+                'supabase_auth_admin',
+                'public.hook_restrict_signup_to_uab(jsonb)',
+                'EXECUTE'
+              ) then 'ok' else 'missing' end;
+          ")
+          if [ "$result" != "ok" ]; then
+            echo "::error::A função do Auth Hook não está executável por supabase_auth_admin."
+            exit 1
+          fi
+          echo "Função e grants do Auth Hook validados."
 
       - name: Apply Academic Hub email templates
         shell: bash

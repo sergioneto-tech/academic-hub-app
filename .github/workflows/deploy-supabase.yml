@@ -1,4 +1,5 @@
 name: Deploy Supabase
+# CI retry marker: 2026-09-18 after GitHub startup_failure
 
 on:
   push:

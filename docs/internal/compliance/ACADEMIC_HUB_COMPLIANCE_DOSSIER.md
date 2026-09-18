@@ -355,7 +355,7 @@ A documentação pública deve continuar a evitar afirmações como “100% segu
 - `supabase/functions/admin-support-lookup/`
 - `supabase/functions/delete-account/`
 - `supabase/migrations/20260917145508_add_pseudonymous_support_identity.sql`
-- `supabase/migrations/20260917180500_add_operational_data_retention_policy.sql`
+- `supabase/migrations/20260917180312_add_operational_data_retention_policy.sql`
 
 ### Base de dados
 

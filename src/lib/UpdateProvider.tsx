@@ -3,7 +3,6 @@ import { APP_VERSION } from "@/lib/version";
 import { reportClientError } from "@/lib/clientErrorReporting";
 import {
   clearUpdateTarget,
-  getUpdateTargetVersion,
   markUpdateTarget,
   registerUpdateStartup,
   UPDATE_REPAIR_PARAM,

@@ -1,15 +1,17 @@
--- pg_net is required by Academic Hub backend dispatch triggers.
--- The hosted extension is not relocatable, so moving it would require destructive
--- recreation. Harden the client surface instead by revoking direct net access.
-do $$
-begin
-  execute 'revoke usage on schema net from public, anon, authenticated';
-  execute 'revoke execute on all functions in schema net from public, anon, authenticated';
-exception
-  when insufficient_privilege then
-    raise notice 'pg_net ACLs are owned by supabase_admin on hosted Supabase; keep this hardening documented and managed by the platform.';
-end
-$$;
-
-comment on extension pg_net is
-  'Required by Academic Hub private dispatch functions. Hosted extension is non-relocatable; direct client exposure is reviewed separately from the extension-in-public Advisor warning.';
+-- pg_net is required by Academic Hub private dispatch triggers.
+-- On hosted Supabase this extension is owned by supabase_admin and is
+-- non-relocatable. Do not recreate or move it only to silence the Advisor:
+-- that would be a higher operational risk than the informational hardening gap.
+--
+-- Reviewed 2026-09-18:
+-- * extension schema: public
+-- * extrelocatable: false
+-- * consumers: private.dispatch_security_incident_push,
+--   private.dispatch_feedback_push, private.dispatch_puc_update_push,
+--   private.dispatch_release_update_push, private.dispatch_survey_push,
+--   private.dispatch_user_registration_push
+-- * no client application code calls net.* directly.
+--
+-- The remaining Extension in Public WARN is therefore accepted as a managed
+-- hosted-platform exception until Supabase exposes a supported relocation path.
+select 1;

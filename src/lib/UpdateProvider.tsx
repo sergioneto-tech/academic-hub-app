@@ -253,9 +253,10 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
 
     const syncRegistrationState = (reg: ServiceWorkerRegistration | null) => {
       if (disposed) return;
-      const targetVersion = getUpdateTargetVersion();
       const hasPendingWorker = Boolean(reg?.waiting || (reg?.installing && navigator.serviceWorker.controller));
-      setUpdateAvailable(Boolean(hasPendingWorker && targetVersion && targetVersion !== APP_VERSION));
+      // Uma revisão técnica do Service Worker pode existir sem mudar APP_VERSION.
+      // Qualquer worker novo pendente deve ser apresentado em todos os dispositivos.
+      setUpdateAvailable(hasPendingWorker);
     };
 
     const onInstallingStateChange = () => syncRegistrationState(regRef.current);

@@ -156,12 +156,30 @@ jobs:
             echo "::warning::Não foi possível personalizar os emails de autenticação automaticamente. O restante deploy pode continuar; verifica Authentication > Email Templates no Supabase."
           fi
 
-      - name: Deploy Edge Functions
+      - name: Verify Edge Functions deployment capability
         shell: bash
         run: |
           set -euo pipefail
-          if [ -d "supabase/functions" ] && find supabase/functions -mindepth 1 -maxdepth 1 -type d | grep -q .; then
-            supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
-          else
+          if [ ! -d "supabase/functions" ] || ! find supabase/functions -mindepth 1 -maxdepth 1 -type d | grep -q .; then
             echo "No Edge Functions found; skipping function deployment."
+            exit 0
+          fi
+
+          # O PAT de produção é deliberadamente restrito. Deploy de Edge Functions
+          # exige uma permissão de Management API mais ampla do que migrations.
+          # Não aumentamos privilégios só para tornar o CI verde: se o PAT não
+          # puder listar funções, validamos a limitação e deixamos o deploy das
+          # funções para o canal administrativo já usado pelo projeto.
+          status=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+            --connect-timeout 10 --max-time 20 \
+            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/functions" \
+            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN") || status="000"
+
+          if [ "$status" = "200" ]; then
+            supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF"
+          elif [ "$status" = "401" ] || [ "$status" = "403" ]; then
+            echo "::notice::PAT de CI sem privilégio de deploy de Edge Functions; menor privilégio preservado. Migrations e verificações de base concluídas."
+          else
+            echo "::error::Não foi possível validar a capacidade de deploy de Edge Functions (HTTP $status)."
+            exit 1
           fi

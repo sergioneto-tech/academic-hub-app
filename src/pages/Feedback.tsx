@@ -200,7 +200,7 @@ export default function FeedbackPage() {
 
     <section className="premium-surface overflow-hidden p-5 sm:p-7">
       <div className="max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{manager ? "Gestão de feedback" : "Opinião, sugestões e problemas"}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{manager ? "Gestão de suporte" : "Suporte e pedidos"}</h1>
         <p className="mt-2 text-sm text-muted-foreground">{manager ? "Consulta, responde e acompanha os pedidos enviados pelos alunos." : "Partilha uma opinião, propõe uma melhoria ou reporta um problema. Cada pedido mantém referência, estado e histórico de acompanhamento."}</p>
       </div>
     </section>
@@ -213,7 +213,7 @@ export default function FeedbackPage() {
 
     <div className={manager ? "grid gap-5" : "grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,.95fr)]"}>
       {!manager && <Card className="premium-card border-[hsl(var(--gold)/0.35)]">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><MessageSquareText className="h-5 w-5 text-[hsl(var(--gold))]" />Enviar feedback</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><MessageSquareText className="h-5 w-5 text-[hsl(var(--gold))]" />Enviar pedido</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-2">
             <Label>Tipo</Label>
@@ -246,7 +246,7 @@ export default function FeedbackPage() {
       </Card>}
 
       <Card className="premium-card">
-        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ClipboardList className="h-5 w-5 text-primary" />{manager ? "Caixa de feedback" : "Os meus envios"}</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ClipboardList className="h-5 w-5 text-primary" />{manager ? "Gestão de pedidos" : "Os meus envios"}</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="grid gap-2 sm:grid-cols-2">
             <div className="grid gap-1"><Label className="text-xs">Tipo</Label><Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as "all" | FeedbackKind)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Todos os tipos ({entries.length})</SelectItem><SelectItem value="opinion">Opiniões ({entries.filter((entry) => entry.kind === "opinion").length})</SelectItem><SelectItem value="suggestion">Sugestões ({entries.filter((entry) => entry.kind === "suggestion").length})</SelectItem><SelectItem value="bug">Problemas ({entries.filter((entry) => entry.kind === "bug").length})</SelectItem></SelectContent></Select></div>

@@ -72,12 +72,12 @@ export default function HelpPage(){
     <Card className="premium-card overflow-hidden border-primary/25 shadow-sm">
       <CardContent className="p-0">
         <div className="p-5 sm:p-6">
-          <div className="flex items-start gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/5 text-primary shadow-sm dark:bg-primary/10"><LifeBuoy className="h-6 w-6"/></div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-primary">Suporte e pedidos</div>
-              <h2 className="mt-1 text-lg font-semibold sm:text-xl">Encontraste uma falha ou precisas de ajuda?</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">Comunica erros, falhas, comportamentos inesperados ou dúvidas. Também podes enviar sugestões. Se estiveres autenticado, o pedido fica associado ao teu ID Academic Hub e podes acompanhar o respetivo estado.</p>
+              <h2 className="mt-1 break-words text-lg font-semibold sm:text-xl">Encontraste uma falha ou precisas de ajuda?</h2>
+              <p className="mt-2 max-w-3xl break-words text-sm leading-6 text-muted-foreground">Comunica erros, falhas, comportamentos inesperados ou dúvidas. Também podes enviar sugestões. Se estiveres autenticado, o pedido fica associado ao teu ID Academic Hub e podes acompanhar o respetivo estado.</p>
             </div>
           </div>
         </div>

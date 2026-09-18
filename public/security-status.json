@@ -1,40 +1,144 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "product": "Academic Hub",
   "securityLevel": "2026.09",
-  "lastAudit": "2026-09-18T13:49:26.688Z",
+  "lastAudit": "2026-09-18T14:01:52.371Z",
   "status": "protected",
   "summary": "Sem vulnerabilidades críticas ou altas ou desvios à baseline de segurança detetados na última vistoria automática.",
+  "disclosure": "Este estado público apresenta apenas resultados técnicos e não expõe segredos, tokens, credenciais, dados pessoais, SQL, nomes de utilizadores ou configuração sensível.",
   "checks": [
     {
-      "id": "dependencies",
-      "label": "Dependências",
+      "id": "dependencies-audit",
+      "label": "Dependências npm — vulnerabilidades high/critical",
+      "group": "Aplicação e GitHub",
       "status": "pass",
-      "detail": "0 vulnerabilidades high/critical detetadas pelo npm audit."
+      "detail": "npm audit sem vulnerabilidades high/critical."
     },
     {
-      "id": "application",
-      "label": "Aplicação",
+      "id": "application-typescript",
+      "label": "TypeScript",
+      "group": "Aplicação e GitHub",
       "status": "pass",
-      "detail": "TypeScript, build e testes concluídos sem erros bloqueantes; o lint é validado pelo workflow Quality checks."
+      "detail": "Compilação TypeScript concluída sem erros bloqueantes."
     },
     {
-      "id": "database",
-      "label": "Base de dados e acesso",
+      "id": "application-build",
+      "label": "Build de produção",
+      "group": "Aplicação e GitHub",
       "status": "pass",
-      "detail": "RLS/FORCE RLS, ACLs de tabelas e sequências, SECURITY DEFINER, views, Storage e default privileges passaram a baseline live através da API read-only."
+      "detail": "Build de produção concluído sem erros bloqueantes."
     },
     {
-      "id": "frontend",
-      "label": "Frontend",
+      "id": "application-tests",
+      "label": "Testes automatizados",
+      "group": "Aplicação e GitHub",
       "status": "pass",
-      "detail": "Sem service-role/secret keys no cliente e sem eval, new Function ou dangerouslySetInnerHTML detetados."
+      "detail": "Testes automatizados concluídos sem erros bloqueantes."
     },
     {
-      "id": "web-protection",
-      "label": "Proteção web",
+      "id": "database-rls",
+      "label": "RLS e FORCE RLS nas tabelas públicas",
+      "group": "Supabase — base de dados e acesso",
       "status": "pass",
-      "detail": "CSP, HSTS, nosniff, anti-framing e Referrer-Policy confirmados no site live."
+      "detail": "Todas as tabelas públicas verificadas têm RLS e FORCE RLS ativos."
+    },
+    {
+      "id": "database-anon-tables",
+      "label": "Privilégios diretos de anon em tabelas",
+      "group": "Supabase — base de dados e acesso",
+      "status": "pass",
+      "detail": "Nenhum privilégio direto inesperado de anon em tabelas públicas."
+    },
+    {
+      "id": "database-auth-tables",
+      "label": "Privilégios de authenticated em tabelas",
+      "group": "Supabase — base de dados e acesso",
+      "status": "pass",
+      "detail": "Privilégios de authenticated correspondem à allowlist da baseline."
+    },
+    {
+      "id": "database-sequences",
+      "label": "Privilégios em sequences",
+      "group": "Supabase — base de dados e acesso",
+      "status": "pass",
+      "detail": "Sem privilégios indevidos de anon/authenticated em sequences; exceção prevista validada."
+    },
+    {
+      "id": "database-security-definer",
+      "label": "Funções SECURITY DEFINER",
+      "group": "Supabase — base de dados e acesso",
+      "status": "pass",
+      "detail": "Nenhuma função SECURITY DEFINER verificada é executável por anon ou authenticated."
+    },
+    {
+      "id": "database-views",
+      "label": "Views e materialized views públicas",
+      "group": "Supabase — base de dados e acesso",
+      "status": "pass",
+      "detail": "Nenhuma view/materialized view pública verificada é legível pelos papéis cliente."
+    },
+    {
+      "id": "database-storage",
+      "label": "Buckets públicos de Storage",
+      "group": "Supabase — base de dados e acesso",
+      "status": "pass",
+      "detail": "Nenhum bucket público detetado."
+    },
+    {
+      "id": "database-default-privileges",
+      "label": "Default privileges do PostgreSQL",
+      "group": "Supabase — base de dados e acesso",
+      "status": "pass",
+      "detail": "Não foram restaurados default privileges inseguros para anon/authenticated."
+    },
+    {
+      "id": "frontend-secrets",
+      "label": "Segredos privilegiados no cliente",
+      "group": "Frontend",
+      "status": "pass",
+      "detail": "Sem SUPABASE_SERVICE_ROLE_KEY ou chaves sb_secret_ detetadas no cliente."
+    },
+    {
+      "id": "frontend-execution",
+      "label": "Padrões de execução perigosos",
+      "group": "Frontend",
+      "status": "pass",
+      "detail": "Sem eval, new Function ou dangerouslySetInnerHTML detetados."
+    },
+    {
+      "id": "web-csp",
+      "label": "Content-Security-Policy (CSP)",
+      "group": "Proteção web",
+      "status": "pass",
+      "detail": "Header CSP confirmado no site live."
+    },
+    {
+      "id": "web-hsts",
+      "label": "Strict-Transport-Security (HSTS)",
+      "group": "Proteção web",
+      "status": "pass",
+      "detail": "Header HSTS confirmado no site live."
+    },
+    {
+      "id": "web-nosniff",
+      "label": "X-Content-Type-Options",
+      "group": "Proteção web",
+      "status": "pass",
+      "detail": "Proteção nosniff confirmada no site live."
+    },
+    {
+      "id": "web-framing",
+      "label": "Proteção anti-framing",
+      "group": "Proteção web",
+      "status": "pass",
+      "detail": "X-Frame-Options confirmado no site live."
+    },
+    {
+      "id": "web-referrer",
+      "label": "Referrer-Policy",
+      "group": "Proteção web",
+      "status": "pass",
+      "detail": "Referrer-Policy confirmada no site live."
     }
   ],
   "source": "automated-weekly-security-audit"

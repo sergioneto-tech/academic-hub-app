@@ -2,7 +2,7 @@
 
 ## Supported version
 
-The Academic Hub is a private, continuously deployed application. Security fixes are applied to the current production version on the `main` branch.
+The Academic Hub is a continuously deployed application with a public source repository. Security fixes are applied to the current production version on the `main` branch.
 
 ## Reporting a vulnerability
 

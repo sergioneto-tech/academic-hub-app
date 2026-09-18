@@ -1,5 +1,4 @@
 name: Deploy Supabase
-# CI retry marker: 2026-09-18 after GitHub startup_failure
 
 on:
   push:
@@ -39,7 +38,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1
+        uses: supabase/setup-cli@v1
         with:
           version: latest
 

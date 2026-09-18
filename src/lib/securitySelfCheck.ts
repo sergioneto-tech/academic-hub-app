@@ -1,6 +1,6 @@
 import { getStoredSession, refreshSession, storeSession, type AuthSession, type CloudConfig } from "@/lib/cloudSync";
 import { currentPushSubscription, pushSupported, reconcilePushOnThisDevice } from "@/lib/pushNotifications";
-import { APP_VERSION } from "@/lib/version";
+import { APP_VERSION, PWA_REVISION } from "@/lib/version";
 
 export type SecuritySelfCheckId =
   | "secure-context"
@@ -159,16 +159,17 @@ async function checkServiceWorker() {
     return result("service-worker", "warning", "O Service Worker está ativo, mas não respondeu à verificação de versão.", { fixable: true });
   }
 
-  if (version.appVersion !== APP_VERSION) {
+  if (version.appVersion !== APP_VERSION || version.swVersion !== PWA_REVISION) {
+    const activeRevision = version.swVersion ? ` (revisão ${version.swVersion})` : "";
     return result(
       "service-worker",
       "warning",
-      `O motor PWA está em v${version.appVersion} e a interface em v${APP_VERSION}. É recomendada uma atualização do registo.`,
+      `O motor PWA está em v${version.appVersion}${activeRevision} e a aplicação espera v${APP_VERSION} (revisão ${PWA_REVISION}). É recomendada uma atualização técnica neste dispositivo.`,
       { fixable: true },
     );
   }
 
-  return result("service-worker", "pass", `Service Worker ativo e alinhado com a versão ${APP_VERSION}.`);
+  return result("service-worker", "pass", `Service Worker ativo e alinhado com v${APP_VERSION} · revisão ${PWA_REVISION}.`);
 }
 
 async function checkCentralBaseline() {
@@ -307,7 +308,21 @@ export async function repairSecurityIssues(results: SecuritySelfCheckResult[]) {
 
   if ((ids.has("service-worker") || ids.has("app-integrity")) && "serviceWorker" in navigator) {
     const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) await registration.update().catch(() => {});
+    if (registration) {
+      await registration.update().catch(() => {});
+      const waiting = registration.waiting;
+      if (waiting) {
+        const changed = new Promise<void>((resolve) => {
+          const timer = window.setTimeout(resolve, 5000);
+          navigator.serviceWorker.addEventListener("controllerchange", () => {
+            window.clearTimeout(timer);
+            resolve();
+          }, { once: true });
+        });
+        waiting.postMessage({ type: "SKIP_WAITING" });
+        await changed;
+      }
+    }
   }
 
   if (ids.has("security-alerts") && pushSupported() && Notification.permission === "granted") {

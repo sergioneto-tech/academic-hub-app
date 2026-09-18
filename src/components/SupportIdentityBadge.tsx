@@ -35,7 +35,7 @@ export default function SupportIdentityBadge({ className, compact = false, showC
 
   return (
     <div className={cn(
-      "inline-flex max-w-full items-center gap-1.5 rounded-full border bg-card/80 text-muted-foreground shadow-sm backdrop-blur",
+      "inline-flex max-w-full min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 rounded-full border bg-card/80 text-muted-foreground shadow-sm backdrop-blur",
       compact
         ? "px-2 py-1 text-[10px] max-sm:gap-1 max-sm:px-1.5 max-sm:py-0.5 max-sm:text-[8px]"
         : "px-2.5 py-1.5 text-[11px]",
@@ -43,7 +43,7 @@ export default function SupportIdentityBadge({ className, compact = false, showC
     )}>
       <Fingerprint className={compact ? "h-3 w-3 shrink-0 max-sm:h-2.5 max-sm:w-2.5" : "h-3.5 w-3.5 shrink-0"} />
       {!compact && <span className="shrink-0">ID Academic Hub</span>}
-      <span className="whitespace-nowrap font-mono font-semibold text-foreground">{supportId}</span>
+      <span className="min-w-0 flex-1 basis-[7rem] break-all font-mono font-semibold leading-tight text-foreground">{supportId}</span>
       {showCopy && (
         <Button
           type="button"

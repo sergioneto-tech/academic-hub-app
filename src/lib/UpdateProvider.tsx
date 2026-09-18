@@ -98,13 +98,35 @@ async function repairStaleInstallation() {
 
 function activateWaitingWorker(registration: ServiceWorkerRegistration | null) {
   const waiting = registration?.waiting;
-  if (!waiting) return false;
+  if (!waiting) return null;
   try {
     waiting.postMessage({ type: "SKIP_WAITING" });
-    return true;
+    return waiting;
   } catch {
-    return false;
+    return null;
   }
+}
+
+function waitForWorkerActivation(worker: ServiceWorker, timeoutMs = 15_000) {
+  if (worker.state === "activated") return Promise.resolve(true);
+
+  return new Promise<boolean>((resolve) => {
+    let finished = false;
+    const finish = (activated: boolean) => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(timeout);
+      worker.removeEventListener("statechange", onStateChange);
+      resolve(activated);
+    };
+    const onStateChange = () => {
+      if (worker.state === "activated") finish(true);
+      else if (worker.state === "redundant") finish(false);
+    };
+    const timeout = window.setTimeout(() => finish(worker.state === "activated"), timeoutMs);
+    worker.addEventListener("statechange", onStateChange);
+    onStateChange();
+  });
 }
 
 function waitForWaitingWorker(registration: ServiceWorkerRegistration, timeoutMs: number) {
@@ -362,9 +384,18 @@ export function UpdateProvider({ children }: { children: React.ReactNode }) {
         });
 
         await runVisiblePhase("activating", async () => {
-          const controllerChanged = waitForControllerChange();
-          if (!activateWaitingWorker(reg)) throw new Error("Não foi possível ativar a nova versão");
-          if (!(await controllerChanged)) throw new Error("O navegador não confirmou a ativação");
+          const waitingWorker = activateWaitingWorker(reg);
+          if (!waitingWorker) throw new Error("Não foi possível ativar a nova versão");
+
+          // Safari/iOS e alguns WebViews Android podem atrasar ou omitir o
+          // controllerchange apesar de o novo worker já estar efetivamente ativo.
+          // A confirmação principal passa a ser o estado do próprio worker.
+          const activated = await waitForWorkerActivation(waitingWorker);
+          if (!activated) throw new Error("O navegador não confirmou a ativação");
+
+          // Dá uma curta oportunidade ao controller atual para convergir, sem
+          // bloquear uma atualização que já foi confirmada pelo Service Worker.
+          await Promise.race([waitForControllerChange(2_500), delay(2_500)]);
         });
         setUpdateAvailable(false);
       } else {

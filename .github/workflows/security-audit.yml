@@ -22,6 +22,7 @@ concurrency:
 # Audit uses the Supabase Management API read-only database endpoint.
 permissions:
   contents: write
+  pull-requests: write
   issues: write
 
 jobs:
@@ -69,35 +70,39 @@ jobs:
       - name: Publish latest security status
         id: publish_status
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           cp public/security-status.json /tmp/academic-hub-security-status.json
           git config user.name "academic-hub-security-bot"
           git config user.email "security-bot@users.noreply.github.com"
 
-          for attempt in 1 2 3; do
-            git fetch origin main
-            git reset --hard origin/main
-            cp /tmp/academic-hub-security-status.json public/security-status.json
+          git fetch origin main
+          git reset --hard origin/main
+          cp /tmp/academic-hub-security-status.json public/security-status.json
 
-            if git diff --quiet -- public/security-status.json; then
-              echo "Security status already matches the latest main branch."
-              exit 0
-            fi
+          if git diff --quiet -- public/security-status.json; then
+            echo "Security status already matches the latest main branch."
+            exit 0
+          fi
 
-            git add public/security-status.json
-            git commit -m "chore: update weekly security status"
-            if git push origin HEAD:main; then
-              echo "Security status published."
-              exit 0
-            fi
+          status_branch="automation/security-status"
+          git checkout -B "$status_branch"
+          git add public/security-status.json
+          git commit -m "chore: update weekly security status"
+          git push --force-with-lease origin "HEAD:$status_branch"
 
-            echo "Concurrent update detected while publishing (attempt $attempt/3); retrying on the latest main."
-            sleep 2
-          done
+          pr_number=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$status_branch" --base main --state open --json number --jq '.[0].number // empty')
+          if [ -z "$pr_number" ]; then
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$status_branch" \
+              --title "chore: update weekly security status" \
+              --body "Atualização automática de \`public/security-status.json\` produzida pela vistoria semanal. O resultado continua sujeito às regras normais de Pull Request e ao check obrigatório \`validate\`; não existe bypass de proteção do ramo principal."
+          else
+            echo "Security status PR #$pr_number updated."
+          fi
 
-          echo "::error::Não foi possível publicar o estado de segurança após três tentativas sem sobrescrever alterações concorrentes."
-          exit 1
+          echo "Security status published through a protected pull request."
 
       - name: Sync security audit alert
         if: always()

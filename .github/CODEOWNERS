@@ -1,0 +1,7 @@
+# Security-sensitive and deployment paths
+/.github/ @sergioneto-tech
+/supabase/ @sergioneto-tech
+/package.json @sergioneto-tech
+/package-lock.json @sergioneto-tech
+/public/sw.js @sergioneto-tech
+/src/lib/version.ts @sergioneto-tech

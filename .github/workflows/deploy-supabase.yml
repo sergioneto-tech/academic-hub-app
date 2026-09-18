@@ -59,12 +59,32 @@ jobs:
             exit 2
           fi
 
-          status=$(curl --silent --output /dev/null --write-out "%{http_code}" \
-            "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF" \
-            --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN")
-          if [ "$status" != "200" ]; then
+          status=""
+          for attempt in 1 2 3; do
+            status=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+              --connect-timeout 10 --max-time 20 \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF" \
+              --header "Authorization: Bearer $SUPABASE_ACCESS_TOKEN") || status="000"
+
+            if [ "$status" = "200" ]; then
+              break
+            fi
+
+            # 5xx/000 são falhas transitórias da Management API/rede, não prova
+            # de token inválido. Repetimos antes de bloquear o deploy.
+            if [[ "$status" =~ ^5 ]] || [ "$status" = "000" ]; then
+              echo "::warning::Validação Supabase temporariamente indisponível (HTTP $status, tentativa $attempt/3)."
+              sleep $((attempt * 2))
+              continue
+            fi
+
             echo "::error::O SUPABASE_ACCESS_TOKEN do environment production não está autorizado para o projeto atual (HTTP $status)."
             exit 3
+          done
+
+          if [ "$status" != "200" ]; then
+            echo "::error::Não foi possível validar o destino Supabase após 3 tentativas (último HTTP $status)."
+            exit 4
           fi
 
           echo "Destino e token Supabase validados para o Academic Hub atual."
